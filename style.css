@@ -1663,3 +1663,93 @@ body.auth-open{
     font-size:8px;
   }
 }
+
+
+/* v5.4 — stable mobile scale */
+html{
+  width:100%;
+  min-width:100%;
+  max-width:100%;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+  touch-action:manipulation;
+}
+
+body{
+  width:100%;
+  min-width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  margin:0;
+}
+
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+.screen{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+/* Prevent iPhone Safari from auto-zooming focused form controls */
+input,
+select,
+textarea{
+  font-size:16px !important;
+}
+
+/* Prevent wide content from stretching the page */
+.chat-message-main,
+.member-main,
+.gathering-card,
+.player-card,
+.squad-card,
+.modal-card{
+  min-width:0;
+  max-width:100%;
+}
+
+
+/* v5.5 — fixed scale specifically for phones */
+@media (max-width: 768px){
+  html, body{
+    width:100%;
+    min-width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    -webkit-text-size-adjust:100%;
+    text-size-adjust:100%;
+  }
+
+  body{
+    margin:0;
+  }
+
+  .app,
+  .screen,
+  .inner-screen,
+  .home-screen,
+  .home-stage,
+  .home-wrap{
+    width:100% !important;
+    min-width:100% !important;
+    max-width:100% !important;
+    overflow-x:hidden !important;
+  }
+
+  img,
+  canvas,
+  video{
+    max-width:100%;
+  }
+
+  input,
+  select,
+  textarea{
+    font-size:16px !important;
+  }
+}
