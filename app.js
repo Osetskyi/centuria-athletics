@@ -366,7 +366,7 @@ async function put(store,obj){
     if(imageUrl.startsWith("data:")){
       const storageReady=await compressLineupDataUrl(imageUrl,{
         maxBytes:3.2*1024*1024,
-        maxWidth:1440,
+        maxWidth:1080,
         startQuality:.92,
         minQuality:.68
       });
@@ -812,9 +812,9 @@ $("saveLineupBtn").addEventListener("click",async()=>{
 });
 
 async function renderLineupImage(name){
-  // Render at 2x resolution for a much sharper saved lineup.
-  // All layout coordinates stay in the original 720x1080 logical space.
-  const SCALE=2,W=720,H=1080,canvas=document.createElement("canvas");
+  // 1.5x keeps the saved lineup sharp (1080x1620) while using much less
+  // memory on iPhone/Safari than the previous 1440x2160 canvas.
+  const SCALE=1.5,W=720,H=1080,canvas=document.createElement("canvas");
   canvas.width=W*SCALE;
   canvas.height=H*SCALE;
   const ctx=canvas.getContext("2d");
@@ -843,7 +843,13 @@ async function renderLineupImage(name){
       try{
         const img=await loadImg(p.cardImage||PLAYER_PLACEHOLDER);
         ctx.drawImage(img,cx-cw/2,cy-ch/2,cw,ch);
-      }catch{}
+      }catch(cardErr){
+        console.warn("Player card skipped in lineup image",p?.name,cardErr);
+        try{
+          const fallback=await loadImg(PLAYER_PLACEHOLDER);
+          ctx.drawImage(fallback,cx-cw/2,cy-ch/2,cw,ch);
+        }catch{}
+      }
       const c=compatibility(p,pos);ctx.fillStyle=c==="good"?"#198845":c==="alt"?"#bd7119":"#a6262b";
     }else{
       ctx.fillStyle="rgba(10,8,6,.9)";roundRect(ctx,cx-cw/2,cy-ch/2,cw,ch,7,true,false);
@@ -860,14 +866,62 @@ async function renderLineupImage(name){
   }
   ctx.textAlign="left";
   ctx.fillStyle="#9d8d74";ctx.font="12px Arial";ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1040);
-  return canvas.toDataURL("image/jpeg",.92);
+  try{
+    return canvas.toDataURL("image/jpeg",.92);
+  }catch(exportErr){
+    console.error("Lineup canvas export failed",exportErr);
+    throw new Error("Не вдалося створити картинку складу. Онови сторінку та спробуй ще раз.");
+  }
 }
 function roundRect(ctx,x,y,w,h,r,fill,stroke){
   if(w<2*r)r=w/2;if(h<2*r)r=h/2;
   ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
   if(fill)ctx.fill();if(stroke)ctx.stroke();
 }
-function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src})}
+async function loadImg(src){
+  if(!src)throw new Error("Порожнє джерело зображення");
+
+  // data: and same-origin images are safe to draw directly.
+  if(src.startsWith("data:") || src.startsWith("blob:") || !/^https?:/i.test(src)){
+    return await new Promise((res,rej)=>{
+      const i=new Image();
+      i.onload=()=>res(i);
+      i.onerror=()=>rej(new Error("Не вдалося завантажити зображення"));
+      i.src=src;
+    });
+  }
+
+  // Remote player cards come from Supabase Storage. Fetching them as Blob first
+  // prevents Safari/Chrome from tainting the lineup canvas.
+  try{
+    const response=await fetch(src,{mode:"cors",cache:"force-cache"});
+    if(!response.ok)throw new Error(`HTTP ${response.status}`);
+    const blob=await response.blob();
+    const objectUrl=URL.createObjectURL(blob);
+    try{
+      return await new Promise((res,rej)=>{
+        const i=new Image();
+        i.onload=()=>res(i);
+        i.onerror=()=>rej(new Error("Не вдалося прочитати картку"));
+        i.src=objectUrl;
+      });
+    }finally{
+      // revoke on a later tick so drawImage has already consumed the image
+      setTimeout(()=>URL.revokeObjectURL(objectUrl),1000);
+    }
+  }catch(fetchErr){
+    console.warn("Canvas-safe image fetch failed",fetchErr);
+
+    // Second attempt with explicit anonymous CORS.
+    return await new Promise((res,rej)=>{
+      const i=new Image();
+      i.crossOrigin="anonymous";
+      i.onload=()=>res(i);
+      i.onerror=()=>rej(fetchErr);
+      i.src=src;
+    });
+  }
+}
 
 function renderSquads(){
   const box=$("squadsList");
