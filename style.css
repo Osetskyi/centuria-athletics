@@ -542,3 +542,90 @@ fieldset{border:1px solid #4f3c25;border-radius:9px;margin:0 0 12px;padding:10px
 body.auth-open{
   overflow:hidden;
 }
+
+/* v2.9 — tactics player cards 35% smaller */
+.slot{
+  width:72px !important;
+}
+
+.slot-card.filled{
+  width:61px !important;
+  height:87px !important;
+}
+
+.slot-card.filled img{
+  width:61px !important;
+  height:87px !important;
+  object-fit:contain !important;
+  object-position:center bottom !important;
+}
+
+.slot-name{
+  width:61px !important;
+  max-width:61px !important;
+  font-size:9px !important;
+  line-height:1.05 !important;
+}
+
+.slot-position{
+  margin-top:2px !important;
+  transform:scale(.9);
+  transform-origin:top center;
+}
+
+@media(max-width:420px){
+  .slot{
+    width:62px !important;
+  }
+  .slot-card.filled,
+  .slot-card.filled img{
+    width:56px !important;
+    height:79px !important;
+  }
+  .slot-name{
+    width:56px !important;
+    max-width:56px !important;
+    font-size:8px !important;
+  }
+}
+
+/* v3.0 — viewer sees no edit/destructive controls */
+.read-only #editPlayerBtn,
+.read-only #viewDeletePlayerBtn,
+.read-only #deletePlayerBtn,
+.read-only #clearPlayersBtn,
+.read-only #clearSquadsBtn{
+  display:none !important;
+}
+
+/* v3.1 — remove black square around player cards on tactics pitch */
+.slot-card.filled{
+  background:transparent !important;
+  background-image:none !important;
+  border:none !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+  overflow:visible !important;
+  padding:0 !important;
+}
+
+.slot-card.filled img{
+  background:transparent !important;
+  border:none !important;
+  box-shadow:none !important;
+  border-radius:0 !important;
+  display:block !important;
+  object-fit:contain !important;
+}
+
+/* Remove any decorative pseudo-elements that can create a dark card/frame */
+.slot-card.filled::before,
+.slot-card.filled::after{
+  display:none !important;
+  content:none !important;
+}
+
+/* Uploaded transparent PNGs should remain transparent on the pitch */
+.slot-card.filled img:not([src$="player-placeholder.png"]){
+  mix-blend-mode:normal !important;
+}
