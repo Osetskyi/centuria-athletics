@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090909">
+  <title>Centuria Athletics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME: exact user-approved artwork with clickable zones -->
+  <section id="screen-home" class="screen active home-screen">
+    <div class="home-art-wrap">
+      <img src="home-screen.jpg" class="home-art" alt="Centuria Athletics">
+      <button class="hotspot hs-players" data-nav="players" aria-label="Гравці"></button>
+      <button class="hotspot hs-tactics" data-nav="tactics" aria-label="Тактика"></button>
+      <button class="hotspot hs-squads" data-nav="squads" aria-label="Склади"></button>
+      <button class="hotspot hs-settings" data-nav="settings" aria-label="Налаштування"></button>
+    </div>
+  </section>
+
+  <!-- PLAYERS -->
+  <section id="screen-players" class="screen inner-screen">
+    <header class="topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ГРАВЦІ</h1>
+        <div id="playersCount" class="subline">0 ГРАВЦІВ</div>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="searchToggle" class="icon-btn">⌕</button>
+        <button type="button" id="addPlayerBtn" class="gold-btn compact">＋</button>
+      </div>
+    </header>
+
+    <div id="searchRow" class="search-row hidden">
+      <input id="playerSearch" placeholder="Пошук за ніком...">
+    </div>
+
+    <div class="filters">
+      <button class="filter active" data-filter="ALL">ВСІ</button>
+      <button class="filter" data-filter="GK">ВРТ</button>
+      <button class="filter" data-filter="DEF">ЗАХ</button>
+      <button class="filter" data-filter="MID">ПЗ</button>
+      <button class="filter" data-filter="ATT">НАП</button>
+    </div>
+
+    <div id="playersGrid" class="players-grid"></div>
+
+    <button type="button" id="addPlayerBig" class="gold-btn full">＋ ДОДАТИ ГРАВЦЯ</button>
+  </section>
+
+  <!-- TACTICS -->
+  <section id="screen-tactics" class="screen inner-screen">
+    <header class="topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ТАКТИКА</h1>
+      </div>
+    </header>
+
+    <div class="formation-tabs">
+      <button class="formation active" data-formation="451">4-5-1</button>
+      <button class="formation" data-formation="3421">3-4-2-1</button>
+    </div>
+
+    <div class="pitch-shell">
+      <div id="pitch" class="pitch"></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot good"></i>Основна</span>
+      <span><i class="dot alt"></i>Додаткова</span>
+      <span><i class="dot bad"></i>Не рідна</span>
+    </div>
+
+    <button type="button" id="saveLineupBtn" class="gold-btn full">ЗБЕРЕГТИ СКЛАД</button>
+  </section>
+
+  <!-- SAVED SQUADS -->
+  <section id="screen-squads" class="screen inner-screen">
+    <header class="topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ЗБЕРЕЖЕНІ РОЗСТАНОВКИ</h1>
+      </div>
+    </header>
+
+    <div id="squadsList" class="squads-list"></div>
+    <button type="button" id="newLineupBtn" class="gold-btn full">＋ НОВА РОЗСТАНОВКА</button>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen inner-screen">
+    <header class="topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>НАЛАШТУВАННЯ</h1>
+      </div>
+    </header>
+
+    <div class="settings-card">
+      <h2>МОВА</h2>
+      <div class="language-row">
+        <button class="lang active">🇺🇦 Українська</button>
+        <button class="lang" id="langRu">🇷🇺 Русский</button>
+        <button class="lang" id="langEn">🇬🇧 English</button>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <h2>МУЗИКА</h2>
+      <label class="switch-row">
+        <span>Фонова музика</span>
+        <input id="musicToggle" type="checkbox" checked>
+      </label>
+      <label class="volume-row">
+        <span>Гучність</span>
+        <input id="volumeRange" type="range" min="0" max="100" value="28">
+      </label>
+    </div>
+
+    <div class="settings-card danger-zone">
+      <h2>ДАНІ</h2>
+      <button type="button" id="clearPlayersBtn" class="danger-btn">ОЧИСТИТИ ВСІХ ГРАВЦІВ</button>
+      <button type="button" id="clearSquadsBtn" class="danger-btn">ОЧИСТИТИ ВСІ СКЛАДИ</button>
+    </div>
+
+    <div class="settings-card author">
+      <span>АВТОР</span>
+      <strong>Daniil Osetskyi</strong>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <nav id="bottomNav" class="bottom-nav hidden-nav">
+    <button data-nav="home"><span>⌂</span><small>ГОЛОВНА</small></button>
+    <button data-nav="players"><span>♟</span><small>ГРАВЦІ</small></button>
+    <button data-nav="tactics"><span>⚽</span><small>ТАКТИКА</small></button>
+    <button data-nav="squads"><span>▣</span><small>СКЛАДИ</small></button>
+    <button data-nav="settings"><span>⚙</span><small>НАЛАШТУВАННЯ</small></button>
+  </nav>
+</div>
+
+<audio id="bgMusic" src="centuria-theme.mp3" loop preload="auto" playsinline></audio>
+
+<!-- PLAYER MODAL -->
+<dialog id="playerDialog">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <span class="brand-small">CENTURIA ATHLETICS</span>
+        <h2 id="playerModalTitle">ДОДАТИ ГРАВЦЯ</h2>
+      </div>
+      <button type="button" id="closePlayerModal" class="icon-btn">×</button>
+    </div>
+
+    <!-- VIEW MODE -->
+    <div id="playerViewMode" class="hidden">
+      <div class="player-view-layout">
+        <div id="viewCardImage" class="view-card-image"></div>
+
+        <div class="player-view-info">
+          <div class="view-row">
+            <span>НІК / ІМ’Я</span>
+            <strong id="viewName">—</strong>
+          </div>
+          <div class="view-row">
+            <span>НОМЕР</span>
+            <strong id="viewNumber">—</strong>
+          </div>
+          <div class="view-row">
+            <span>ОСНОВНА ПОЗИЦІЯ</span>
+            <strong id="viewPrimaryPos">—</strong>
+          </div>
+
+          <div class="view-row">
+            <span>ДОДАТКОВІ ПОЗИЦІЇ</span>
+            <div id="viewExtraPositions" class="view-pos-list"></div>
+          </div>
+
+          <div class="view-row">
+            <span>АРХЕТИП</span>
+            <strong id="viewArchetype">—</strong>
+          </div>
+
+          <div class="view-row">
+            <span>ПРИМІТКА</span>
+            <div id="viewNote" class="view-note">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" id="viewDeletePlayerBtn" class="danger-btn">ВИДАЛИТИ</button>
+        <div class="grow"></div>
+        <button type="button" id="editPlayerBtn" class="gold-btn">РЕДАГУВАТИ ГРАВЦЯ</button>
+      </div>
+    </div>
+
+    <!-- EDIT / CREATE MODE -->
+    <div id="playerEditMode">
+      <label class="card-upload">
+        <input id="cardImageInput" type="file" accept="image/*">
+        <div id="cardPreview" class="card-preview">
+          <span>＋</span>
+          <small>ЗАВАНТАЖИТИ ГОТОВУ КАРТКУ (НЕОБОВ’ЯЗКОВО)</small>
+        </div>
+      </label>
+
+      <div class="form-grid">
+        <label>НІК / ІМ’Я
+          <input id="nameInput" maxlength="28" placeholder="Donatello">
+        </label>
+        <label>НОМЕР
+          <input id="numberInput" type="number" min="0" max="99" placeholder="10">
+        </label>
+      </div>
+
+      <label>ОСНОВНА ПОЗИЦІЯ
+        <select id="primaryPos"></select>
+      </label>
+
+      <fieldset>
+        <legend>ДОДАТКОВІ ПОЗИЦІЇ — ДО 3</legend>
+        <div id="extraPositions" class="position-checks"></div>
+      </fieldset>
+
+      <label>АРХЕТИП
+        <input id="archetypeValue" type="hidden">
+        <button id="archetypePickerBtn" type="button" class="archetype-picker-btn">
+          <span id="archetypePickerIcon" class="archetype-picker-icon"></span>
+          <span id="archetypePickerText">Обрати архетип</span>
+          <span class="archetype-picker-arrow">⌄</span>
+        </button>
+        <div id="archetypeMenu" class="archetype-menu hidden"></div>
+      </label>
+
+      <label>ПРИМІТКА
+        <textarea id="noteInput" maxlength="100" rows="3" placeholder="До 100 символів"></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button type="button" id="deletePlayerBtn" class="danger-btn hidden">ВИДАЛИТИ</button>
+        <div class="grow"></div>
+        <button type="button" id="cancelPlayerBtn" class="dark-btn">СКАСУВАТИ</button>
+        <button id="savePlayerBtn" class="gold-btn">ЗБЕРЕГТИ ГРАВЦЯ</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- PICK PLAYER MODAL -->
+<dialog id="pickerDialog">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <span class="brand-small">ТАКТИКА</span>
+        <h2 id="pickerTitle">ОБЕРИ ГРАВЦЯ</h2>
+      </div>
+      <button type="button" id="closePicker" class="icon-btn">×</button>
+    </div>
+    <div id="pickerList" class="picker-list"></div>
+  </div>
+</dialog>
+
+<!-- VIEW SAVED IMAGE -->
+<dialog id="imageDialog" class="image-dialog">
+  <div class="image-modal">
+    <div class="image-toolbar">
+      <button type="button" id="closeImage" class="dark-btn">← НАЗАД</button>
+      <button type="button" id="downloadImage" class="gold-btn">ЗБЕРЕГТИ PNG</button>
+    </div>
+    <img id="savedImageView" alt="Збережений склад">
+  </div>
+</dialog>
+
+<button id="musicStartBtn" class="music-start hidden" type="button">▶ УВІМКНУТИ МУЗИКУ</button>
+
+<button id="authBtn" class="auth-btn" type="button">ВХІД АДМІНІСТРАТОРА</button>
+
+<div id="authModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+  <div class="modal-backdrop" data-close-auth></div>
+  <div class="modal-card auth-card">
+    <button id="closeAuthModal" class="modal-close" type="button">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2 id="authTitle">ВХІД</h2>
+    <p class="auth-note">Увійди через email. Після першого входу ми надамо твоєму акаунту права адміністратора.</p>
+    <label>EMAIL
+      <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com">
+    </label>
+    <label>ПАРОЛЬ
+      <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    </label>
+    <div class="auth-actions">
+      <button id="signInBtn" class="primary-btn" type="button">УВІЙТИ</button>
+      <button id="signUpBtn" class="secondary-btn" type="button">СТВОРИТИ АКАУНТ</button>
+    </div>
+    <div id="authStatus" class="auth-status"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="app.js"></script>
+</body>
+</html>
