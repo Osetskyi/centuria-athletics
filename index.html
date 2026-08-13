@@ -116,20 +116,42 @@
     </div>
 
     <div id="chatPanel" class="chat-panel hidden">
-      <div id="onlinePeople" class="online-people"></div>
-      <div id="chatMessages" class="chat-messages">
-        <div class="chat-loading">Завантаження повідомлень…</div>
+      <div class="chat-tabs">
+        <button id="chatTabBtn" type="button" class="chat-tab active" data-viewer-allowed="true">
+          ЧАТ
+        </button>
+        <button id="membersTabBtn" type="button" class="chat-tab" data-viewer-allowed="true">
+          УЧАСНИКИ <span id="membersCountBadge">0</span>
+        </button>
       </div>
 
-      <div id="chatAttachmentPreview" class="chat-attachment-preview hidden"></div>
+      <div id="chatTabPane">
+        <div id="onlinePeople" class="online-people"></div>
+        <div id="chatMessages" class="chat-messages">
+          <div class="chat-loading">Завантаження повідомлень…</div>
+        </div>
 
-      <div class="chat-composer">
+        <div id="chatAttachmentPreview" class="chat-attachment-preview hidden"></div>
+
+        <div class="chat-composer">
         <input id="chatMediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
         <button id="chatMediaBtn" class="chat-media-btn" type="button" title="Фото або GIF" data-viewer-allowed="true">＋</button>
         <textarea id="chatInput" rows="1" maxlength="1000" placeholder="Написати повідомлення…"></textarea>
+        <button id="voiceRecordBtn" class="chat-voice-btn" type="button" title="Записати голосове" data-viewer-allowed="true">🎙</button>
         <button id="sendMessageBtn" class="chat-send-btn" type="button" data-viewer-allowed="true">➤</button>
+        </div>
+        <div id="chatHint" class="chat-hint">Фото до ~1 МБ · GIF до 1.2 МБ · голосові до 60 сек</div>
       </div>
-      <div class="chat-hint">Фото до ~1 МБ · GIF до 1.2 МБ</div>
+
+      <div id="membersTabPane" class="members-pane hidden">
+        <div class="members-head">
+          <div>
+            <div class="members-title">УЧАСНИКИ КОМАНДИ</div>
+            <div id="membersSummary" class="members-summary">Зареєстровано: 0</div>
+          </div>
+        </div>
+        <div id="membersList" class="members-list"></div>
+      </div>
     </div>
   </section>
 

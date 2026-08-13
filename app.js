@@ -93,6 +93,13 @@ let chatAttachment = null;
 let chatPresenceChannel = null;
 let chatPollTimer = null;
 let chatLastSignature = "";
+let voiceRecorder=null;
+let voiceStream=null;
+let voiceChunks=[];
+let voiceStartedAt=0;
+let voiceTimer=null;
+let voiceSeconds=0;
+
 
 
 function canEditSite(){
@@ -999,6 +1006,7 @@ async function loadTeamProfiles(){
     return;
   }
   teamProfiles=new Map((data||[]).map(p=>[p.user_id,p]));
+  renderMembersList();
 }
 
 async function loadChatMessages(forceScroll=false){
@@ -1047,7 +1055,14 @@ function renderChatMessages(forceScroll=false){
     const day=new Date(m.created_at).toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit"});
     let media="";
     if(m.media_url){
-      media=`<img class="chat-media ${m.media_type==="gif"?"is-gif":""}" src="${m.media_url}" alt="Вкладення">`;
+      if(m.media_type==="audio"){
+        media=`<div class="voice-message">
+          <span class="voice-icon">🎙</span>
+          <audio class="chat-audio" controls preload="metadata" src="${m.media_url}"></audio>
+        </div>`;
+      }else{
+        media=`<img class="chat-media ${m.media_type==="gif"?"is-gif":""}" src="${m.media_url}" alt="Вкладення">`;
+      }
     }
     return `<div class="chat-message ${own?"own":""}" data-message-id="${m.id}">
       ${profileAvatarHtml(profile)}
@@ -1149,8 +1164,10 @@ function renderAttachmentPreview(){
     box.innerHTML="";
     return;
   }
-  box.innerHTML=`<div class="attachment-card">
-    <img src="${chatAttachment.url}" alt="">
+  box.innerHTML=`<div class="attachment-card ${chatAttachment.type==="audio"?"audio-attachment":""}">
+    ${chatAttachment.type==="audio"
+      ? `<span class="attachment-audio-icon">🎙</span><audio controls preload="metadata" src="${chatAttachment.url}"></audio>`
+      : `<img src="${chatAttachment.url}" alt="">`}
     <span>${esc(chatAttachment.name||"Вкладення")}</span>
     <button id="removeChatAttachment" type="button" data-viewer-allowed="true">×</button>
   </div>`;
@@ -1162,7 +1179,167 @@ function renderAttachmentPreview(){
   });
 }
 
+
+function formatVoiceTime(seconds){
+  const s=Math.max(0,Math.floor(seconds));
+  return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
+}
+
+function updateVoiceRecordUi(){
+  const btn=$("voiceRecordBtn");
+  const hint=$("chatHint");
+  if(!btn)return;
+
+  const recording=voiceRecorder && voiceRecorder.state==="recording";
+  btn.classList.toggle("recording",!!recording);
+  btn.textContent=recording?"■":"🎙";
+  btn.title=recording?"Зупинити запис":"Записати голосове";
+
+  if(hint){
+    hint.textContent=recording
+      ? `● ЗАПИС ${formatVoiceTime(voiceSeconds)} · натисни ■ щоб зупинити`
+      : "Фото до ~1 МБ · GIF до 1.2 МБ · голосові до 60 сек";
+    hint.classList.toggle("recording",!!recording);
+  }
+}
+
+function cleanupVoiceStream(){
+  if(voiceTimer){
+    clearInterval(voiceTimer);
+    voiceTimer=null;
+  }
+  if(voiceStream){
+    voiceStream.getTracks().forEach(track=>track.stop());
+    voiceStream=null;
+  }
+}
+
+function blobToDataUrl(blob){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function startVoiceRecording(){
+  if(!authUser){
+    openAuthModal();
+    return;
+  }
+  if(!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder){
+    showToast("Цей браузер не підтримує запис голосових");
+    return;
+  }
+  if(chatAttachment){
+    showToast("Спочатку видали поточне вкладення");
+    return;
+  }
+
+  try{
+    voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    voiceChunks=[];
+
+    let options={};
+    const preferredTypes=[
+      "audio/webm;codecs=opus",
+      "audio/mp4",
+      "audio/webm"
+    ];
+    const supported=preferredTypes.find(type=>MediaRecorder.isTypeSupported?.(type));
+    if(supported)options.mimeType=supported;
+
+    voiceRecorder=new MediaRecorder(voiceStream,options);
+
+    voiceRecorder.ondataavailable=e=>{
+      if(e.data && e.data.size>0)voiceChunks.push(e.data);
+    };
+
+    voiceRecorder.onstop=async()=>{
+      try{
+        const mime=voiceRecorder?.mimeType || voiceChunks[0]?.type || "audio/webm";
+        const blob=new Blob(voiceChunks,{type:mime});
+
+        // Keep base64 payload within a reasonable size for chat messages.
+        if(blob.size>1.4*1024*1024){
+          showToast("Голосове завелике. Запиши коротше");
+          return;
+        }
+
+        const url=await blobToDataUrl(blob);
+        chatAttachment={
+          url,
+          type:"audio",
+          name:`Голосове ${formatVoiceTime(voiceSeconds)}`
+        };
+        renderAttachmentPreview();
+      }catch(err){
+        console.error("Voice processing failed",err);
+        showToast("Не вдалося обробити голосове");
+      }finally{
+        cleanupVoiceStream();
+        voiceRecorder=null;
+        voiceChunks=[];
+        updateVoiceRecordUi();
+      }
+    };
+
+    voiceRecorder.onerror=e=>{
+      console.error("Voice recorder error",e);
+      cleanupVoiceStream();
+      voiceRecorder=null;
+      voiceChunks=[];
+      updateVoiceRecordUi();
+      showToast("Помилка запису голосового");
+    };
+
+    voiceRecorder.start(250);
+    voiceStartedAt=Date.now();
+    voiceSeconds=0;
+    updateVoiceRecordUi();
+
+    voiceTimer=setInterval(()=>{
+      voiceSeconds=Math.floor((Date.now()-voiceStartedAt)/1000);
+      updateVoiceRecordUi();
+      if(voiceSeconds>=60){
+        stopVoiceRecording();
+      }
+    },500);
+
+  }catch(err){
+    console.error("Microphone permission error",err);
+    cleanupVoiceStream();
+    voiceRecorder=null;
+    updateVoiceRecordUi();
+    showToast("Дозволь сайту доступ до мікрофона");
+  }
+}
+
+function stopVoiceRecording(){
+  if(voiceRecorder && voiceRecorder.state==="recording"){
+    voiceSeconds=Math.max(1,Math.floor((Date.now()-voiceStartedAt)/1000));
+    voiceRecorder.stop();
+  }
+}
+
+function toggleVoiceRecording(){
+  if(voiceRecorder && voiceRecorder.state==="recording"){
+    stopVoiceRecording();
+  }else{
+    startVoiceRecording();
+  }
+}
+
+$("voiceRecordBtn")?.addEventListener("click",toggleVoiceRecording);
+
+
 async function sendChatMessage(){
+  if(voiceRecorder && voiceRecorder.state==="recording"){
+    stopVoiceRecording();
+    showToast("Голосове збережено — натисни відправити ще раз");
+    return;
+  }
   if(!sb || !authUser){
     openAuthModal();
     return;
@@ -1194,6 +1371,78 @@ async function sendChatMessage(){
   await loadChatMessages(true);
 }
 
+
+function getOnlineUserIds(){
+  const ids=new Set();
+  if(!chatPresenceChannel)return ids;
+  const state=chatPresenceChannel.presenceState();
+  Object.values(state).forEach(entries=>{
+    (entries||[]).forEach(p=>{
+      if(p?.user_id)ids.add(p.user_id);
+    });
+  });
+  return ids;
+}
+
+function renderMembersList(){
+  const list=$("membersList");
+  const badge=$("membersCountBadge");
+  const summary=$("membersSummary");
+  if(!list)return;
+
+  const profiles=[...teamProfiles.values()]
+    .filter(p=>p?.user_id)
+    .sort((a,b)=>(a.display_name||"").localeCompare(b.display_name||"","uk"));
+
+  const onlineIds=getOnlineUserIds();
+
+  if(badge)badge.textContent=String(profiles.length);
+  if(summary)summary.textContent=`Зареєстровано: ${profiles.length} · Онлайн: ${onlineIds.size}`;
+
+  if(!profiles.length){
+    list.innerHTML=`<div class="members-empty">Ще немає зареєстрованих учасників.</div>`;
+    return;
+  }
+
+  list.innerHTML=profiles.map(p=>{
+    const online=onlineIds.has(p.user_id);
+    return `<div class="member-row">
+      ${profileAvatarHtml(p,"member-avatar")}
+      <div class="member-main">
+        <div class="member-nick">${esc(p.display_name||"Гравець")}</div>
+        <div class="member-state ${online?"online":"offline"}">
+          <span class="member-state-dot"></span>
+          ${online?"ОНЛАЙН":"ОФЛАЙН"}
+        </div>
+      </div>
+      ${p.role==="admin"?`<span class="member-role admin">ADMIN</span>`:p.role==="editor"?`<span class="member-role">EDITOR</span>`:""}
+    </div>`;
+  }).join("");
+}
+
+function setChatSection(section){
+  const isMembers=section==="members";
+  $("chatTabBtn")?.classList.toggle("active",!isMembers);
+  $("membersTabBtn")?.classList.toggle("active",isMembers);
+  $("chatTabPane")?.classList.toggle("hidden",isMembers);
+  $("membersTabPane")?.classList.toggle("hidden",!isMembers);
+
+  if(isMembers){
+    renderMembersList();
+  }else{
+    requestAnimationFrame(()=>{
+      const box=$("chatMessages");
+      if(box)box.scrollTop=box.scrollHeight;
+    });
+  }
+}
+
+$("chatTabBtn")?.addEventListener("click",()=>setChatSection("chat"));
+$("membersTabBtn")?.addEventListener("click",async()=>{
+  await loadTeamProfiles();
+  setChatSection("members");
+});
+
 function renderOnlinePresence(){
   const count=$("onlineCount");
   const list=$("onlinePeople");
@@ -1217,6 +1466,7 @@ function renderOnlinePresence(){
         <span>${esc(p.nick||"Гравець")}</span>
       </div>`).join("");
   }
+  renderMembersList();
 }
 
 async function stopChatPresence(){
@@ -1323,6 +1573,7 @@ async function maybeWeeklyChatCleanup(){
 }
 
 async function openChatScreen(){
+  setChatSection("chat");
   await refreshChatAuthState();
   if(authUser){
     await maybeWeeklyChatCleanup();
@@ -1460,6 +1711,8 @@ async function openAuthModal(){
   if(authUser){
     const ok=confirm(`Вийти з акаунта ${authUser.email}?`);
     if(ok && sb){
+      if(voiceRecorder && voiceRecorder.state==="recording")stopVoiceRecording();
+      cleanupVoiceStream();
       await stopChatPresence();
       await sb.auth.signOut();
       await refreshAuth();
