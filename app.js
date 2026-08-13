@@ -90,6 +90,15 @@ async function refreshAuth(){
     if(profile?.role) authRole=profile.role;
   }
   applyPermissions();
+  try{
+    players=await getAll("players");
+    squads=await getAll("squads");
+    renderPlayers();
+    renderPitch();
+    renderSquads();
+  }catch(err){
+    console.error("Cloud refresh error",err);
+  }
 }
 
 
@@ -104,47 +113,158 @@ window.addEventListener("error",e=>{
 });
 
 
+
+/* Shared Supabase data layer */
 function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open("CenturiaAthleticsDB",1);
-    req.onupgradeneeded = ()=>{
-      const db=req.result;
-      if(!db.objectStoreNames.contains("players")) db.createObjectStore("players",{keyPath:"id"});
-      if(!db.objectStoreNames.contains("squads")) db.createObjectStore("squads",{keyPath:"id"});
-    };
-    req.onsuccess=()=>{db=req.result;resolve(db)};
-    req.onerror=()=>reject(req.error);
-  });
-}
-function getAll(store){
-  return new Promise((resolve,reject)=>{
-    const r=db.transaction(store,"readonly").objectStore(store).getAll();
-    r.onsuccess=()=>resolve(r.result||[]);
-    r.onerror=()=>reject(r.error);
-  });
-}
-function put(store,obj){
-  return new Promise((resolve,reject)=>{
-    const r=db.transaction(store,"readwrite").objectStore(store).put(obj);
-    r.onsuccess=()=>resolve();
-    r.onerror=()=>reject(r.error);
-  });
-}
-function del(store,id){
-  return new Promise((resolve,reject)=>{
-    const r=db.transaction(store,"readwrite").objectStore(store).delete(id);
-    r.onsuccess=()=>resolve();
-    r.onerror=()=>reject(r.error);
-  });
-}
-function clearStore(store){
-  return new Promise((resolve,reject)=>{
-    const r=db.transaction(store,"readwrite").objectStore(store).clear();
-    r.onsuccess=()=>resolve();
-    r.onerror=()=>reject(r.error);
-  });
+  /* Kept as a no-op so the rest of the app initialization stays compatible. */
+  return Promise.resolve();
 }
 
+function dataUrlToBlob(dataUrl){
+  const [meta, data] = dataUrl.split(",");
+  const mime = (meta.match(/data:([^;]+)/)||[])[1] || "image/jpeg";
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+  return new Blob([bytes],{type:mime});
+}
+
+function playerFromDb(p){
+  return {
+    id:p.id,
+    name:p.name || "",
+    number:p.shirt_number ?? "",
+    primaryPos:p.primary_position,
+    extraPositions:p.extra_positions || [],
+    archetype:p.archetype || "",
+    note:p.note || "",
+    cardImage:p.card_image_url || "",
+    updatedAt:p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
+  };
+}
+
+function squadFromDb(s){
+  return {
+    id:s.id,
+    name:s.name || "Склад",
+    formation:s.formation,
+    createdAt:s.created_at ? new Date(s.created_at).getTime() : Date.now(),
+    image:s.image_url || ""
+  };
+}
+
+async function uploadDataImage(path,dataUrl){
+  if(!sb || !dataUrl || !dataUrl.startsWith("data:")) return dataUrl || "";
+  const blob=dataUrlToBlob(dataUrl);
+  const {error}=await sb.storage.from("centuria-assets").upload(path,blob,{
+    upsert:true,
+    contentType:blob.type || "image/jpeg",
+    cacheControl:"3600"
+  });
+  if(error) throw error;
+  const {data}=sb.storage.from("centuria-assets").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function getAll(store){
+  if(!sb) return [];
+  if(store==="players"){
+    const {data,error}=await sb.from("players")
+      .select("*")
+      .order("created_at",{ascending:true});
+    if(error){console.error(error);showToast("Не вдалося завантажити гравців");return []}
+    return (data||[]).map(playerFromDb);
+  }
+  if(store==="squads"){
+    const {data,error}=await sb.from("saved_lineups")
+      .select("*")
+      .order("created_at",{ascending:false});
+    if(error){console.error(error);showToast("Не вдалося завантажити склади");return []}
+    return (data||[]).map(squadFromDb);
+  }
+  return [];
+}
+
+async function put(store,obj){
+  if(!sb) throw new Error("Supabase недоступний");
+  if(!canEditSite()) throw new Error("Потрібні права редактора");
+
+  if(store==="players"){
+    let cardUrl=obj.cardImage || "";
+    if(cardUrl.startsWith("data:")){
+      cardUrl=await uploadDataImage(`players/${obj.id}.jpg`,cardUrl);
+    }
+    const payload={
+      id:obj.id,
+      name:obj.name,
+      shirt_number:obj.number===""||obj.number==null ? null : Number(obj.number),
+      primary_position:obj.primaryPos,
+      extra_positions:obj.extraPositions || [],
+      archetype:obj.archetype || null,
+      note:obj.note || null,
+      card_image_url:cardUrl || null,
+      created_by:authUser?.id || null
+    };
+    const {error}=await sb.from("players").upsert(payload,{onConflict:"id"});
+    if(error) throw error;
+    return;
+  }
+
+  if(store==="squads"){
+    let imageUrl=obj.image || "";
+    if(imageUrl.startsWith("data:")){
+      imageUrl=await uploadDataImage(`lineups/${obj.id}.jpg`,imageUrl);
+    }
+    const payload={
+      id:obj.id,
+      name:obj.name,
+      formation:obj.formation,
+      image_url:imageUrl,
+      created_by:authUser?.id || null
+    };
+    const {error}=await sb.from("saved_lineups").upsert(payload,{onConflict:"id"});
+    if(error) throw error;
+    return;
+  }
+}
+
+async function del(store,id){
+  if(!sb) throw new Error("Supabase недоступний");
+  if(!canEditSite()) throw new Error("Потрібні права редактора");
+
+  if(store==="players"){
+    const {error}=await sb.from("players").delete().eq("id",id);
+    if(error) throw error;
+    await sb.storage.from("centuria-assets").remove([`players/${id}.jpg`]);
+    return;
+  }
+  if(store==="squads"){
+    const {error}=await sb.from("saved_lineups").delete().eq("id",id);
+    if(error) throw error;
+    await sb.storage.from("centuria-assets").remove([`lineups/${id}.jpg`]);
+    return;
+  }
+}
+
+async function clearStore(store){
+  if(!sb) throw new Error("Supabase недоступний");
+  if(!canEditSite()) throw new Error("Потрібні права редактора");
+
+  if(store==="players"){
+    const ids=players.map(p=>p.id);
+    const {error}=await sb.from("players").delete().not("id","is",null);
+    if(error) throw error;
+    if(ids.length) await sb.storage.from("centuria-assets").remove(ids.map(id=>`players/${id}.jpg`));
+    return;
+  }
+  if(store==="squads"){
+    const ids=squads.map(s=>s.id);
+    const {error}=await sb.from("saved_lineups").delete().not("id","is",null);
+    if(error) throw error;
+    if(ids.length) await sb.storage.from("centuria-assets").remove(ids.map(id=>`lineups/${id}.jpg`));
+    return;
+  }
+}
 function uid(){return (crypto.randomUUID && crypto.randomUUID()) || (Date.now()+"-"+Math.random().toString(16).slice(2))}
 function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 function showToast(text){
@@ -227,7 +347,7 @@ function renderPlayers(){
   $("playersCount").textContent=`${players.length} ГРАВЦІВ`;
   const grid=$("playersGrid");
   if(!arr.length){
-    grid.innerHTML=`<div class="empty-state"><strong>${players.length?"НІЧОГО НЕ ЗНАЙДЕНО":"ГРАВЦІВ ЩЕ НЕМАЄ"}</strong><span>${players.length?"Зміни фільтр або пошук.":"Додай першого гравця кнопкою нижче."}</span></div>`;
+    grid.innerHTML=`<div class="empty-state"><strong>${players.length?"НІЧОГО НЕ ЗНАЙДЕНО":"ГРАВЦІВ ЩЕ НЕМАЄ"}</strong><span>${players.length?"Зміни фільтр або пошук.":(canEditSite()?"Додай першого гравця кнопкою нижче.":"Гравців ще не додано.")}</span></div>`;
     return;
   }
   grid.innerHTML="";
@@ -346,10 +466,15 @@ $("savePlayerBtn").addEventListener("click",async()=>{
     archetype:$("archetypeValue") ? $("archetypeValue").value : "",note:$("noteInput").value.trim(),
     cardImage:currentCardImage,updatedAt:Date.now()
   };
-  await put("players",obj);
-  players=await getAll("players");
-  $("playerDialog").close();renderPlayers();renderPitch();
-  showToast(editPlayerId?"Гравця оновлено":"Гравця додано");
+  try{
+    await put("players",obj);
+    players=await getAll("players");
+    $("playerDialog").close();renderPlayers();renderPitch();
+    showToast(editPlayerId?"Гравця оновлено":"Гравця додано");
+  }catch(err){
+    console.error(err);
+    showToast("Не вдалося зберегти гравця");
+  }
 });
 $("deletePlayerBtn").addEventListener("click",async()=>{
   if(!editPlayerId)return;
@@ -427,8 +552,15 @@ $("saveLineupBtn").addEventListener("click",async()=>{
   showToast("Створюю зображення...");
   const image=await renderLineupImage(name.trim()||"Склад");
   const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image};
-  await put("squads",obj);squads=await getAll("squads");
-  showToast("Склад збережено як фото");
+  try{
+    await put("squads",obj);
+    squads=await getAll("squads");
+    renderSquads();
+    showToast("Склад збережено онлайн");
+  }catch(err){
+    console.error(err);
+    showToast("Не вдалося зберегти склад");
+  }
 });
 
 async function renderLineupImage(name){
@@ -559,13 +691,23 @@ const music=$("bgMusic"), toggle=$("musicToggle"), volume=$("volumeRange"), musi
 const savedMusic=localStorage.getItem("ca_music");
 toggle.checked=savedMusic!=="off";
 volume.value=localStorage.getItem("ca_volume")||"35";
-music.volume=Number(volume.value)/100;
 music.loop=true;
+
+function applyMusicVolume(){
+  const raw=Number(volume?.value ?? 35);
+  const normalized=Math.max(0,Math.min(100,raw))/100;
+  music.volume=normalized;
+  music.muted=normalized===0;
+  localStorage.setItem("ca_volume",String(raw));
+}
+
+applyMusicVolume();
 
 let musicStarted=false;
 
 async function startMusicFromGesture(){
   if(!toggle.checked)return false;
+  applyMusicVolume();
   try{
     await music.play();
     musicStarted=true;
@@ -611,6 +753,7 @@ musicStartBtn.addEventListener("click",async e=>{
 toggle.addEventListener("change",async()=>{
   localStorage.setItem("ca_music",toggle.checked?"on":"off");
   if(toggle.checked){
+    applyMusicVolume();
     const ok=await startMusicFromGesture();
     if(!ok)musicStartBtn.classList.remove("hidden");
   }else{
@@ -620,11 +763,15 @@ toggle.addEventListener("change",async()=>{
   }
 });
 
-volume.addEventListener("input",()=>{
-  music.volume=Number(volume.value)/100;
-  localStorage.setItem("ca_volume",volume.value);
-  if(toggle.checked && music.paused) startMusicFromGesture();
-});
+function handleVolumeChange(){
+  applyMusicVolume();
+  if(toggle.checked && music.paused && Number(volume.value)>0){
+    startMusicFromGesture();
+  }
+}
+
+volume.addEventListener("input",handleVolumeChange);
+volume.addEventListener("change",handleVolumeChange);
 
 music.addEventListener("error",()=>{
   musicStartBtn.classList.remove("hidden");
@@ -705,15 +852,24 @@ $("signUpBtn")?.addEventListener("click",async()=>{
 
 if(sb){
   sb.auth.onAuthStateChange(()=>refreshAuth());
+
+  sb.channel("centuria-live")
+    .on("postgres_changes",{event:"*",schema:"public",table:"players"},async()=>{
+      players=await getAll("players");
+      renderPlayers();
+      renderPitch();
+    })
+    .on("postgres_changes",{event:"*",schema:"public",table:"saved_lineups"},async()=>{
+      squads=await getAll("squads");
+      renderSquads();
+    })
+    .subscribe();
 }
 
 (async function(){
   try{
     setupFormOptions();
     await openDB();
-    players=await getAll("players");
-    squads=await getAll("squads");
-    renderPlayers();renderPitch();renderSquads();
     await refreshAuth();
   }catch(err){
     console.error(err);
