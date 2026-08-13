@@ -172,6 +172,14 @@
             <strong id="viewNumber">—</strong>
           </div>
           <div class="view-row">
+            <span>ВІК</span>
+            <strong id="viewAge">—</strong>
+          </div>
+          <div class="view-row">
+            <span>ПЛАТФОРМА</span>
+            <strong id="viewPlatform">—</strong>
+          </div>
+          <div class="view-row">
             <span>ОСНОВНА ПОЗИЦІЯ</span>
             <strong id="viewPrimaryPos">—</strong>
           </div>
@@ -215,14 +223,22 @@
         </div>
       </label>
 
-      <div class="form-grid">
+      <div class="form-grid form-grid-three">
         <label>НІК / ІМ’Я
           <input id="nameInput" maxlength="28" placeholder="Donatello">
         </label>
         <label>НОМЕР
           <input id="numberInput" type="number" min="0" max="99" placeholder="10">
         </label>
+        <label>ВІК
+          <input id="ageInput" type="number" min="10" max="99" placeholder="23">
+        </label>
       </div>
+
+      <label>ПЛАТФОРМА
+        <input id="platformValue" type="hidden">
+        <div id="platformPicker" class="platform-picker"></div>
+      </label>
 
       <label>ОСНОВНА ПОЗИЦІЯ
         <select id="primaryPos"></select>

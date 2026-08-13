@@ -30,6 +30,38 @@ function encodePlayerNote(status,note){
   const maxLen=100-marker.length;
   return marker+(note||"").slice(0,maxLen);
 }
+const PLAYER_PLATFORMS = ["PS5","XBOX","PC"];
+
+function platformIcon(platform){
+  if(platform==="PS5"){
+    return `<svg viewBox="0 0 48 48" aria-hidden="true">
+      <rect x="8" y="11" width="10" height="26" rx="2"></rect>
+      <rect x="22" y="11" width="18" height="5" rx="2"></rect>
+      <rect x="22" y="21" width="14" height="5" rx="2"></rect>
+      <rect x="22" y="32" width="18" height="5" rx="2"></rect>
+    </svg>`;
+  }
+  if(platform==="XBOX"){
+    return `<svg viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="24" cy="24" r="17"></circle>
+      <path d="M15 15c3-2 6-3 9-3s6 1 9 3c-4 2-7 5-9 8-2-3-5-6-9-8zm1 18c2-5 5-9 8-12 3 3 6 7 8 12-2 2-5 3-8 3s-6-1-8-3z"></path>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 48 48" aria-hidden="true">
+    <rect x="7" y="9" width="34" height="25" rx="3"></rect>
+    <rect x="20" y="35" width="8" height="4" rx="1"></rect>
+    <rect x="15" y="40" width="18" height="3" rx="1.5"></rect>
+  </svg>`;
+}
+
+function selectPlatform(value){
+  const hidden=$("platformValue");
+  if(hidden)hidden.value=value||"";
+  document.querySelectorAll(".platform-option").forEach(btn=>{
+    btn.classList.toggle("selected",btn.dataset.value===value);
+  });
+}
+
 
 const FORMATIONS = {
   "451":[
@@ -164,6 +196,8 @@ function playerFromDb(p){
     id:p.id,
     name:p.name || "",
     number:p.shirt_number ?? "",
+    age:p.age ?? "",
+    platform:p.platform || "",
     primaryPos:p.primary_position,
     extraPositions:p.extra_positions || [],
     archetype:p.archetype || "",
@@ -229,6 +263,8 @@ async function put(store,obj){
       id:obj.id,
       name:obj.name,
       shirt_number:obj.number===""||obj.number==null ? null : Number(obj.number),
+      age:obj.age===""||obj.age==null ? null : Number(obj.age),
+      platform:obj.platform || null,
       primary_position:obj.primaryPos,
       extra_positions:obj.extraPositions || [],
       archetype:obj.archetype || null,
@@ -355,6 +391,18 @@ function setupFormOptions(){
       btn.addEventListener("click",()=>selectStatus(btn.dataset.value));
     });
   }
+
+  const platformPicker=$("platformPicker");
+  if(platformPicker){
+    platformPicker.innerHTML=PLAYER_PLATFORMS.map(platform=>`
+      <button type="button" class="platform-option" data-value="${platform}">
+        <span class="platform-icon">${platformIcon(platform)}</span>
+        <span>${platform}</span>
+      </button>`).join("");
+    platformPicker.querySelectorAll(".platform-option").forEach(btn=>{
+      btn.addEventListener("click",()=>selectPlatform(btn.dataset.value));
+    });
+  }
 }
 
 
@@ -434,8 +482,8 @@ function resetPlayerModal(){
   $("playerViewMode").classList.add("hidden");
   $("playerEditMode").classList.remove("hidden");
   $("cardPreview").innerHTML=`<span>＋</span><small>ЗАВАНТАЖИТИ ГОТОВУ КАРТКУ (НЕОБОВ’ЯЗКОВО)</small>`;
-  $("nameInput").value="";$("numberInput").value="";$("primaryPos").value="GK";
-  selectArchetype("");selectStatus("");$("noteInput").value="";
+  $("nameInput").value="";$("numberInput").value="";$("ageInput").value="";$("primaryPos").value="GK";
+  selectArchetype("");selectStatus("");selectPlatform("");$("noteInput").value="";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=false);
   $("deletePlayerBtn").classList.add("hidden");
 }
@@ -447,7 +495,9 @@ function fillViewMode(p){
 
   $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
   $("viewName").textContent=p.name||"—";
-  $("viewNumber").textContent=p.number ? "#"+p.number : "—";
+  $("viewNumber").textContent=p.number!=="" && p.number!=null ? "#"+p.number : "—";
+  $("viewAge").textContent=p.age!=="" && p.age!=null ? p.age+" років" : "—";
+  $("viewPlatform").innerHTML=p.platform ? `<span class="view-platform"><span class="platform-icon">${platformIcon(p.platform)}</span><span>${esc(p.platform)}</span></span>` : "—";
   $("viewPrimaryPos").textContent=POS_LABEL[p.primaryPos]||"—";
   $("viewArchetype").innerHTML=p.archetype
     ? `<span class="view-archetype"><img src="${ARCHETYPE_ICONS[p.archetype]||""}" alt=""><span>${esc(p.archetype)}</span></span>`
@@ -470,6 +520,8 @@ function fillEditMode(p){
   $("cardPreview").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="">`;
   $("nameInput").value=p.name;
   $("numberInput").value=p.number||"";
+  $("ageInput").value=p.age||"";
+  selectPlatform(p.platform||"");
   $("primaryPos").value=p.primaryPos;
   selectArchetype(p.archetype||"");
   selectStatus(p.status||"");
@@ -520,9 +572,14 @@ $("cardImageInput").addEventListener("change",async e=>{
 $("savePlayerBtn").addEventListener("click",async()=>{
   const name=$("nameInput").value.trim();
   if(!name){showToast("Введи нік або ім’я");return}
+  const ageRaw=$("ageInput").value.trim();
+  if(ageRaw){
+    const age=Number(ageRaw);
+    if(!Number.isInteger(age) || age<10 || age>99){showToast("Вік має бути від 10 до 99 років");return}
+  }
   const extra=[...$("extraPositions").querySelectorAll("input:checked")].map(x=>x.value).filter(x=>x!==$("primaryPos").value).slice(0,3);
   const obj={
-    id:editPlayerId||uid(),name,number:$("numberInput").value.trim(),
+    id:editPlayerId||uid(),name,number:$("numberInput").value.trim(),age:$("ageInput").value.trim(),platform:$("platformValue").value,
     primaryPos:$("primaryPos").value,extraPositions:extra,
     archetype:$("archetypeValue") ? $("archetypeValue").value : "",status:$("statusValue") ? $("statusValue").value : "",note:$("noteInput").value.trim(),
     cardImage:currentCardImage,updatedAt:Date.now()
