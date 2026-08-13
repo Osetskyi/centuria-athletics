@@ -212,6 +212,67 @@ function dataUrlToBlob(dataUrl){
   return new Blob([bytes],{type:mime});
 }
 
+
+function dataUrlBytes(dataUrl){
+  if(!dataUrl || !dataUrl.startsWith("data:"))return 0;
+  const comma=dataUrl.indexOf(",");
+  if(comma<0)return 0;
+  const base64=dataUrl.slice(comma+1);
+  return Math.floor(base64.length*3/4);
+}
+
+function loadDataUrlImage(dataUrl){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error("Не вдалося підготувати прев’ю складу"));
+    img.src=dataUrl;
+  });
+}
+
+async function compressLineupDataUrl(dataUrl,{
+  maxBytes=3.2*1024*1024,
+  maxWidth=1440,
+  startQuality=.92,
+  minQuality=.68
+}={}){
+  if(!dataUrl?.startsWith("data:"))return dataUrl||"";
+  if(dataUrlBytes(dataUrl)<=maxBytes)return dataUrl;
+
+  const img=await loadDataUrlImage(dataUrl);
+  const scale=Math.min(1,maxWidth/img.naturalWidth);
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+
+  const ctx=canvas.getContext("2d");
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  ctx.drawImage(img,0,0,canvas.width,canvas.height);
+
+  let quality=startQuality;
+  let out=canvas.toDataURL("image/jpeg",quality);
+
+  while(dataUrlBytes(out)>maxBytes && quality>minQuality){
+    quality=Math.max(minQuality,quality-.06);
+    out=canvas.toDataURL("image/jpeg",quality);
+  }
+
+  if(dataUrlBytes(out)>maxBytes && canvas.width>1200){
+    const smaller=document.createElement("canvas");
+    const ratio=1200/canvas.width;
+    smaller.width=1200;
+    smaller.height=Math.round(canvas.height*ratio);
+    const sctx=smaller.getContext("2d");
+    sctx.imageSmoothingEnabled=true;
+    sctx.imageSmoothingQuality="high";
+    sctx.drawImage(canvas,0,0,smaller.width,smaller.height);
+    out=smaller.toDataURL("image/jpeg",.82);
+  }
+
+  return out;
+}
+
 function playerFromDb(p){
   const decoded=decodePlayerNote(p.note || "");
   return {
@@ -302,15 +363,24 @@ async function put(store,obj){
   if(store==="squads"){
     let imageUrl=obj.image || "";
 
-    // Storage is preferred, but a lineup must never fail to save only because
-    // the preview image upload failed. In that case keep the JPEG data URL
-    // directly in saved_lineups.image_url as a reliable fallback.
     if(imageUrl.startsWith("data:")){
+      const storageReady=await compressLineupDataUrl(imageUrl,{
+        maxBytes:3.2*1024*1024,
+        maxWidth:1440,
+        startQuality:.92,
+        minQuality:.68
+      });
+
       try{
-        imageUrl=await uploadDataImage(`lineups/${obj.id}.jpg`,imageUrl);
+        imageUrl=await uploadDataImage(`lineups/${obj.id}.jpg`,storageReady);
       }catch(storageErr){
-        console.warn("Lineup image Storage upload failed; using DB fallback",storageErr);
-        imageUrl=obj.image;
+        console.warn("Lineup Storage upload failed; using compact DB fallback",storageErr);
+        imageUrl=await compressLineupDataUrl(storageReady,{
+          maxBytes:650*1024,
+          maxWidth:900,
+          startQuality:.78,
+          minQuality:.58
+        });
       }
     }
 
@@ -706,15 +776,20 @@ function saveLineupState(){localStorage.setItem("ca_lineup",JSON.stringify(lineu
 $("saveLineupBtn").addEventListener("click",async()=>{
   const used=FORMATIONS[currentFormation].map((_,i)=>lineup[`${currentFormation}-${i}`]).filter(Boolean);
   if(!used.length){showToast("Спочатку додай хоча б одного гравця");return}
+
   const name=prompt("Назва складу:","Основний склад");
   if(name===null)return;
-  showToast("Створюю зображення...");
-  const image=await renderLineupImage(name.trim()||"Склад");
-  const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image};
+
+  const saveBtn=$("saveLineupBtn");
+  if(saveBtn)saveBtn.disabled=true;
+  showToast("Зберігаю склад…");
+
   try{
+    const image=await renderLineupImage(name.trim()||"Склад");
+    const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image};
+
     const saved=await put("squads",obj);
 
-    // Show the saved lineup immediately, then confirm against Supabase.
     if(saved?.id){
       squads=[saved,...squads.filter(s=>s.id!==saved.id)];
       renderSquads();
@@ -731,6 +806,8 @@ $("saveLineupBtn").addEventListener("click",async()=>{
   }catch(err){
     console.error("Save lineup failed:",err);
     showToast(`Не вдалося зберегти склад${err?.message?": "+err.message:""}`);
+  }finally{
+    if(saveBtn)saveBtn.disabled=false;
   }
 });
 
@@ -783,7 +860,7 @@ async function renderLineupImage(name){
   }
   ctx.textAlign="left";
   ctx.fillStyle="#9d8d74";ctx.font="12px Arial";ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1040);
-  return canvas.toDataURL("image/jpeg",.96);
+  return canvas.toDataURL("image/jpeg",.92);
 }
 function roundRect(ctx,x,y,w,h,r,fill,stroke){
   if(w<2*r)r=w/2;if(h<2*r)r=h/2;
