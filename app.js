@@ -11,6 +11,26 @@ const ARCHETYPES = [
 const PLAYER_PLACEHOLDER = "player-placeholder.png";
 const ARCHETYPE_ICONS = {"Стовб": "archetype-target.png", "Бомбардир": "archetype-scorer.png", "Чарівник": "archetype-wizard.png", "Іскра": "archetype-spark.png", "Мозг": "archetype-brain.png", "Маестро": "archetype-maestro.png", "Переробка": "archetype-recycling.png", "Термінатор": "archetype-terminator.png", "Мотор": "archetype-motor.png", "Босс": "archetype-boss.png", "Прогресор": "archetype-progressor.png", "Воротар-ліберо": "archetype-sweeper_keeper.png", "Стоппер": "archetype-stopper.png"};
 
+const PLAYER_STATUSES = [
+  ["","Без статусу"],
+  ["Капітан","Капітан"],
+  ["Віце-капітан","Віце-капітан"],
+  ["Перегляд","Перегляд"]
+];
+
+function decodePlayerNote(raw){
+  const text=raw||"";
+  if(text.startsWith("~C~")) return {status:"Капітан",note:text.slice(3)};
+  if(text.startsWith("~V~")) return {status:"Віце-капітан",note:text.slice(3)};
+  if(text.startsWith("~P~")) return {status:"Перегляд",note:text.slice(3)};
+  return {status:"",note:text};
+}
+function encodePlayerNote(status,note){
+  const marker=status==="Капітан"?"~C~":status==="Віце-капітан"?"~V~":status==="Перегляд"?"~P~":"";
+  const maxLen=100-marker.length;
+  return marker+(note||"").slice(0,maxLen);
+}
+
 const FORMATIONS = {
   "451":[
     ["ST",50,13],
@@ -139,6 +159,7 @@ function dataUrlToBlob(dataUrl){
 }
 
 function playerFromDb(p){
+  const decoded=decodePlayerNote(p.note || "");
   return {
     id:p.id,
     name:p.name || "",
@@ -146,7 +167,8 @@ function playerFromDb(p){
     primaryPos:p.primary_position,
     extraPositions:p.extra_positions || [],
     archetype:p.archetype || "",
-    note:p.note || "",
+    status:decoded.status,
+    note:decoded.note,
     cardImage:p.card_image_url || "",
     updatedAt:p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
   };
@@ -210,7 +232,7 @@ async function put(store,obj){
       primary_position:obj.primaryPos,
       extra_positions:obj.extraPositions || [],
       archetype:obj.archetype || null,
-      note:obj.note || null,
+      note:encodePlayerNote(obj.status||"",obj.note||"") || null,
       card_image_url:cardUrl || null,
       created_by:authUser?.id || null
     };
@@ -321,6 +343,18 @@ function setupFormOptions(){
       btn.addEventListener("click",()=>selectArchetype(btn.dataset.value));
     });
   }
+
+  const statusMenu=$("statusMenu");
+  if(statusMenu){
+    statusMenu.innerHTML=PLAYER_STATUSES.map(([value,label])=>`
+      <button type="button" class="status-option ${value?"":"status-none"}" data-value="${value}">
+        <span class="status-option-dot"></span>
+        <span>${label}</span>
+      </button>`).join("");
+    statusMenu.querySelectorAll(".status-option").forEach(btn=>{
+      btn.addEventListener("click",()=>selectStatus(btn.dataset.value));
+    });
+  }
 }
 
 
@@ -341,6 +375,21 @@ if($("archetypePickerBtn") && $("archetypeMenu")){
     $("archetypeMenu").classList.toggle("hidden");
   });
 }
+
+function selectStatus(value){
+  const valueEl=$("statusValue");
+  const textEl=$("statusPickerText");
+  const menuEl=$("statusMenu");
+  if(valueEl)valueEl.value=value||"";
+  if(textEl)textEl.textContent=value||"Без статусу";
+  if(menuEl)menuEl.classList.add("hidden");
+}
+if($("statusPickerBtn") && $("statusMenu")){
+  $("statusPickerBtn").addEventListener("click",()=>{
+    $("statusMenu").classList.toggle("hidden");
+  });
+}
+
 
 function playerGroup(pos){
   if(pos==="GK")return "GK";
@@ -386,7 +435,7 @@ function resetPlayerModal(){
   $("playerEditMode").classList.remove("hidden");
   $("cardPreview").innerHTML=`<span>＋</span><small>ЗАВАНТАЖИТИ ГОТОВУ КАРТКУ (НЕОБОВ’ЯЗКОВО)</small>`;
   $("nameInput").value="";$("numberInput").value="";$("primaryPos").value="GK";
-  selectArchetype("");$("noteInput").value="";
+  selectArchetype("");selectStatus("");$("noteInput").value="";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=false);
   $("deletePlayerBtn").classList.add("hidden");
 }
@@ -403,6 +452,7 @@ function fillViewMode(p){
   $("viewArchetype").innerHTML=p.archetype
     ? `<span class="view-archetype"><img src="${ARCHETYPE_ICONS[p.archetype]||""}" alt=""><span>${esc(p.archetype)}</span></span>`
     : "—";
+  $("viewStatus").textContent=p.status||"—";
   $("viewNote").textContent=p.note||"—";
 
   const extras=(p.extraPositions||[]);
@@ -422,6 +472,7 @@ function fillEditMode(p){
   $("numberInput").value=p.number||"";
   $("primaryPos").value=p.primaryPos;
   selectArchetype(p.archetype||"");
+  selectStatus(p.status||"");
   $("noteInput").value=p.note||"";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=(p.extraPositions||[]).includes(x.value));
   $("deletePlayerBtn").classList.remove("hidden");
@@ -473,7 +524,7 @@ $("savePlayerBtn").addEventListener("click",async()=>{
   const obj={
     id:editPlayerId||uid(),name,number:$("numberInput").value.trim(),
     primaryPos:$("primaryPos").value,extraPositions:extra,
-    archetype:$("archetypeValue") ? $("archetypeValue").value : "",note:$("noteInput").value.trim(),
+    archetype:$("archetypeValue") ? $("archetypeValue").value : "",status:$("statusValue") ? $("statusValue").value : "",note:$("noteInput").value.trim(),
     cardImage:currentCardImage,updatedAt:Date.now()
   };
   try{
@@ -510,6 +561,7 @@ function renderPitch(){
     const comp=p?compatibility(p,pos):"";
     const slot=document.createElement("div");slot.className="slot";slot.style.left=x+"%";slot.style.top=y+"%";
     slot.innerHTML=`
+      ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
       <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"＋"}</button>
       <div class="slot-name">${p?esc(p.name):"Порожньо"}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
@@ -698,6 +750,38 @@ $("clearSquadsBtn").addEventListener("click",async()=>{
 /* Music */
 const music=$("bgMusic"), toggle=$("musicToggle"), volume=$("volumeRange"), musicStartBtn=$("musicStartBtn");
 
+let audioCtx=null;
+let musicSourceNode=null;
+let musicGainNode=null;
+
+async function initWebAudioVolume(){
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx) return false;
+
+  try{
+    if(!audioCtx){
+      audioCtx=new AudioCtx();
+    }
+
+    if(!musicSourceNode){
+      musicSourceNode=audioCtx.createMediaElementSource(music);
+      musicGainNode=audioCtx.createGain();
+      musicSourceNode.connect(musicGainNode);
+      musicGainNode.connect(audioCtx.destination);
+    }
+
+    if(audioCtx.state==="suspended"){
+      await audioCtx.resume();
+    }
+
+    return true;
+  }catch(err){
+    console.warn("Web Audio init failed",err);
+    return false;
+  }
+}
+
+
 const savedMusic=localStorage.getItem("ca_music");
 toggle.checked=savedMusic!=="off";
 volume.value=localStorage.getItem("ca_volume")||"35";
@@ -711,6 +795,7 @@ let musicStarted=false;
 
 async function startMusicFromGesture(){
   if(!toggle.checked)return false;
+  await initWebAudioVolume();
   setBackgroundVolume(volume.value);
   try{
     await music.play();
@@ -726,8 +811,11 @@ async function startMusicFromGesture(){
   }
 }
 
-function gestureStarter(){
-  if(toggle.checked && music.paused){
+async function gestureStarter(){
+  if(!toggle.checked)return;
+  await initWebAudioVolume();
+  setBackgroundVolume(volume.value);
+  if(music.paused){
     startMusicFromGesture();
   }
 }
@@ -773,19 +861,29 @@ toggle.addEventListener("change",async()=>{
 
 function setBackgroundVolume(value){
   if(!music)return;
+
   let percent=parseFloat(value);
   if(!Number.isFinite(percent)) percent=35;
   percent=Math.max(0,Math.min(100,percent));
   const level=percent/100;
 
-  try{
-    music.muted=false;
-    music.volume=level;
-    if(percent===0){
-      music.muted=true;
+  if(musicGainNode && audioCtx){
+    try{
+      const now=audioCtx.currentTime;
+      musicGainNode.gain.cancelScheduledValues(now);
+      musicGainNode.gain.setValueAtTime(level,now);
+      music.volume=1;
+      music.muted=false;
+    }catch(e){
+      console.warn("Gain volume apply failed",e);
     }
-  }catch(e){
-    console.warn("Volume apply failed",e);
+  }else{
+    try{
+      music.volume=level;
+      music.muted=percent===0;
+    }catch(e){
+      console.warn("HTML media volume apply failed",e);
+    }
   }
 
   localStorage.setItem("ca_volume",String(percent));
@@ -795,18 +893,17 @@ if(volume){
   volume.value=localStorage.getItem("ca_volume")||"35";
   setBackgroundVolume(volume.value);
 
-  const syncVolume=()=>{
+  const ensureAudioAndApply=async()=>{
+    await initWebAudioVolume();
     setBackgroundVolume(volume.value);
-    // Safari/iOS can defer audio state updates; apply again next frame.
-    requestAnimationFrame(()=>setBackgroundVolume(volume.value));
-    setTimeout(()=>setBackgroundVolume(volume.value),40);
   };
 
-  volume.addEventListener("input",syncVolume);
-  volume.addEventListener("change",syncVolume);
-  volume.addEventListener("touchstart",syncVolume,{passive:true});
-  volume.addEventListener("touchend",syncVolume,{passive:true});
-  volume.addEventListener("pointerup",syncVolume);
+  volume.addEventListener("pointerdown",ensureAudioAndApply);
+  volume.addEventListener("touchstart",ensureAudioAndApply,{passive:true});
+  volume.addEventListener("input",ensureAudioAndApply);
+  volume.addEventListener("change",ensureAudioAndApply);
+  volume.addEventListener("touchend",ensureAudioAndApply,{passive:true});
+  volume.addEventListener("pointerup",ensureAudioAndApply);
 }
 
 music.addEventListener("error",()=>{

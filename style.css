@@ -629,3 +629,95 @@ body.auth-open{
 .slot-card.filled img:not([src$="player-placeholder.png"]){
   mix-blend-mode:normal !important;
 }
+
+/* v3.5 — player status */
+.player-select-columns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  align-items:start;
+}
+.player-select-columns > label{
+  position:relative;
+  min-width:0;
+}
+
+.status-menu{
+  position:absolute;
+  z-index:50;
+  left:0;
+  right:0;
+  margin-top:6px;
+  padding:7px;
+  border:1px solid rgba(212,175,55,.35);
+  border-radius:10px;
+  background:#0d0d0d;
+  box-shadow:0 10px 30px rgba(0,0,0,.55);
+}
+.status-option{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 9px;
+  border:0;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  background:transparent;
+  color:#fff;
+  text-align:left;
+  font-weight:800;
+  cursor:pointer;
+}
+.status-option:last-child{border-bottom:0}
+.status-option:hover{background:rgba(212,175,55,.08)}
+.status-option-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--gold);
+  flex:0 0 auto;
+}
+.status-option.status-none .status-option-dot{
+  background:#555;
+}
+.status-picker-badge{
+  width:24px;height:24px;
+  display:grid;place-items:center;
+  color:var(--gold);
+  font-size:13px;
+}
+.slot-status{
+  position:absolute;
+  left:50%;
+  bottom:calc(100% - 4px);
+  transform:translateX(-50%);
+  z-index:6;
+  white-space:nowrap;
+  max-width:100px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:3px 7px;
+  border-radius:999px;
+  border:1px solid rgba(212,175,55,.55);
+  background:rgba(8,8,8,.92);
+  color:#fff;
+  font-size:7px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.35px;
+  text-transform:uppercase;
+  box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+.slot-status-captain{color:#f1cf62}
+.slot-status-vice{color:#ddd}
+.slot-status-trial{color:#ffad55}
+
+@media(max-width:520px){
+  .player-select-columns{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .slot-status{
+    font-size:6px;
+    padding:3px 5px;
+    max-width:78px;
+  }
+}

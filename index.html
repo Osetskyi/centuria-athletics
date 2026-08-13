@@ -187,6 +187,11 @@
           </div>
 
           <div class="view-row">
+            <span>СТАТУС</span>
+            <strong id="viewStatus">—</strong>
+          </div>
+
+          <div class="view-row">
             <span>ПРИМІТКА</span>
             <div id="viewNote" class="view-note">—</div>
           </div>
@@ -228,15 +233,27 @@
         <div id="extraPositions" class="position-checks"></div>
       </fieldset>
 
-      <label>АРХЕТИП
-        <input id="archetypeValue" type="hidden">
-        <button id="archetypePickerBtn" type="button" class="archetype-picker-btn">
-          <span id="archetypePickerIcon" class="archetype-picker-icon"></span>
-          <span id="archetypePickerText">Обрати архетип</span>
-          <span class="archetype-picker-arrow">⌄</span>
-        </button>
-        <div id="archetypeMenu" class="archetype-menu hidden"></div>
-      </label>
+      <div class="player-select-columns">
+        <label>АРХЕТИП
+          <input id="archetypeValue" type="hidden">
+          <button id="archetypePickerBtn" type="button" class="archetype-picker-btn">
+            <span id="archetypePickerIcon" class="archetype-picker-icon"></span>
+            <span id="archetypePickerText">Обрати архетип</span>
+            <span class="archetype-picker-arrow">⌄</span>
+          </button>
+          <div id="archetypeMenu" class="archetype-menu hidden"></div>
+        </label>
+
+        <label>СТАТУС
+          <input id="statusValue" type="hidden">
+          <button id="statusPickerBtn" type="button" class="archetype-picker-btn status-picker-btn">
+            <span class="status-picker-badge">★</span>
+            <span id="statusPickerText">Без статусу</span>
+            <span class="archetype-picker-arrow">⌄</span>
+          </button>
+          <div id="statusMenu" class="status-menu hidden"></div>
+        </label>
+      </div>
 
       <label>ПРИМІТКА
         <textarea id="noteInput" maxlength="100" rows="3" placeholder="До 100 символів"></textarea>
