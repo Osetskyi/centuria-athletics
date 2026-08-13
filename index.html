@@ -15,9 +15,12 @@
   <section id="screen-home" class="screen active home-screen">
     <div class="home-art-wrap">
       <img src="home-screen.jpg" class="home-art" alt="Centuria Athletics">
+      <button class="hotspot hs-chat" data-nav="chat" aria-label="Чат"></button>
+      <div id="homeOnlineBadge" class="home-online-badge" aria-label="Користувачів онлайн"><span class="home-online-dot"></span><span id="homeOnlineCount">0</span></div>
+      <button class="hotspot hs-gatherings" data-nav="gatherings" aria-label="Голосування / Збори"></button>
       <button class="hotspot hs-players" data-nav="players" aria-label="Гравці"></button>
       <button class="hotspot hs-tactics" data-nav="tactics" aria-label="Тактика"></button>
-      <button class="hotspot hs-squads" data-nav="squads" aria-label="Склади"></button>
+      <button class="hotspot hs-squads" data-nav="squads" aria-label="Збережені склади"></button>
       <button class="hotspot hs-settings" data-nav="settings" aria-label="Налаштування"></button>
     </div>
   </section>
@@ -155,6 +158,35 @@
     </div>
   </section>
 
+
+  <!-- GATHERINGS -->
+  <section id="screen-gatherings" class="screen inner-screen gatherings-screen">
+    <header class="topbar gatherings-topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ЗБОРИ</h1>
+        <div class="gatherings-subtitle">ГОЛОСУВАННЯ КОМАНДИ</div>
+      </div>
+      <button id="createGatheringBtn" class="gold-btn compact-btn hidden" type="button">＋ СТВОРИТИ</button>
+    </header>
+
+    <div id="gatheringsGate" class="chat-gate">
+      <div class="chat-gate-icon">📋</div>
+      <h2>ЗБОРИ КОМАНДИ</h2>
+      <p>Щоб голосувати та бачити, хто буде на зборі, увійди у свій акаунт.</p>
+      <button id="gatheringsLoginBtn" class="gold-btn" type="button" data-viewer-allowed="true">УВІЙТИ / ЗАРЕЄСТРУВАТИСЯ</button>
+    </div>
+
+    <div id="gatheringsPanel" class="gatherings-panel hidden">
+      <div class="gatherings-tabs">
+        <button id="activeGatheringsTab" class="gatherings-tab active" type="button" data-viewer-allowed="true">АКТИВНІ</button>
+        <button id="historyGatheringsTab" class="gatherings-tab" type="button" data-viewer-allowed="true">ІСТОРІЯ</button>
+      </div>
+
+      <div id="gatheringsList" class="gatherings-list"></div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="screen-settings" class="screen inner-screen">
     <header class="topbar">
@@ -204,6 +236,7 @@
     <button data-nav="tactics"><span>⚽</span><small>ТАКТИКА</small></button>
     <button data-nav="squads"><span>▣</span><small>СКЛАДИ</small></button>
     <button data-nav="chat"><span>●</span><small>ЧАТ</small></button>
+    <button data-nav="gatherings"><span>✓</span><small>ЗБОРИ</small></button>
     <button data-nav="settings"><span>⚙</span><small>НАЛАШТУВАННЯ</small></button>
   </nav>
 </div>
@@ -403,6 +436,36 @@
   </div>
 </div>
 
+
+
+<div id="gatheringModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="gatheringModalTitle">
+  <div class="modal-backdrop" data-close-gathering></div>
+  <div class="modal-card gathering-modal-card">
+    <button id="closeGatheringModal" class="modal-close" type="button">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2 id="gatheringModalTitle">НОВИЙ ЗБІР</h2>
+
+    <label>НАЗВА
+      <input id="gatheringTitleInput" type="text" maxlength="80" placeholder="Тренування">
+    </label>
+
+    <div class="form-grid">
+      <label>ДАТА
+        <input id="gatheringDateInput" type="date">
+      </label>
+      <label>ЧАС
+        <input id="gatheringTimeInput" type="time">
+      </label>
+    </div>
+
+    <label>ПРИМІТКА
+      <textarea id="gatheringNoteInput" maxlength="300" rows="3" placeholder="Наприклад: тренування з 21:00 до 23:00"></textarea>
+    </label>
+
+    <button id="saveGatheringBtn" class="primary-btn full" type="button">СТВОРИТИ ЗБІР</button>
+    <div id="gatheringModalStatus" class="auth-status"></div>
+  </div>
+</div>
 
 <div id="profileModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
   <div class="modal-backdrop" data-close-profile></div>

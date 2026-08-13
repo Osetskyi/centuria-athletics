@@ -99,6 +99,11 @@ let voiceChunks=[];
 let voiceStartedAt=0;
 let voiceTimer=null;
 let voiceSeconds=0;
+let gatherings=[];
+let gatheringVotes=[];
+let gatheringsMode="active";
+let gatheringsPollTimer=null;
+
 
 
 
@@ -120,11 +125,18 @@ function applyPermissions(){
   if(btn){
     if(authUser){
       const nick=authProfile?.display_name || authUser.email?.split("@")[0] || "Акаунт";
-      btn.textContent = editable ? `АДМІН: ${nick}` : `@${nick}`;
-      btn.classList.toggle("is-admin", editable);
+      if(authRole==="admin"){
+        btn.textContent=`АДМІН: ${nick}`;
+      }else if(authRole==="editor"){
+        btn.textContent=`РЕДАКТОР: ${nick}`;
+      }else{
+        btn.textContent=`@${nick}`;
+      }
+      btn.classList.toggle("is-admin", authRole==="admin");
+      btn.classList.toggle("is-editor", authRole==="editor");
     }else{
       btn.textContent = "ВХІД / РЕЄСТРАЦІЯ";
-      btn.classList.remove("is-admin");
+      btn.classList.remove("is-admin","is-editor");
     }
   }
 }
@@ -157,6 +169,7 @@ async function refreshAuth(){
   }
   applyPermissions();
   await refreshChatAuthState();
+  await refreshGatheringsAuthState();
   if(authUser && $("screen-chat")?.classList.contains("active")){
     await maybeWeeklyChatCleanup();
   }
@@ -288,9 +301,19 @@ async function put(store,obj){
 
   if(store==="squads"){
     let imageUrl=obj.image || "";
+
+    // Storage is preferred, but a lineup must never fail to save only because
+    // the preview image upload failed. In that case keep the JPEG data URL
+    // directly in saved_lineups.image_url as a reliable fallback.
     if(imageUrl.startsWith("data:")){
-      imageUrl=await uploadDataImage(`lineups/${obj.id}.jpg`,imageUrl);
+      try{
+        imageUrl=await uploadDataImage(`lineups/${obj.id}.jpg`,imageUrl);
+      }catch(storageErr){
+        console.warn("Lineup image Storage upload failed; using DB fallback",storageErr);
+        imageUrl=obj.image;
+      }
     }
+
     const payload={
       id:obj.id,
       name:obj.name,
@@ -298,9 +321,15 @@ async function put(store,obj){
       image_url:imageUrl,
       created_by:authUser?.id || null
     };
-    const {error}=await sb.from("saved_lineups").upsert(payload,{onConflict:"id"});
+
+    const {data,error}=await sb.from("saved_lineups")
+      .upsert(payload,{onConflict:"id"})
+      .select("*")
+      .single();
+
     if(error) throw error;
-    return;
+    if(!data?.id) throw new Error("Supabase не підтвердив збереження складу");
+    return squadFromDb(data);
   }
 }
 
@@ -359,6 +388,7 @@ function navigate(name){
   if(name==="tactics") renderPitch();
   if(name==="squads") renderSquads();
   if(name==="chat") openChatScreen();
+  if(name==="gatherings") openGatheringsScreen();
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
 
@@ -682,13 +712,25 @@ $("saveLineupBtn").addEventListener("click",async()=>{
   const image=await renderLineupImage(name.trim()||"Склад");
   const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image};
   try{
-    await put("squads",obj);
-    squads=await getAll("squads");
+    const saved=await put("squads",obj);
+
+    // Show the saved lineup immediately, then confirm against Supabase.
+    if(saved?.id){
+      squads=[saved,...squads.filter(s=>s.id!==saved.id)];
+      renderSquads();
+    }
+
+    const cloudSquads=await getAll("squads");
+    if(!cloudSquads.some(s=>s.id===obj.id)){
+      throw new Error("Склад не знайдено в Supabase після збереження");
+    }
+
+    squads=cloudSquads;
     renderSquads();
-    showToast("Склад збережено онлайн");
+    showToast("Склад збережено ✓");
   }catch(err){
-    console.error(err);
-    showToast("Не вдалося зберегти склад");
+    console.error("Save lineup failed:",err);
+    showToast(`Не вдалося зберегти склад${err?.message?": "+err.message:""}`);
   }
 });
 
@@ -751,7 +793,7 @@ function renderSquads(){
   arr.forEach(s=>{
     const row=document.createElement("div");row.className="squad-row";
     row.innerHTML=`
-      <img class="squad-thumb" src="${s.image}" alt="">
+      <img class="squad-thumb" src="${s.image||"player-placeholder.png"}" alt="" onerror="this.src='player-placeholder.png'">
       <div class="squad-info"><strong>${esc(s.name)}</strong><span>СХЕМА: <b>${esc(s.formation)}</b></span><span>СТВОРЕНО: ${new Date(s.createdAt).toLocaleString("uk-UA")}</span></div>
       <button class="more-btn">⋯</button>
       <div class="squad-menu hidden">
@@ -981,6 +1023,300 @@ music.addEventListener("error",()=>{
 /* init */
 
 
+
+/* Gatherings */
+function formatGatheringDate(dateStr){
+  if(!dateStr)return "";
+  const [y,m,d]=dateStr.split("-").map(Number);
+  const dt=new Date(y,m-1,d);
+  return new Intl.DateTimeFormat("uk-UA",{
+    weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"
+  }).format(dt);
+}
+
+function gatheringIsPast(g){
+  if(g.is_closed)return true;
+  if(!g.gathering_date)return false;
+  const time=g.gathering_time ? g.gathering_time.slice(0,5) : "23:59";
+  const dt=new Date(`${g.gathering_date}T${time}:00`);
+  return dt.getTime()<Date.now();
+}
+
+async function loadGatherings(){
+  if(!sb || !authUser){
+    gatherings=[];
+    gatheringVotes=[];
+    renderGatherings();
+    return;
+  }
+
+  const [{data:gData,error:gErr},{data:vData,error:vErr}]=await Promise.all([
+    sb.from("gatherings")
+      .select("id,title,gathering_date,gathering_time,note,is_closed,created_by,created_at")
+      .order("gathering_date",{ascending:true})
+      .order("gathering_time",{ascending:true}),
+    sb.from("gathering_votes")
+      .select("gathering_id,user_id,vote,updated_at")
+  ]);
+
+  if(gErr || vErr){
+    console.error("Gatherings load error",gErr||vErr);
+    const list=$("gatheringsList");
+    if(list)list.innerHTML=`<div class="gatherings-empty">Не вдалося завантажити збори.</div>`;
+    return;
+  }
+
+  gatherings=gData||[];
+  gatheringVotes=vData||[];
+  await loadTeamProfiles();
+  renderGatherings();
+}
+
+function votesForGathering(id){
+  return gatheringVotes.filter(v=>v.gathering_id===id);
+}
+
+function memberName(userId){
+  const p=teamProfiles.get(userId);
+  return p?.display_name || "Гравець";
+}
+
+function renderVoteNames(votes,type){
+  const people=votes.filter(v=>v.vote===type);
+  if(!people.length)return `<div class="gathering-vote-names empty">—</div>`;
+  return `<div class="gathering-vote-names">${
+    people.map(v=>`<span>${esc(memberName(v.user_id))}</span>`).join("")
+  }</div>`;
+}
+
+function renderGatherings(){
+  const list=$("gatheringsList");
+  if(!list)return;
+
+  const filtered=gatherings.filter(g=>{
+    const past=gatheringIsPast(g);
+    return gatheringsMode==="history" ? past : !past;
+  });
+
+  if(!filtered.length){
+    list.innerHTML=`<div class="gatherings-empty">${
+      gatheringsMode==="history"
+        ?"Історія зборів поки порожня."
+        :"Активних зборів зараз немає."
+    }</div>`;
+    return;
+  }
+
+  const sorted=[...filtered].sort((a,b)=>{
+    const ad=`${a.gathering_date} ${a.gathering_time||"23:59"}`;
+    const bd=`${b.gathering_date} ${b.gathering_time||"23:59"}`;
+    return gatheringsMode==="history" ? bd.localeCompare(ad) : ad.localeCompare(bd);
+  });
+
+  list.innerHTML=sorted.map(g=>{
+    const votes=votesForGathering(g.id);
+    const yes=votes.filter(v=>v.vote==="yes").length;
+    const no=votes.filter(v=>v.vote==="no").length;
+    const maybe=votes.filter(v=>v.vote==="maybe").length;
+    const mine=votes.find(v=>v.user_id===authUser?.id)?.vote||"";
+    const closed=gatheringIsPast(g);
+
+    return `<article class="gathering-card ${closed?"closed":""}" data-gathering-id="${g.id}">
+      <div class="gathering-card-head">
+        <div>
+          <div class="gathering-date">${esc(formatGatheringDate(g.gathering_date))}${g.gathering_time?` · ${esc(g.gathering_time.slice(0,5))}`:""}</div>
+          <h3>${esc(g.title)}</h3>
+        </div>
+        <div class="gathering-head-actions">
+          ${closed?`<span class="gathering-closed-badge">ЗАКРИТО</span>`:""}
+          ${canEditSite()&&!closed?`<button type="button" class="gathering-close-btn" data-close-gathering-id="${g.id}">ЗАКРИТИ</button>`:""}
+          ${canEditSite()?`<button type="button" class="gathering-delete-btn" data-delete-gathering-id="${g.id}">×</button>`:""}
+        </div>
+      </div>
+
+      ${g.note?`<div class="gathering-note">${esc(g.note)}</div>`:""}
+
+      <div class="gathering-stats">
+        <div class="gathering-stat yes"><strong>${yes}</strong><span>БУДУ</span></div>
+        <div class="gathering-stat maybe"><strong>${maybe}</strong><span>ПІД ПИТАННЯМ</span></div>
+        <div class="gathering-stat no"><strong>${no}</strong><span>НЕ БУДУ</span></div>
+      </div>
+
+      ${!closed?`<div class="gathering-vote-buttons">
+        <button type="button" class="gathering-vote-btn yes ${mine==="yes"?"selected":""}" data-vote="yes" data-gathering="${g.id}">✓ Буду</button>
+        <button type="button" class="gathering-vote-btn maybe ${mine==="maybe"?"selected":""}" data-vote="maybe" data-gathering="${g.id}">? Під питанням</button>
+        <button type="button" class="gathering-vote-btn no ${mine==="no"?"selected":""}" data-vote="no" data-gathering="${g.id}">× Не буду</button>
+      </div>`:""}
+
+      <div class="gathering-voters">
+        <div class="gathering-voter-group">
+          <div class="gathering-voter-title yes">БУДУ</div>
+          ${renderVoteNames(votes,"yes")}
+        </div>
+        <div class="gathering-voter-group">
+          <div class="gathering-voter-title maybe">ПІД ПИТАННЯМ</div>
+          ${renderVoteNames(votes,"maybe")}
+        </div>
+        <div class="gathering-voter-group">
+          <div class="gathering-voter-title no">НЕ БУДУ</div>
+          ${renderVoteNames(votes,"no")}
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+
+  list.querySelectorAll("[data-vote]").forEach(btn=>{
+    btn.addEventListener("click",()=>voteGathering(btn.dataset.gathering,btn.dataset.vote));
+  });
+  list.querySelectorAll("[data-close-gathering-id]").forEach(btn=>{
+    btn.addEventListener("click",()=>closeGathering(btn.dataset.closeGatheringId));
+  });
+  list.querySelectorAll("[data-delete-gathering-id]").forEach(btn=>{
+    btn.addEventListener("click",()=>deleteGathering(btn.dataset.deleteGatheringId));
+  });
+}
+
+async function voteGathering(gatheringId,vote){
+  if(!sb || !authUser){openAuthModal();return}
+  const g=gatherings.find(x=>x.id===gatheringId);
+  if(!g || gatheringIsPast(g)){showToast("Цей збір уже закритий");return}
+
+  const payload={
+    gathering_id:gatheringId,
+    user_id:authUser.id,
+    vote,
+    updated_at:new Date().toISOString()
+  };
+  const {error}=await sb.from("gathering_votes").upsert(payload,{
+    onConflict:"gathering_id,user_id"
+  });
+  if(error){
+    console.error(error);
+    showToast("Не вдалося зберегти голос");
+    return;
+  }
+  await loadGatherings();
+}
+
+function openGatheringModal(){
+  if(!canEditSite())return;
+  const now=new Date();
+  const tomorrow=new Date(now.getTime()+86400000);
+  const y=tomorrow.getFullYear();
+  const m=String(tomorrow.getMonth()+1).padStart(2,"0");
+  const d=String(tomorrow.getDate()).padStart(2,"0");
+  $("gatheringTitleInput").value="Тренування";
+  $("gatheringDateInput").value=`${y}-${m}-${d}`;
+  $("gatheringTimeInput").value="21:00";
+  $("gatheringNoteInput").value="";
+  $("gatheringModalStatus").textContent="";
+  $("gatheringModal").classList.remove("hidden");
+  document.body.classList.add("auth-open");
+}
+
+function closeGatheringModal(){
+  $("gatheringModal")?.classList.add("hidden");
+  document.body.classList.remove("auth-open");
+}
+
+async function saveGathering(){
+  if(!sb || !authUser || !canEditSite())return;
+  const title=$("gatheringTitleInput").value.trim();
+  const date=$("gatheringDateInput").value;
+  const time=$("gatheringTimeInput").value;
+  const note=$("gatheringNoteInput").value.trim();
+
+  if(!title || !date){
+    $("gatheringModalStatus").textContent="Вкажи назву та дату збору.";
+    return;
+  }
+
+  $("saveGatheringBtn").disabled=true;
+  $("gatheringModalStatus").textContent="Створення…";
+
+  const {error}=await sb.from("gatherings").insert({
+    title,
+    gathering_date:date,
+    gathering_time:time||null,
+    note:note||null,
+    created_by:authUser.id
+  });
+
+  $("saveGatheringBtn").disabled=false;
+
+  if(error){
+    console.error(error);
+    $("gatheringModalStatus").textContent="Не вдалося створити збір.";
+    return;
+  }
+
+  closeGatheringModal();
+  await loadGatherings();
+  showToast("Збір створено");
+}
+
+async function closeGathering(id){
+  if(!canEditSite() || !confirm("Закрити голосування цього збору?"))return;
+  const {error}=await sb.from("gatherings").update({is_closed:true}).eq("id",id);
+  if(error){showToast("Не вдалося закрити збір");return}
+  await loadGatherings();
+}
+
+async function deleteGathering(id){
+  if(!canEditSite() || !confirm("Повністю видалити цей збір і всі голоси?"))return;
+  const {error}=await sb.from("gatherings").delete().eq("id",id);
+  if(error){showToast("Не вдалося видалити збір");return}
+  await loadGatherings();
+}
+
+function setGatheringsMode(mode){
+  gatheringsMode=mode;
+  $("activeGatheringsTab")?.classList.toggle("active",mode==="active");
+  $("historyGatheringsTab")?.classList.toggle("active",mode==="history");
+  renderGatherings();
+}
+
+async function refreshGatheringsAuthState(){
+  const gate=$("gatheringsGate");
+  const panel=$("gatheringsPanel");
+  const createBtn=$("createGatheringBtn");
+  if(!gate || !panel)return;
+
+  if(authUser){
+    gate.classList.add("hidden");
+    panel.classList.remove("hidden");
+    createBtn?.classList.toggle("hidden",!canEditSite());
+    await loadGatherings();
+  }else{
+    gate.classList.remove("hidden");
+    panel.classList.add("hidden");
+    createBtn?.classList.add("hidden");
+  }
+}
+
+async function openGatheringsScreen(){
+  setGatheringsMode("active");
+  await refreshGatheringsAuthState();
+
+  if(!gatheringsPollTimer){
+    gatheringsPollTimer=setInterval(()=>{
+      if(authUser && $("screen-gatherings")?.classList.contains("active")){
+        loadGatherings();
+      }
+    },4000);
+  }
+}
+
+$("gatheringsLoginBtn")?.addEventListener("click",openAuthModal);
+$("createGatheringBtn")?.addEventListener("click",openGatheringModal);
+$("closeGatheringModal")?.addEventListener("click",closeGatheringModal);
+document.querySelectorAll("[data-close-gathering]").forEach(el=>el.addEventListener("click",closeGatheringModal));
+$("saveGatheringBtn")?.addEventListener("click",saveGathering);
+$("activeGatheringsTab")?.addEventListener("click",()=>setGatheringsMode("active"));
+$("historyGatheringsTab")?.addEventListener("click",()=>setGatheringsMode("history"));
+
+
+
 /* Team chat */
 function initials(name){
   const clean=(name||"?").trim();
@@ -1058,7 +1394,7 @@ function renderChatMessages(forceScroll=false){
       if(m.media_type==="audio"){
         media=`<div class="voice-message">
           <span class="voice-icon">🎙</span>
-          <audio class="chat-audio" controls preload="metadata" src="${m.media_url}"></audio>
+          <audio class="chat-audio" controls playsinline preload="metadata" src="${m.media_url}"></audio>
         </div>`;
       }else{
         media=`<img class="chat-media ${m.media_type==="gif"?"is-gif":""}" src="${m.media_url}" alt="Вкладення">`;
@@ -1166,7 +1502,7 @@ function renderAttachmentPreview(){
   }
   box.innerHTML=`<div class="attachment-card ${chatAttachment.type==="audio"?"audio-attachment":""}">
     ${chatAttachment.type==="audio"
-      ? `<span class="attachment-audio-icon">🎙</span><audio controls preload="metadata" src="${chatAttachment.url}"></audio>`
+      ? `<span class="attachment-audio-icon">🎙</span><audio controls playsinline preload="metadata" src="${chatAttachment.url}"></audio>`
       : `<img src="${chatAttachment.url}" alt="">`}
     <span>${esc(chatAttachment.name||"Вкладення")}</span>
     <button id="removeChatAttachment" type="button" data-viewer-allowed="true">×</button>
@@ -1238,17 +1574,27 @@ async function startVoiceRecording(){
   }
 
   try{
-    voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    voiceStream=await navigator.mediaDevices.getUserMedia({
+      audio:{
+        echoCancellation:true,
+        noiseSuppression:true,
+        autoGainControl:true,
+        channelCount:1
+      }
+    });
     voiceChunks=[];
 
     let options={};
-    const preferredTypes=[
-      "audio/webm;codecs=opus",
-      "audio/mp4",
-      "audio/webm"
-    ];
+    const isiPhone=/iPhone|iPod/.test(navigator.userAgent);
+
+    // Safari/iPhone handles MP4 voice recordings more reliably than WebM.
+    const preferredTypes=isiPhone
+      ? ["audio/mp4","audio/mp4;codecs=mp4a.40.2","audio/webm;codecs=opus","audio/webm"]
+      : ["audio/webm;codecs=opus","audio/webm","audio/mp4"];
+
     const supported=preferredTypes.find(type=>MediaRecorder.isTypeSupported?.(type));
     if(supported)options.mimeType=supported;
+    options.audioBitsPerSecond=64000;
 
     voiceRecorder=new MediaRecorder(voiceStream,options);
 
@@ -1260,6 +1606,11 @@ async function startVoiceRecording(){
       try{
         const mime=voiceRecorder?.mimeType || voiceChunks[0]?.type || "audio/webm";
         const blob=new Blob(voiceChunks,{type:mime});
+
+        if(blob.size<800){
+          showToast("Голосове не записалось. Спробуй ще раз і перевір доступ до мікрофона");
+          return;
+        }
 
         // Keep base64 payload within a reasonable size for chat messages.
         if(blob.size>1.4*1024*1024){
@@ -1294,7 +1645,7 @@ async function startVoiceRecording(){
       showToast("Помилка запису голосового");
     };
 
-    voiceRecorder.start(250);
+    voiceRecorder.start();
     voiceStartedAt=Date.now();
     voiceSeconds=0;
     updateVoiceRecordUi();
@@ -1312,7 +1663,7 @@ async function startVoiceRecording(){
     cleanupVoiceStream();
     voiceRecorder=null;
     updateVoiceRecordUi();
-    showToast("Дозволь сайту доступ до мікрофона");
+    showToast("Дозволь Safari доступ до мікрофона для цього сайту");
   }
 }
 
@@ -1449,6 +1800,8 @@ function renderOnlinePresence(){
   if(!chatPresenceChannel){
     if(count)count.textContent="ОНЛАЙН: 0";
     if(list)list.innerHTML="";
+    if($("homeOnlineCount"))$("homeOnlineCount").textContent="0";
+    if($("homeOnlineBadge"))$("homeOnlineBadge").classList.remove("has-online");
     return;
   }
   const state=chatPresenceChannel.presenceState();
@@ -1459,6 +1812,13 @@ function renderOnlinePresence(){
     });
   });
   if(count)count.textContent=`ОНЛАЙН: ${people.length}`;
+  const homeCount=$("homeOnlineCount");
+  const homeBadge=$("homeOnlineBadge");
+  if(homeCount)homeCount.textContent=String(people.length);
+  if(homeBadge){
+    homeBadge.classList.toggle("has-online",people.length>0);
+    homeBadge.title=`Онлайн: ${people.length}`;
+  }
   if(list){
     list.innerHTML=people.slice(0,12).map(p=>`
       <div class="online-person" title="${esc(p.nick||"Гравець")}">
@@ -1828,5 +2188,8 @@ document.addEventListener("keydown",e=>{
   }
   if(e.key==="Escape" && $("profileModal") && !$("profileModal").classList.contains("hidden")){
     closeProfileModal();
+  }
+  if(e.key==="Escape" && $("gatheringModal") && !$("gatheringModal").classList.contains("hidden")){
+    closeGatheringModal();
   }
 });
