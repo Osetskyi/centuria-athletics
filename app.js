@@ -84,6 +84,170 @@ const SUPABASE_URL = "https://tjcsdjwwfpymdvqxvydz.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_j_phVep2a32cSfbqZdaG-g_Px226mbE";
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY) : null;
 
+const PUSH_VAPID_PUBLIC_KEY = "BIMWCYmu8nL2nThwPAqg0lqLpKl3FZvXymVev74PUSW0M6KdjslTVOjkBRs8x9DVS8serHq3fdsW2WzIgwLgL-E";
+let pushRegistration = null;
+let currentPushSubscription = null;
+
+function base64UrlToUint8Array(base64String){
+  const padding="=".repeat((4-base64String.length%4)%4);
+  const base64=(base64String+padding).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+}
+
+function pushSupported(){
+  return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+}
+
+async function registerPushServiceWorker(){
+  if(!pushSupported())return null;
+  try{
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js",{scope:"/"});
+    await navigator.serviceWorker.ready;
+    return pushRegistration;
+  }catch(err){
+    console.warn("Service worker registration failed",err);
+    return null;
+  }
+}
+
+async function savePushSubscription(subscription){
+  if(!sb || !authUser || !subscription)return false;
+  const j=subscription.toJSON();
+  const payload={
+    user_id:authUser.id,
+    endpoint:j.endpoint,
+    p256dh:j.keys?.p256dh||"",
+    auth:j.keys?.auth||"",
+    chat_enabled:$("pushChatToggle")?.checked!==false,
+    gatherings_enabled:$("pushGatheringsToggle")?.checked!==false,
+    user_agent:navigator.userAgent,
+    updated_at:new Date().toISOString()
+  };
+  const {error}=await sb.from("push_subscriptions").upsert(payload,{onConflict:"endpoint"});
+  if(error){
+    console.warn("Push subscription save failed",error);
+    return false;
+  }
+  return true;
+}
+
+async function refreshPushSettings(){
+  const btn=$("pushToggleBtn"), status=$("pushStatus");
+  const chatToggle=$("pushChatToggle"), gatheringToggle=$("pushGatheringsToggle");
+  if(!btn || !status)return;
+
+  if(!pushSupported()){
+    btn.disabled=true;
+    status.textContent="Цей браузер не підтримує push-сповіщення.";
+    if(chatToggle)chatToggle.disabled=true;
+    if(gatheringToggle)gatheringToggle.disabled=true;
+    return;
+  }
+  if(!authUser){
+    btn.disabled=true;
+    btn.textContent="УВІМКНУТИ СПОВІЩЕННЯ";
+    status.textContent="Увійди в акаунт, щоб увімкнути сповіщення.";
+    if(chatToggle)chatToggle.disabled=true;
+    if(gatheringToggle)gatheringToggle.disabled=true;
+    return;
+  }
+
+  btn.disabled=false;
+  const reg=pushRegistration || await registerPushServiceWorker();
+  if(!reg){
+    status.textContent="Не вдалося підключити сповіщення.";
+    return;
+  }
+  currentPushSubscription=await reg.pushManager.getSubscription();
+
+  if(Notification.permission==="denied"){
+    btn.disabled=true;
+    btn.textContent="СПОВІЩЕННЯ ЗАБЛОКОВАНО";
+    status.textContent="Дозвіл заблоковано в налаштуваннях браузера/телефону.";
+    if(chatToggle)chatToggle.disabled=true;
+    if(gatheringToggle)gatheringToggle.disabled=true;
+    return;
+  }
+
+  if(!currentPushSubscription){
+    btn.textContent="УВІМКНУТИ СПОВІЩЕННЯ";
+    status.textContent="Сповіщення вимкнені.";
+    if(chatToggle)chatToggle.disabled=true;
+    if(gatheringToggle)gatheringToggle.disabled=true;
+    return;
+  }
+
+  btn.textContent="ВИМКНУТИ СПОВІЩЕННЯ";
+  status.textContent="Сповіщення увімкнені ✅";
+  if(chatToggle)chatToggle.disabled=false;
+  if(gatheringToggle)gatheringToggle.disabled=false;
+
+  const {data}=await sb.from("push_subscriptions")
+    .select("chat_enabled,gatherings_enabled")
+    .eq("user_id",authUser.id)
+    .eq("endpoint",currentPushSubscription.endpoint)
+    .maybeSingle();
+  if(data){
+    if(chatToggle)chatToggle.checked=data.chat_enabled!==false;
+    if(gatheringToggle)gatheringToggle.checked=data.gatherings_enabled!==false;
+  }else{
+    await savePushSubscription(currentPushSubscription);
+  }
+}
+
+async function togglePushNotifications(){
+  if(!authUser){ openAuthModal(); return; }
+  const reg=pushRegistration || await registerPushServiceWorker();
+  if(!reg){ showToast("Сповіщення не підтримуються"); return; }
+  let sub=await reg.pushManager.getSubscription();
+  if(sub){
+    const endpoint=sub.endpoint;
+    try{ await sub.unsubscribe(); }catch(_e){}
+    if(sb)await sb.from("push_subscriptions").delete().eq("user_id",authUser.id).eq("endpoint",endpoint);
+    currentPushSubscription=null;
+    showToast("Сповіщення вимкнено");
+    await refreshPushSettings();
+    return;
+  }
+
+  const permission=await Notification.requestPermission();
+  if(permission!=="granted"){
+    showToast("Дозвіл на сповіщення не надано");
+    await refreshPushSettings();
+    return;
+  }
+  try{
+    sub=await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:base64UrlToUint8Array(PUSH_VAPID_PUBLIC_KEY)
+    });
+    currentPushSubscription=sub;
+    if(await savePushSubscription(sub))showToast("Сповіщення увімкнено");
+    else showToast("Не вдалося зберегти підписку");
+  }catch(err){
+    console.warn("Push subscribe failed",err);
+    showToast("Не вдалося увімкнути сповіщення");
+  }
+  await refreshPushSettings();
+}
+
+async function updatePushPreferences(){
+  if(!currentPushSubscription || !authUser)return;
+  await savePushSubscription(currentPushSubscription);
+}
+
+async function sendPushEvent(type,title,body){
+  if(!sb || !authUser)return;
+  try{
+    const {error}=await sb.functions.invoke("send-push",{body:{type,title,body}});
+    if(error)console.warn("Push send invoke failed",error);
+  }catch(err){
+    console.warn("Push send failed",err);
+  }
+}
+
+
 let authUser = null;
 let authRole = "viewer";
 let authProfile = null;
@@ -168,6 +332,7 @@ async function refreshAuth(){
     if(profile?.role) authRole=profile.role;
   }
   applyPermissions();
+  await refreshPushSettings();
   await refreshChatAuthState();
   await refreshGatheringsAuthState();
   if(authUser && $("screen-chat")?.classList.contains("active")){
@@ -1388,6 +1553,10 @@ async function saveGathering(){
     return;
   }
 
+  const prettyDate=date.split("-").reverse().join(".");
+  const gatheringPushText=`${title} — ${prettyDate}${time ? ` о ${time}` : ""}`;
+  sendPushEvent("gathering","Новий збір Centuria Athletics",gatheringPushText);
+
   closeGatheringModal();
   await loadGatherings();
   showToast("Збір створено");
@@ -1853,6 +2022,13 @@ async function sendChatMessage(){
     showToast("Не вдалося відправити повідомлення");
     return;
   }
+  const senderNick=payload.author_nick||"Гравець";
+  let pushBody=text;
+  if(!pushBody && chatAttachment?.type==="voice")pushBody="🎙 Голосове повідомлення";
+  if(!pushBody && chatAttachment?.type==="gif")pushBody="GIF";
+  if(!pushBody && chatAttachment?.type)pushBody="📷 Фото";
+  sendPushEvent("chat",`${senderNick} — Чат`,pushBody||"Нове повідомлення");
+
   if(input)input.value="";
   chatAttachment=null;
   if($("chatMediaInput"))$("chatMediaInput").value="";
@@ -2195,6 +2371,11 @@ $("chatInput")?.addEventListener("keydown",e=>{
 });
 
 
+
+$("pushToggleBtn")?.addEventListener("click",togglePushNotifications);
+$("pushChatToggle")?.addEventListener("change",updatePushPreferences);
+$("pushGatheringsToggle")?.addEventListener("change",updatePushPreferences);
+
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
@@ -2297,7 +2478,10 @@ if(sb){
   try{
     setupFormOptions();
     await openDB();
+    await registerPushServiceWorker();
     await refreshAuth();
+    const openTarget=new URLSearchParams(location.search).get("open");
+    if(openTarget==="chat" || openTarget==="gatherings")switchScreen(openTarget);
   }catch(err){
     console.error(err);
     showToast("Помилка запуску сайту. Перезавантаж сторінку.");

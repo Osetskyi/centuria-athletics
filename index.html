@@ -7,6 +7,8 @@
   <title>Centuria Athletics</title>
   <link rel="stylesheet" href="style.css">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#090909">
 </head>
 <body>
 <div id="app">
@@ -214,6 +216,22 @@
       <label class="volume-row">
         <span>Гучність</span>
         <input id="volumeRange" type="range" min="0" max="100" value="28">
+      </label>
+    </div>
+
+
+    <div class="settings-card push-settings-card">
+      <h2>СПОВІЩЕННЯ</h2>
+      <p class="settings-hint">Push-сповіщення на телефоні. На iPhone сайт має бути доданий на головний екран.</p>
+      <button type="button" id="pushToggleBtn" class="push-main-btn" data-viewer-allowed="true">УВІМКНУТИ СПОВІЩЕННЯ</button>
+      <div id="pushStatus" class="push-status">Перевірка…</div>
+      <label class="switch-row push-pref-row">
+        <span>💬 Нові повідомлення в чаті</span>
+        <input id="pushChatToggle" type="checkbox" checked disabled>
+      </label>
+      <label class="switch-row push-pref-row">
+        <span>📅 Новий збір</span>
+        <input id="pushGatheringsToggle" type="checkbox" checked disabled>
       </label>
     </div>
 

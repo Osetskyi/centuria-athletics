@@ -1753,3 +1753,32 @@ textarea{
     font-size:16px !important;
   }
 }
+
+
+/* v5.6 — Push notifications */
+.settings-hint{
+  margin:0 0 12px;
+  opacity:.72;
+  font-size:13px;
+  line-height:1.35;
+}
+.push-main-btn{
+  width:100%;
+  min-height:46px;
+  border:1px solid rgba(224,183,77,.75);
+  border-radius:12px;
+  background:rgba(224,183,77,.12);
+  color:#f4d87d;
+  font-weight:900;
+  letter-spacing:.4px;
+}
+.push-main-btn:disabled{opacity:.45}
+.push-status{
+  margin:9px 0 12px;
+  min-height:18px;
+  font-size:12px;
+  opacity:.78;
+}
+.push-pref-row{
+  margin-top:8px;
+}
