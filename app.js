@@ -1,7 +1,7 @@
 
 const POSITIONS = [
   ["GK","ВРТ"],["LB","ЛЗ"],["CB","ЦЗ"],["RB","ПЗ"],
-  ["LM","ЛП"],["CM","ЦП"],["CAM","ЦАП"],["RM","ПП"],["ST","НП"]
+  ["LM","ЛП"],["CM","ЦП"],["CAM","ЦАП"],["RM","ПП"],["ST","ФРВ"]
 ];
 const POS_LABEL = Object.fromEntries(POSITIONS);
 const ARCHETYPES = [
@@ -201,7 +201,7 @@ async function put(store,obj){
   if(store==="players"){
     let cardUrl=obj.cardImage || "";
     if(cardUrl.startsWith("data:")){
-      cardUrl=await uploadDataImage(`players/${obj.id}.jpg`,cardUrl);
+      cardUrl=await uploadDataImage(`players/${obj.id}.png`,cardUrl);
     }
     const payload={
       id:obj.id,
@@ -244,7 +244,7 @@ async function del(store,id){
   if(store==="players"){
     const {error}=await sb.from("players").delete().eq("id",id);
     if(error) throw error;
-    await sb.storage.from("centuria-assets").remove([`players/${id}.jpg`]);
+    await sb.storage.from("centuria-assets").remove([`players/${id}.png`,`players/${id}.jpg`]);
     return;
   }
   if(store==="squads"){
@@ -263,7 +263,7 @@ async function clearStore(store){
     const ids=players.map(p=>p.id);
     const {error}=await sb.from("players").delete().not("id","is",null);
     if(error) throw error;
-    if(ids.length) await sb.storage.from("centuria-assets").remove(ids.map(id=>`players/${id}.jpg`));
+    if(ids.length) await sb.storage.from("centuria-assets").remove(ids.flatMap(id=>[`players/${id}.png`,`players/${id}.jpg`]));
     return;
   }
   if(store==="squads"){
@@ -674,7 +674,7 @@ async function resizeImage(file,maxW,maxH,quality){
         const r=Math.min(maxW/img.width,maxH/img.height,1);
         const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);
         c.getContext("2d").drawImage(img,0,0,c.width,c.height);
-        resolve(c.toDataURL("image/jpeg",quality));
+        resolve(c.toDataURL("image/png"));
       };
       img.onerror=reject;img.src=reader.result;
     };
@@ -714,6 +714,8 @@ async function startMusicFromGesture(){
   setBackgroundVolume(volume.value);
   try{
     await music.play();
+    setBackgroundVolume(volume.value);
+    setTimeout(()=>setBackgroundVolume(volume.value),60);
     musicStarted=true;
     musicStartBtn.classList.add("hidden");
     return true;
@@ -770,27 +772,41 @@ toggle.addEventListener("change",async()=>{
 
 
 function setBackgroundVolume(value){
-  const percent=Math.max(0,Math.min(100,Number(value)||0));
+  if(!music)return;
+  let percent=parseFloat(value);
+  if(!Number.isFinite(percent)) percent=35;
+  percent=Math.max(0,Math.min(100,percent));
   const level=percent/100;
 
-  music.volume=level;
-  music.muted=percent===0;
-  localStorage.setItem("ca_volume",String(percent));
-
-  if(toggle.checked && percent>0 && music.paused){
-    music.play().catch(()=>{});
+  try{
+    music.muted=false;
+    music.volume=level;
+    if(percent===0){
+      music.muted=true;
+    }
+  }catch(e){
+    console.warn("Volume apply failed",e);
   }
+
+  localStorage.setItem("ca_volume",String(percent));
 }
 
 if(volume){
   volume.value=localStorage.getItem("ca_volume")||"35";
   setBackgroundVolume(volume.value);
 
-  ["input","change","pointermove","touchmove"].forEach(eventName=>{
-    volume.addEventListener(eventName,()=>{
-      setBackgroundVolume(volume.value);
-    },{passive:true});
-  });
+  const syncVolume=()=>{
+    setBackgroundVolume(volume.value);
+    // Safari/iOS can defer audio state updates; apply again next frame.
+    requestAnimationFrame(()=>setBackgroundVolume(volume.value));
+    setTimeout(()=>setBackgroundVolume(volume.value),40);
+  };
+
+  volume.addEventListener("input",syncVolume);
+  volume.addEventListener("change",syncVolume);
+  volume.addEventListener("touchstart",syncVolume,{passive:true});
+  volume.addEventListener("touchend",syncVolume,{passive:true});
+  volume.addEventListener("pointerup",syncVolume);
 }
 
 music.addEventListener("error",()=>{
