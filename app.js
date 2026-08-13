@@ -86,6 +86,14 @@ const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE
 
 let authUser = null;
 let authRole = "viewer";
+let authProfile = null;
+let teamProfiles = new Map();
+let chatMessages = [];
+let chatAttachment = null;
+let chatPresenceChannel = null;
+let chatPollTimer = null;
+let chatLastSignature = "";
+
 
 function canEditSite(){
   return authRole === "admin" || authRole === "editor";
@@ -104,10 +112,11 @@ function applyPermissions(){
   const btn=$("authBtn");
   if(btn){
     if(authUser){
-      btn.textContent = editable ? `АДМІН: ${authUser.email}` : `АКАУНТ: ${authUser.email}`;
+      const nick=authProfile?.display_name || authUser.email?.split("@")[0] || "Акаунт";
+      btn.textContent = editable ? `АДМІН: ${nick}` : `@${nick}`;
       btn.classList.toggle("is-admin", editable);
     }else{
-      btn.textContent = "ВХІД АДМІНІСТРАТОРА";
+      btn.textContent = "ВХІД / РЕЄСТРАЦІЯ";
       btn.classList.remove("is-admin");
     }
   }
@@ -129,15 +138,21 @@ async function refreshAuth(){
   const {data}=await sb.auth.getSession();
   authUser=data?.session?.user||null;
   authRole="viewer";
+  authProfile=null;
 
   if(authUser){
     const {data:profile}=await sb.from("profiles")
-      .select("role")
+      .select("user_id,display_name,avatar_url,role")
       .eq("user_id",authUser.id)
       .maybeSingle();
+    authProfile=profile||null;
     if(profile?.role) authRole=profile.role;
   }
   applyPermissions();
+  await refreshChatAuthState();
+  if(authUser && $("screen-chat")?.classList.contains("active")){
+    await maybeWeeklyChatCleanup();
+  }
   try{
     players=await getAll("players");
     squads=await getAll("squads");
@@ -336,6 +351,7 @@ function navigate(name){
   if(name==="players") renderPlayers();
   if(name==="tactics") renderPitch();
   if(name==="squads") renderSquads();
+  if(name==="chat") openChatScreen();
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
 
@@ -957,6 +973,479 @@ music.addEventListener("error",()=>{
 
 /* init */
 
+
+/* Team chat */
+function initials(name){
+  const clean=(name||"?").trim();
+  return clean ? clean.slice(0,1).toUpperCase() : "?";
+}
+
+function profileAvatarHtml(profile,extraClass=""){
+  if(profile?.avatar_url){
+    return `<span class="chat-avatar ${extraClass}"><img src="${profile.avatar_url}" alt=""></span>`;
+  }
+  return `<span class="chat-avatar chat-avatar-fallback ${extraClass}">${esc(initials(profile?.display_name))}</span>`;
+}
+
+async function loadTeamProfiles(){
+  if(!sb || !authUser){
+    teamProfiles=new Map();
+    return;
+  }
+  const {data,error}=await sb.from("profiles")
+    .select("user_id,display_name,avatar_url,role");
+  if(error){
+    console.error("Profiles load error",error);
+    return;
+  }
+  teamProfiles=new Map((data||[]).map(p=>[p.user_id,p]));
+}
+
+async function loadChatMessages(forceScroll=false){
+  if(!sb || !authUser)return;
+  const {data,error}=await sb.from("messages")
+    .select("id,user_id,text,media_url,media_type,created_at,author_nick")
+    .order("created_at",{ascending:false})
+    .limit(100);
+  if(error){
+    console.error("Chat load error",error);
+    const box=$("chatMessages");
+    if(box) box.innerHTML=`<div class="chat-empty">Не вдалося завантажити чат.</div>`;
+    return;
+  }
+
+  const next=(data||[]).reverse();
+  const signature=next.map(m=>m.id).join("|");
+  const changed=signature!==chatLastSignature;
+  chatMessages=next;
+  chatLastSignature=signature;
+
+  if(changed || forceScroll){
+    await loadTeamProfiles();
+    renderChatMessages(forceScroll);
+  }
+}
+
+function renderChatMessages(forceScroll=false){
+  const box=$("chatMessages");
+  if(!box)return;
+  const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<120;
+
+  if(!chatMessages.length){
+    box.innerHTML=`<div class="chat-empty">Поки що повідомлень немає.<br>Напиши першим.</div>`;
+    return;
+  }
+
+  box.innerHTML=chatMessages.map(m=>{
+    const profile=teamProfiles.get(m.user_id)||{
+      display_name:m.author_nick||"Гравець",
+      avatar_url:null
+    };
+    const own=authUser?.id===m.user_id;
+    const canDelete=own || authRole==="admin";
+    const time=new Date(m.created_at).toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
+    const day=new Date(m.created_at).toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit"});
+    let media="";
+    if(m.media_url){
+      media=`<img class="chat-media ${m.media_type==="gif"?"is-gif":""}" src="${m.media_url}" alt="Вкладення">`;
+    }
+    return `<div class="chat-message ${own?"own":""}" data-message-id="${m.id}">
+      ${profileAvatarHtml(profile)}
+      <div class="chat-message-main">
+        <div class="chat-message-meta">
+          <strong>${esc(profile.display_name||"Гравець")}</strong>
+          <span>${day} · ${time}</span>
+          ${canDelete?`<button class="chat-delete" type="button" data-delete-message="${m.id}" data-viewer-allowed="true">×</button>`:""}
+        </div>
+        <div class="chat-bubble">
+          ${m.text?`<div class="chat-text">${esc(m.text).replace(/\n/g,"<br>")}</div>`:""}
+          ${media}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-delete-message]").forEach(btn=>{
+    btn.addEventListener("click",()=>deleteChatMessage(btn.dataset.deleteMessage));
+  });
+
+  if(forceScroll || nearBottom){
+    requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
+  }
+}
+
+async function deleteChatMessage(id){
+  if(!sb || !authUser)return;
+  const msg=chatMessages.find(m=>m.id===id);
+  if(!msg)return;
+  if(msg.user_id!==authUser.id && authRole!=="admin")return;
+  if(!confirm("Видалити це повідомлення?"))return;
+  const {error}=await sb.from("messages").delete().eq("id",id);
+  if(error){showToast("Не вдалося видалити повідомлення");return}
+  await loadChatMessages();
+}
+
+async function prepareChatMedia(file){
+  if(!file)return null;
+  const isGif=file.type==="image/gif";
+
+  if(isGif){
+    if(file.size>1.2*1024*1024){
+      throw new Error("GIF має бути не більше 1.2 МБ");
+    }
+    const url=await readFileDataUrl(file);
+    return {url,type:"gif",name:file.name};
+  }
+
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+    throw new Error("Підтримуються JPG, PNG, WEBP або GIF");
+  }
+
+  const url=await resizeChatImage(file,1000,0.78);
+  if(url.length>1.5*1024*1024){
+    throw new Error("Фото вийшло завеликим. Обери менше зображення");
+  }
+  return {url,type:"image",name:file.name};
+}
+
+function readFileDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function resizeChatImage(file,maxSide=1000,quality=.78){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.naturalWidth,h=img.naturalHeight;
+        const scale=Math.min(1,maxSide/Math.max(w,h));
+        w=Math.max(1,Math.round(w*scale));
+        h=Math.max(1,Math.round(h*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL("image/webp",quality));
+      };
+      img.onerror=()=>reject(new Error("Не вдалося прочитати фото"));
+      img.src=reader.result;
+    };
+    reader.onerror=()=>reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderAttachmentPreview(){
+  const box=$("chatAttachmentPreview");
+  if(!box)return;
+  if(!chatAttachment){
+    box.classList.add("hidden");
+    box.innerHTML="";
+    return;
+  }
+  box.innerHTML=`<div class="attachment-card">
+    <img src="${chatAttachment.url}" alt="">
+    <span>${esc(chatAttachment.name||"Вкладення")}</span>
+    <button id="removeChatAttachment" type="button" data-viewer-allowed="true">×</button>
+  </div>`;
+  box.classList.remove("hidden");
+  $("removeChatAttachment")?.addEventListener("click",()=>{
+    chatAttachment=null;
+    $("chatMediaInput").value="";
+    renderAttachmentPreview();
+  });
+}
+
+async function sendChatMessage(){
+  if(!sb || !authUser){
+    openAuthModal();
+    return;
+  }
+  const input=$("chatInput");
+  const text=(input?.value||"").trim();
+  if(!text && !chatAttachment)return;
+
+  const btn=$("sendMessageBtn");
+  if(btn)btn.disabled=true;
+  const payload={
+    user_id:authUser.id,
+    text:text||null,
+    media_url:chatAttachment?.url||null,
+    media_type:chatAttachment?.type||null,
+    author_nick:authProfile?.display_name||authUser.email?.split("@")[0]||"Гравець"
+  };
+  const {error}=await sb.from("messages").insert(payload);
+  if(btn)btn.disabled=false;
+  if(error){
+    console.error("Send error",error);
+    showToast("Не вдалося відправити повідомлення");
+    return;
+  }
+  if(input)input.value="";
+  chatAttachment=null;
+  if($("chatMediaInput"))$("chatMediaInput").value="";
+  renderAttachmentPreview();
+  await loadChatMessages(true);
+}
+
+function renderOnlinePresence(){
+  const count=$("onlineCount");
+  const list=$("onlinePeople");
+  if(!chatPresenceChannel){
+    if(count)count.textContent="ОНЛАЙН: 0";
+    if(list)list.innerHTML="";
+    return;
+  }
+  const state=chatPresenceChannel.presenceState();
+  const people=[];
+  Object.values(state).forEach(entries=>{
+    (entries||[]).forEach(p=>{
+      if(!people.some(x=>x.user_id===p.user_id))people.push(p);
+    });
+  });
+  if(count)count.textContent=`ОНЛАЙН: ${people.length}`;
+  if(list){
+    list.innerHTML=people.slice(0,12).map(p=>`
+      <div class="online-person" title="${esc(p.nick||"Гравець")}">
+        ${p.avatar?`<span class="online-avatar"><img src="${p.avatar}" alt=""></span>`:`<span class="online-avatar online-avatar-fallback">${esc(initials(p.nick))}</span>`}
+        <span>${esc(p.nick||"Гравець")}</span>
+      </div>`).join("");
+  }
+}
+
+async function stopChatPresence(){
+  if(chatPresenceChannel && sb){
+    try{await chatPresenceChannel.untrack();}catch(e){}
+    try{await sb.removeChannel(chatPresenceChannel);}catch(e){}
+  }
+  chatPresenceChannel=null;
+  renderOnlinePresence();
+}
+
+async function startChatPresence(){
+  if(!sb || !authUser || !authProfile)return;
+  await stopChatPresence();
+  chatPresenceChannel=sb.channel("centuria-chat-presence",{
+    config:{presence:{key:authUser.id}}
+  });
+
+  chatPresenceChannel
+    .on("presence",{event:"sync"},renderOnlinePresence)
+    .on("presence",{event:"join"},renderOnlinePresence)
+    .on("presence",{event:"leave"},renderOnlinePresence);
+
+  chatPresenceChannel.subscribe(async status=>{
+    if(status==="SUBSCRIBED"){
+      await chatPresenceChannel.track({
+        user_id:authUser.id,
+        nick:authProfile?.display_name||"Гравець",
+        avatar:authProfile?.avatar_url||null,
+        online_at:new Date().toISOString()
+      });
+      renderOnlinePresence();
+    }
+  });
+}
+
+async function refreshChatAuthState(){
+  const gate=$("chatGate"),panel=$("chatPanel"),profileBtn=$("profileBtn");
+  if(!gate || !panel)return;
+  if(authUser){
+    gate.classList.add("hidden");
+    panel.classList.remove("hidden");
+    if(profileBtn)profileBtn.classList.remove("hidden");
+    await loadTeamProfiles();
+    await startChatPresence();
+    await loadChatMessages(true);
+    if(!chatPollTimer){
+      chatPollTimer=setInterval(()=>{
+        if(authUser && $("screen-chat")?.classList.contains("active")){
+          loadChatMessages();
+        }
+      },2500);
+    }
+  }else{
+    gate.classList.remove("hidden");
+    panel.classList.add("hidden");
+    if(profileBtn)profileBtn.classList.add("hidden");
+    await stopChatPresence();
+    chatMessages=[];
+    chatLastSignature="";
+  }
+}
+
+
+function warsawTodayInfo(){
+  const parts=new Intl.DateTimeFormat("en-CA",{
+    timeZone:"Europe/Warsaw",
+    year:"numeric",
+    month:"2-digit",
+    day:"2-digit",
+    weekday:"short"
+  }).formatToParts(new Date());
+
+  const get=type=>parts.find(p=>p.type===type)?.value||"";
+  return {
+    date:`${get("year")}-${get("month")}-${get("day")}`,
+    weekday:get("weekday")
+  };
+}
+
+async function maybeWeeklyChatCleanup(){
+  if(!sb || !authUser || authRole!=="admin")return false;
+
+  const today=warsawTodayInfo();
+  if(today.weekday!=="Sun")return false;
+
+  const key="ca_chat_cleanup_"+today.date;
+  if(localStorage.getItem(key)==="done")return false;
+
+  try{
+    const {error}=await sb.from("messages").delete().not("id","is",null);
+    if(error)throw error;
+
+    localStorage.setItem(key,"done");
+    chatMessages=[];
+    chatLastSignature="";
+    renderChatMessages(true);
+    showToast("Щотижневе очищення чату виконано");
+    return true;
+  }catch(err){
+    console.error("Weekly chat cleanup failed",err);
+    return false;
+  }
+}
+
+async function openChatScreen(){
+  await refreshChatAuthState();
+  if(authUser){
+    await maybeWeeklyChatCleanup();
+    await loadChatMessages(true);
+  }
+}
+
+async function avatarFileToDataUrl(file){
+  if(!file)return null;
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+    throw new Error("Аватар має бути JPG, PNG або WEBP");
+  }
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        const size=180;
+        const canvas=document.createElement("canvas");
+        canvas.width=size;canvas.height=size;
+        const ctx=canvas.getContext("2d");
+        const side=Math.min(img.naturalWidth,img.naturalHeight);
+        const sx=(img.naturalWidth-side)/2;
+        const sy=(img.naturalHeight-side)/2;
+        ctx.drawImage(img,sx,sy,side,side,0,0,size,size);
+        resolve(canvas.toDataURL("image/webp",.78));
+      };
+      img.onerror=()=>reject(new Error("Не вдалося прочитати аватар"));
+      img.src=reader.result;
+    };
+    reader.onerror=()=>reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+let pendingAvatarData=null;
+
+function renderProfilePreview(){
+  const box=$("profileAvatarPreview");
+  if(!box)return;
+  const url=pendingAvatarData||authProfile?.avatar_url;
+  if(url){
+    box.innerHTML=`<img src="${url}" alt="">`;
+  }else{
+    box.innerHTML=`<span>${esc(initials(authProfile?.display_name||authUser?.email))}</span>`;
+  }
+}
+
+function openProfileModal(){
+  if(!authUser){openAuthModal();return}
+  pendingAvatarData=null;
+  $("profileNickInput").value=authProfile?.display_name||"";
+  if($("profileStatus"))$("profileStatus").textContent="";
+  renderProfilePreview();
+  $("profileModal")?.classList.remove("hidden");
+  document.body.classList.add("auth-open");
+}
+
+function closeProfileModal(){
+  $("profileModal")?.classList.add("hidden");
+  document.body.classList.remove("auth-open");
+  pendingAvatarData=null;
+}
+
+async function saveProfile(){
+  if(!sb || !authUser)return;
+  const nick=$("profileNickInput")?.value.trim();
+  if(!nick || nick.length<2){
+    $("profileStatus").textContent="Нік має містити мінімум 2 символи.";
+    return;
+  }
+  $("profileStatus").textContent="Збереження…";
+  const payload={display_name:nick};
+  if(pendingAvatarData)payload.avatar_url=pendingAvatarData;
+  const {error}=await sb.from("profiles").update(payload).eq("user_id",authUser.id);
+  if(error){
+    console.error(error);
+    $("profileStatus").textContent="Не вдалося зберегти профіль.";
+    return;
+  }
+  await refreshAuth();
+  $("profileStatus").textContent="Профіль збережено.";
+  setTimeout(closeProfileModal,350);
+}
+
+$("chatLoginBtn")?.addEventListener("click",openAuthModal);
+$("profileBtn")?.addEventListener("click",openProfileModal);
+$("closeProfileModal")?.addEventListener("click",closeProfileModal);
+document.querySelectorAll("[data-close-profile]").forEach(el=>el.addEventListener("click",closeProfileModal));
+$("chooseAvatarBtn")?.addEventListener("click",()=>$("profileAvatarInput")?.click());
+$("profileAvatarInput")?.addEventListener("change",async e=>{
+  const file=e.target.files?.[0];
+  if(!file)return;
+  try{
+    pendingAvatarData=await avatarFileToDataUrl(file);
+    renderProfilePreview();
+  }catch(err){
+    showToast(err.message||"Не вдалося обробити аватар");
+  }
+});
+$("saveProfileBtn")?.addEventListener("click",saveProfile);
+
+$("chatMediaBtn")?.addEventListener("click",()=>$("chatMediaInput")?.click());
+$("chatMediaInput")?.addEventListener("change",async e=>{
+  const file=e.target.files?.[0];
+  if(!file)return;
+  try{
+    chatAttachment=await prepareChatMedia(file);
+    renderAttachmentPreview();
+  }catch(err){
+    e.target.value="";
+    showToast(err.message||"Не вдалося додати файл");
+  }
+});
+$("sendMessageBtn")?.addEventListener("click",sendChatMessage);
+$("chatInput")?.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && !e.shiftKey){
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
@@ -971,6 +1460,7 @@ async function openAuthModal(){
   if(authUser){
     const ok=confirm(`Вийти з акаунта ${authUser.email}?`);
     if(ok && sb){
+      await stopChatPresence();
       await sb.auth.signOut();
       await refreshAuth();
     }
@@ -1008,12 +1498,21 @@ $("signUpBtn")?.addEventListener("click",async()=>{
   if(!sb)return;
   const email=$("authEmail")?.value.trim();
   const password=$("authPassword")?.value||"";
+  const nick=$("authNick")?.value.trim();
+  if(!nick || nick.length<2){
+    authStatus.textContent="Введи нік мінімум 2 символи.";
+    return;
+  }
   if(!email||password.length<6){
     authStatus.textContent="Введи email і пароль мінімум 6 символів.";
     return;
   }
   authStatus.textContent="Створення акаунта...";
-  const {data,error}=await sb.auth.signUp({email,password});
+  const {data,error}=await sb.auth.signUp({
+    email,
+    password,
+    options:{data:{display_name:nick}}
+  });
   if(error){
     authStatus.textContent=error.message;
     return;
@@ -1059,6 +1558,7 @@ document.addEventListener("click",e=>{
   if(canEditSite()) return;
   const button=e.target.closest("button");
   if(!button) return;
+  if(button.dataset.viewerAllowed==="true") return;
   const text=(button.textContent||"").toUpperCase();
   const protectedWords=["ДОДАТИ","РЕДАГУВАТИ","ВИДАЛИТИ","ЗБЕРЕГТИ","ПЕРЕЙМЕНУВАТИ","ОЧИСТИТИ"];
   if(protectedWords.some(word=>text.includes(word))){
@@ -1072,5 +1572,8 @@ document.addEventListener("click",e=>{
 document.addEventListener("keydown",e=>{
   if(e.key==="Escape" && authModal && !authModal.classList.contains("hidden")){
     closeAuthModal();
+  }
+  if(e.key==="Escape" && $("profileModal") && !$("profileModal").classList.contains("hidden")){
+    closeProfileModal();
   }
 });

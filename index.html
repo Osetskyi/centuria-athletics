@@ -93,6 +93,46 @@
     <button type="button" id="newLineupBtn" class="gold-btn full">＋ НОВА РОЗСТАНОВКА</button>
   </section>
 
+
+  <!-- TEAM CHAT -->
+  <section id="screen-chat" class="screen inner-screen chat-screen">
+    <header class="topbar chat-topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ЧАТ</h1>
+        <div class="chat-online-line">
+          <span class="online-dot"></span>
+          <span id="onlineCount">ОНЛАЙН: 0</span>
+        </div>
+      </div>
+      <button type="button" id="profileBtn" class="dark-btn chat-profile-btn" data-viewer-allowed="true">ПРОФІЛЬ</button>
+    </header>
+
+    <div id="chatGate" class="chat-gate">
+      <div class="chat-gate-icon">💬</div>
+      <h2>КОМАНДНИЙ ЧАТ</h2>
+      <p>Щоб читати та писати в чаті, увійди або створи акаунт команди.</p>
+      <button id="chatLoginBtn" class="gold-btn" type="button" data-viewer-allowed="true">УВІЙТИ / ЗАРЕЄСТРУВАТИСЯ</button>
+    </div>
+
+    <div id="chatPanel" class="chat-panel hidden">
+      <div id="onlinePeople" class="online-people"></div>
+      <div id="chatMessages" class="chat-messages">
+        <div class="chat-loading">Завантаження повідомлень…</div>
+      </div>
+
+      <div id="chatAttachmentPreview" class="chat-attachment-preview hidden"></div>
+
+      <div class="chat-composer">
+        <input id="chatMediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+        <button id="chatMediaBtn" class="chat-media-btn" type="button" title="Фото або GIF" data-viewer-allowed="true">＋</button>
+        <textarea id="chatInput" rows="1" maxlength="1000" placeholder="Написати повідомлення…"></textarea>
+        <button id="sendMessageBtn" class="chat-send-btn" type="button" data-viewer-allowed="true">➤</button>
+      </div>
+      <div class="chat-hint">Фото до ~1 МБ · GIF до 1.2 МБ</div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="screen-settings" class="screen inner-screen">
     <header class="topbar">
@@ -141,6 +181,7 @@
     <button data-nav="players"><span>♟</span><small>ГРАВЦІ</small></button>
     <button data-nav="tactics"><span>⚽</span><small>ТАКТИКА</small></button>
     <button data-nav="squads"><span>▣</span><small>СКЛАДИ</small></button>
+    <button data-nav="chat"><span>●</span><small>ЧАТ</small></button>
     <button data-nav="settings"><span>⚙</span><small>НАЛАШТУВАННЯ</small></button>
   </nav>
 </div>
@@ -313,7 +354,7 @@
 
 <button id="musicStartBtn" class="music-start hidden" type="button">▶ УВІМКНУТИ МУЗИКУ</button>
 
-<button id="authBtn" class="auth-btn" type="button">ВХІД АДМІНІСТРАТОРА</button>
+<button id="authBtn" class="auth-btn" type="button" data-viewer-allowed="true">ВХІД / РЕЄСТРАЦІЯ</button>
 
 <div id="authModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="modal-backdrop" data-close-auth></div>
@@ -321,7 +362,11 @@
     <button id="closeAuthModal" class="modal-close" type="button">✕</button>
     <div class="eyebrow">CENTURIA ATHLETICS</div>
     <h2 id="authTitle">ВХІД</h2>
-    <p class="auth-note">Увійди через email. Після першого входу ми надамо твоєму акаунту права адміністратора.</p>
+    <p class="auth-note">Увійди у свій акаунт або створи новий акаунт учасника Centuria Athletics.</p>
+    <label>НІК У КОМАНДІ <span class="auth-signup-only">(для реєстрації)</span>
+      <input id="authNick" type="text" maxlength="24" autocomplete="nickname" placeholder="Donatello">
+      <small class="auth-nick-hint">Вказуйте нік такий, як у вас в EA ID</small>
+    </label>
     <label>EMAIL
       <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com">
     </label>
@@ -333,6 +378,29 @@
       <button id="signUpBtn" class="secondary-btn" type="button">СТВОРИТИ АКАУНТ</button>
     </div>
     <div id="authStatus" class="auth-status"></div>
+  </div>
+</div>
+
+
+<div id="profileModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+  <div class="modal-backdrop" data-close-profile></div>
+  <div class="modal-card profile-card">
+    <button id="closeProfileModal" class="modal-close" type="button" data-viewer-allowed="true">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2 id="profileTitle">МІЙ ПРОФІЛЬ</h2>
+
+    <div class="profile-avatar-editor">
+      <div id="profileAvatarPreview" class="profile-avatar-preview"><span>?</span></div>
+      <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+      <button id="chooseAvatarBtn" class="secondary-btn" type="button" data-viewer-allowed="true">ЗМІНИТИ ФОТО</button>
+    </div>
+
+    <label>НІК
+      <input id="profileNickInput" type="text" maxlength="24" placeholder="Donatello">
+    </label>
+
+    <button id="saveProfileBtn" class="primary-btn full" type="button" data-viewer-allowed="true">ЗБЕРЕГТИ ПРОФІЛЬ</button>
+    <div id="profileStatus" class="auth-status"></div>
   </div>
 </div>
 
