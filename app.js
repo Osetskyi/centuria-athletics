@@ -33,25 +33,12 @@ function encodePlayerNote(status,note){
 const PLAYER_PLATFORMS = ["PS5","XBOX","PC"];
 
 function platformIcon(platform){
-  if(platform==="PS5"){
-    return `<svg viewBox="0 0 48 48" aria-hidden="true">
-      <rect x="8" y="11" width="10" height="26" rx="2"></rect>
-      <rect x="22" y="11" width="18" height="5" rx="2"></rect>
-      <rect x="22" y="21" width="14" height="5" rx="2"></rect>
-      <rect x="22" y="32" width="18" height="5" rx="2"></rect>
-    </svg>`;
-  }
-  if(platform==="XBOX"){
-    return `<svg viewBox="0 0 48 48" aria-hidden="true">
-      <circle cx="24" cy="24" r="17"></circle>
-      <path d="M15 15c3-2 6-3 9-3s6 1 9 3c-4 2-7 5-9 8-2-3-5-6-9-8zm1 18c2-5 5-9 8-12 3 3 6 7 8 12-2 2-5 3-8 3s-6-1-8-3z"></path>
-    </svg>`;
-  }
-  return `<svg viewBox="0 0 48 48" aria-hidden="true">
-    <rect x="7" y="9" width="34" height="25" rx="3"></rect>
-    <rect x="20" y="35" width="8" height="4" rx="1"></rect>
-    <rect x="15" y="40" width="18" height="3" rx="1.5"></rect>
-  </svg>`;
+  const src=platform==="PS5"
+    ? "platform-ps5.png"
+    : platform==="XBOX"
+      ? "platform-xbox.jpg"
+      : "platform-pc.png";
+  return `<img src="${src}" alt="${platform}" class="platform-logo-img">`;
 }
 
 function selectPlatform(value){
@@ -496,7 +483,7 @@ function fillViewMode(p){
   $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
   $("viewName").textContent=p.name||"—";
   $("viewNumber").textContent=p.number!=="" && p.number!=null ? "#"+p.number : "—";
-  $("viewAge").textContent=p.age!=="" && p.age!=null ? p.age+" років" : "—";
+  $("viewAge").textContent=p.age!=="" && p.age!=null ? p.age : "—";
   $("viewPlatform").innerHTML=p.platform ? `<span class="view-platform"><span class="platform-icon">${platformIcon(p.platform)}</span><span>${esc(p.platform)}</span></span>` : "—";
   $("viewPrimaryPos").textContent=POS_LABEL[p.primaryPos]||"—";
   $("viewArchetype").innerHTML=p.archetype

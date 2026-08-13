@@ -814,3 +814,22 @@ body.auth-open{
     height:23px;
   }
 }
+
+/* v3.7 — user supplied platform icons */
+.platform-icon{
+  overflow:hidden;
+}
+.platform-logo-img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+.platform-option[data-value="XBOX"] .platform-icon{
+  width:30px;
+  height:30px;
+  border-radius:50%;
+}
+.platform-option[data-value="XBOX"] .platform-logo-img{
+  border-radius:50%;
+}
