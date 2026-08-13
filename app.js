@@ -735,8 +735,15 @@ $("saveLineupBtn").addEventListener("click",async()=>{
 });
 
 async function renderLineupImage(name){
-  const W=720,H=1080,canvas=document.createElement("canvas");canvas.width=W;canvas.height=H;
+  // Render at 2x resolution for a much sharper saved lineup.
+  // All layout coordinates stay in the original 720x1080 logical space.
+  const SCALE=2,W=720,H=1080,canvas=document.createElement("canvas");
+  canvas.width=W*SCALE;
+  canvas.height=H*SCALE;
   const ctx=canvas.getContext("2d");
+  ctx.scale(SCALE,SCALE);
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
   ctx.fillStyle="#08090b";ctx.fillRect(0,0,W,H);
   const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,"#180b0b");grad.addColorStop(.5,"#090a0b");grad.addColorStop(1,"#15100b");ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#e2bd70";ctx.font="bold 16px Arial";ctx.fillText("CENTURIA ATHLETICS",38,42);
@@ -776,7 +783,7 @@ async function renderLineupImage(name){
   }
   ctx.textAlign="left";
   ctx.fillStyle="#9d8d74";ctx.font="12px Arial";ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1040);
-  return canvas.toDataURL("image/jpeg",.86);
+  return canvas.toDataURL("image/jpeg",.96);
 }
 function roundRect(ctx,x,y,w,h,r,fill,stroke){
   if(w<2*r)r=w/2;if(h<2*r)r=h/2;
