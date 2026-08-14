@@ -268,6 +268,15 @@ let gatheringVotes=[];
 let gatheringsMode="active";
 let gatheringsPollTimer=null;
 
+let tacticalBoards=[];
+let tacticalBoardId=null;
+let tbSelected=null;
+let tbArrowMode=false;
+let tbArrowDraft=null;
+let tbDrag=null;
+let tbState={markers:[],ball:{x:50,y:70,visible:true},arrows:[]};
+
+
 
 
 
@@ -277,13 +286,14 @@ function canEditSite(){
 
 function applyPermissions(){
   const editable = canEditSite();
-  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn"].forEach(id=>{
+  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn"].forEach(id=>{
     const el=$(id);
     if(el) el.classList.toggle("permission-hidden", !editable);
   });
 
   document.body.classList.toggle("read-only", !editable);
   refreshEditOnlyVisibility();
+  refreshTacticalBoardPermissions();
 
   const btn=$("authBtn");
   if(btn){
@@ -313,6 +323,19 @@ function refreshEditOnlyVisibility(){
   });
 }
 
+
+function refreshTacticalBoardPermissions(){
+  const editable=canEditSite();
+  document.querySelectorAll(".tb-edit-only").forEach(el=>el.classList.toggle("permission-hidden",!editable));
+  ["tbNameInput","tbCategoryInput","tbDescriptionInput"].forEach(id=>{
+    const el=$(id); if(el) el.disabled=!editable;
+  });
+  const del=$("tbDeleteBoardBtn");
+  if(del)del.classList.toggle("permission-hidden",!editable || !tacticalBoardId);
+  const hint=$("tbModeHint");
+  if(hint && !editable)hint.textContent="Режим перегляду. Редагування доступне admin/editor.";
+}
+
 async function refreshAuth(){
   if(!sb){
     applyPermissions();
@@ -335,6 +358,8 @@ async function refreshAuth(){
   await refreshPushSettings();
   await refreshChatAuthState();
   await refreshGatheringsAuthState();
+  refreshTacticalBoardPermissions();
+  if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
   if(authUser && $("screen-chat")?.classList.contains("active")){
     await maybeWeeklyChatCleanup();
   }
@@ -618,12 +643,13 @@ function navigate(name){
   $("screen-"+name).classList.add("active");
   const nav=$("bottomNav");
   nav.classList.toggle("hidden-nav",name==="home");
-  nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===name));
+  nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===(name==="tactical-board"?"tactics":name)));
   if(name==="players") renderPlayers();
   if(name==="tactics") renderPitch();
   if(name==="squads") renderSquads();
   if(name==="chat") openChatScreen();
   if(name==="gatherings") openGatheringsScreen();
+  if(name==="tactical-board") openTacticalBoardScreen();
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
 
@@ -2376,6 +2402,320 @@ $("pushToggleBtn")?.addEventListener("click",togglePushNotifications);
 $("pushChatToggle")?.addEventListener("change",updatePushPreferences);
 $("pushGatheringsToggle")?.addEventListener("change",updatePushPreferences);
 
+
+
+/* Tactical board */
+function cloneTacticalState(state){
+  try{return JSON.parse(JSON.stringify(state||{}));}catch(_e){return {markers:[],ball:{x:50,y:70,visible:true},arrows:[]};}
+}
+
+function defaultTacticalState(){
+  const ownPositions=[
+    [50,91],[18,77],[39,80],[61,80],[82,77],
+    [22,58],[42,60],[58,60],[78,58],[38,35],[62,35]
+  ];
+  return {
+    markers:ownPositions.map((p,i)=>({id:uid(),type:"own",n:i+1,x:p[0],y:p[1]})),
+    ball:{x:50,y:69,visible:true},
+    arrows:[]
+  };
+}
+
+function normalizeTacticalState(raw){
+  const s=cloneTacticalState(raw);
+  if(!Array.isArray(s.markers))s.markers=[];
+  if(!Array.isArray(s.arrows))s.arrows=[];
+  if(!s.ball)s.ball={x:50,y:69,visible:true};
+  s.markers=s.markers.filter(m=>m&&Number.isFinite(Number(m.x))&&Number.isFinite(Number(m.y))).map((m,i)=>({
+    id:m.id||uid(), type:m.type==="opponent"?"opponent":"own", n:Number(m.n)||i+1,
+    x:Math.max(2,Math.min(98,Number(m.x))), y:Math.max(2,Math.min(98,Number(m.y)))
+  }));
+  s.arrows=s.arrows.filter(a=>a&&[a.x1,a.y1,a.x2,a.y2].every(v=>Number.isFinite(Number(v)))).map(a=>({
+    id:a.id||uid(),x1:Number(a.x1),y1:Number(a.y1),x2:Number(a.x2),y2:Number(a.y2)
+  }));
+  s.ball={x:Math.max(2,Math.min(98,Number(s.ball.x)||50)),y:Math.max(2,Math.min(98,Number(s.ball.y)||69)),visible:s.ball.visible!==false};
+  return s;
+}
+
+function tacticalPointFromEvent(e){
+  const pitch=$("tacticalPitch");
+  const r=pitch.getBoundingClientRect();
+  return {
+    x:Math.max(1,Math.min(99,((e.clientX-r.left)/r.width)*100)),
+    y:Math.max(1,Math.min(99,((e.clientY-r.top)/r.height)*100))
+  };
+}
+
+function setTbSelected(kind,id=null){
+  tbSelected={kind,id};
+  renderTacticalBoard();
+}
+
+function renderTacticalArrows(){
+  const group=$("tbArrowGroup");
+  if(!group)return;
+  const arrows=[...(tbState.arrows||[])];
+  if(tbArrowDraft)arrows.push({...tbArrowDraft,id:"draft",draft:true});
+  group.innerHTML=arrows.map(a=>`<line class="tb-arrow-line ${a.draft?"draft":""}" x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" marker-end="url(#tbArrowHead)"></line>`).join("");
+}
+
+function bindTbDrag(el,kind,id){
+  el.addEventListener("pointerdown",e=>{
+    if(!canEditSite())return;
+    e.preventDefault();e.stopPropagation();
+    tbSelected={kind,id};
+    tbDrag={kind,id,pointerId:e.pointerId};
+    try{el.setPointerCapture(e.pointerId)}catch(_e){}
+    renderTacticalBoard();
+  });
+  el.addEventListener("pointermove",e=>{
+    if(!canEditSite()||!tbDrag||tbDrag.pointerId!==e.pointerId||tbDrag.kind!==kind||tbDrag.id!==id)return;
+    e.preventDefault();
+    const p=tacticalPointFromEvent(e);
+    if(kind==="marker"){
+      const m=tbState.markers.find(v=>v.id===id);if(m){m.x=p.x;m.y=p.y;}
+    }else if(kind==="ball"){
+      tbState.ball.x=p.x;tbState.ball.y=p.y;
+    }
+    renderTacticalBoard(false);
+  });
+  const end=e=>{
+    if(tbDrag&&tbDrag.pointerId===e.pointerId){tbDrag=null;renderTacticalBoard();}
+  };
+  el.addEventListener("pointerup",end);
+  el.addEventListener("pointercancel",end);
+}
+
+function renderTacticalBoard(full=true){
+  const layer=$("tbMarkerLayer");
+  if(!layer)return;
+  if(full){
+    layer.innerHTML="";
+    (tbState.markers||[]).forEach(m=>{
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.className=`tb-marker ${m.type} ${tbSelected?.kind==="marker"&&tbSelected?.id===m.id?"selected":""}`;
+      btn.style.left=m.x+"%";btn.style.top=m.y+"%";
+      btn.textContent=m.n;
+      btn.dataset.viewerAllowed="true";
+      btn.setAttribute("aria-label",m.type==="own"?`Свій гравець ${m.n}`:`Суперник ${m.n}`);
+      bindTbDrag(btn,"marker",m.id);
+      layer.appendChild(btn);
+    });
+    const ball=$("tbBallObject");
+    if(ball){
+      ball.classList.toggle("hidden",tbState.ball?.visible===false);
+      ball.classList.toggle("selected",tbSelected?.kind==="ball");
+      ball.style.left=(tbState.ball?.x??50)+"%";
+      ball.style.top=(tbState.ball?.y??69)+"%";
+      if(!ball.dataset.dragBound){bindTbDrag(ball,"ball",null);ball.dataset.dragBound="1";}
+    }
+  }else{
+    (tbState.markers||[]).forEach(m=>{
+      const nodes=[...layer.children];
+      const node=nodes.find(n=>n.textContent==String(m.n)&&n.classList.contains(m.type));
+      if(node){node.style.left=m.x+"%";node.style.top=m.y+"%";}
+    });
+    const ball=$("tbBallObject");
+    if(ball){ball.style.left=(tbState.ball?.x??50)+"%";ball.style.top=(tbState.ball?.y??69)+"%";}
+  }
+  renderTacticalArrows();
+  const arrowBtn=$("tbArrowBtn");
+  if(arrowBtn)arrowBtn.classList.toggle("active",tbArrowMode);
+  refreshTacticalBoardPermissions();
+}
+
+function nextTbNumber(type){
+  const nums=tbState.markers.filter(m=>m.type===type).map(m=>Number(m.n)||0);
+  for(let n=1;n<=99;n++)if(!nums.includes(n))return n;
+  return nums.length+1;
+}
+
+function addTbMarker(type){
+  if(!canEditSite())return;
+  const n=nextTbNumber(type);
+  const offset=(tbState.markers.filter(m=>m.type===type).length%6)*5;
+  const m={id:uid(),type,n,x:type==="own"?35+offset:65-offset,y:type==="own"?72:28};
+  tbState.markers.push(m);tbSelected={kind:"marker",id:m.id};renderTacticalBoard();
+}
+
+function newTacticalBoard(){
+  if(!canEditSite())return;
+  tacticalBoardId=null;
+  tbState=defaultTacticalState();
+  tbSelected=null;tbArrowMode=false;tbArrowDraft=null;
+  if($("tbNameInput"))$("tbNameInput").value="";
+  if($("tbCategoryInput"))$("tbCategoryInput").value="Кутові";
+  if($("tbDescriptionInput"))$("tbDescriptionInput").value="";
+  setTacticalTab("board");
+  renderTacticalBoard();
+  refreshTacticalBoardPermissions();
+}
+
+function setTacticalTab(tab){
+  const board=tab==="board";
+  $("tbBoardPane")?.classList.toggle("hidden",!board);
+  $("tbSavedPane")?.classList.toggle("hidden",board);
+  $("tbBoardTab")?.classList.toggle("active",board);
+  $("tbSavedTab")?.classList.toggle("active",!board);
+  if(!board)renderSavedTacticalBoards();
+}
+
+async function loadTacticalBoards(){
+  if(!sb)return [];
+  const {data,error}=await sb.from("tactical_boards").select("*").order("updated_at",{ascending:false});
+  if(error){console.error("Load tactical boards",error);showToast("Не вдалося завантажити тактики");return tacticalBoards;}
+  tacticalBoards=data||[];
+  renderSavedTacticalBoards();
+  return tacticalBoards;
+}
+
+function categoryIcon(category){
+  if(category==="Кутові")return "◩";
+  if(category==="Штрафні")return "◎";
+  if(category==="Аути")return "↗";
+  if(category==="Пресинг")return "⇈";
+  if(category==="Оборона")return "◇";
+  if(category==="Атака")return "▲";
+  if(category==="Розіграш від воріт")return "▱";
+  return "⌁";
+}
+
+function renderSavedTacticalBoards(){
+  const list=$("tbSavedList");if(!list)return;
+  const filter=$("tbSavedFilter")?.value||"ALL";
+  const items=tacticalBoards.filter(b=>filter==="ALL"||b.category===filter);
+  if(!items.length){
+    list.innerHTML=`<div class="empty-state"><strong>ЗБЕРЕЖЕНИХ ТАКТИК НЕМАЄ</strong><span>${canEditSite()?"Створи першу схему на тактичній дошці.":"Редактори команди ще не додали тактики."}</span></div>`;
+    return;
+  }
+  list.innerHTML="";
+  items.forEach(b=>{
+    const card=document.createElement("button");
+    card.type="button";card.className="tb-saved-card";card.dataset.viewerAllowed="true";
+    const date=b.updated_at?new Date(b.updated_at).toLocaleDateString("uk-UA"):"";
+    card.innerHTML=`
+      <span class="tb-saved-icon">${categoryIcon(b.category)}</span>
+      <span class="tb-saved-copy">
+        <span class="tb-saved-category">${esc(b.category||"Інше")}</span>
+        <strong>${esc(b.name||"Без назви")}</strong>
+        <small>${esc((b.description||"").slice(0,110) || "Без опису")}</small>
+      </span>
+      <span class="tb-saved-date">${date}</span>`;
+    card.addEventListener("click",()=>openTacticalBoardRecord(b));
+    list.appendChild(card);
+  });
+}
+
+function openTacticalBoardRecord(record){
+  tacticalBoardId=record.id;
+  tbState=normalizeTacticalState(record.board_state);
+  tbSelected=null;tbArrowMode=false;tbArrowDraft=null;
+  $("tbNameInput").value=record.name||"";
+  $("tbCategoryInput").value=record.category||"Інше";
+  $("tbDescriptionInput").value=record.description||"";
+  setTacticalTab("board");
+  renderTacticalBoard();
+  refreshTacticalBoardPermissions();
+}
+
+async function saveTacticalBoard(){
+  if(!sb||!authUser||!canEditSite()){showToast("Потрібні права редактора");return;}
+  const name=$("tbNameInput")?.value.trim();
+  if(!name){showToast("Вкажи назву тактики");return;}
+  const payload={
+    name,
+    category:$("tbCategoryInput")?.value||"Інше",
+    description:$("tbDescriptionInput")?.value.trim()||"",
+    board_state:cloneTacticalState(tbState)
+  };
+  const btn=$("tbSaveBtn");if(btn)btn.disabled=true;
+  try{
+    let data,error;
+    if(tacticalBoardId){
+      ({data,error}=await sb.from("tactical_boards").update(payload).eq("id",tacticalBoardId).select("*").single());
+    }else{
+      ({data,error}=await sb.from("tactical_boards").insert({...payload,created_by:authUser.id}).select("*").single());
+    }
+    if(error)throw error;
+    tacticalBoardId=data.id;
+    await loadTacticalBoards();
+    refreshTacticalBoardPermissions();
+    showToast("Тактику збережено ✓");
+  }catch(err){console.error(err);showToast("Не вдалося зберегти тактику");}
+  finally{if(btn)btn.disabled=false;}
+}
+
+async function deleteTacticalBoard(){
+  if(!sb||!tacticalBoardId||!canEditSite())return;
+  if(!confirm("Видалити цю тактику?"))return;
+  const {error}=await sb.from("tactical_boards").delete().eq("id",tacticalBoardId);
+  if(error){console.error(error);showToast("Не вдалося видалити тактику");return;}
+  await loadTacticalBoards();newTacticalBoard();showToast("Тактику видалено");
+}
+
+function deleteTbSelected(){
+  if(!canEditSite()||!tbSelected)return;
+  if(tbSelected.kind==="marker")tbState.markers=tbState.markers.filter(m=>m.id!==tbSelected.id);
+  if(tbSelected.kind==="ball")tbState.ball.visible=false;
+  tbSelected=null;renderTacticalBoard();
+}
+
+function clearTacticalBoard(){
+  if(!canEditSite())return;
+  if(!confirm("Очистити всі крапки, м'яч і стрілки з дошки?"))return;
+  tbState={markers:[],ball:{x:50,y:69,visible:false},arrows:[]};
+  tbSelected=null;tbArrowDraft=null;renderTacticalBoard();
+}
+
+function openTacticalBoardScreen(){
+  loadTacticalBoards();
+  if(!tacticalBoardId && !(tbState.markers||[]).length)tbState=defaultTacticalState();
+  if(!canEditSite() && tacticalBoards.length===0)setTacticalTab("saved");
+  renderTacticalBoard();
+  refreshTacticalBoardPermissions();
+}
+
+$("openTacticalBoardBtn")?.addEventListener("click",()=>navigate("tactical-board"));
+$("backToTacticsBtn")?.addEventListener("click",()=>navigate("tactics"));
+$("tbBoardTab")?.addEventListener("click",()=>setTacticalTab("board"));
+$("tbSavedTab")?.addEventListener("click",async()=>{await loadTacticalBoards();setTacticalTab("saved")});
+$("tbSavedFilter")?.addEventListener("change",renderSavedTacticalBoards);
+$("tbNewBtn")?.addEventListener("click",newTacticalBoard);
+$("tbAddOwnBtn")?.addEventListener("click",()=>addTbMarker("own"));
+$("tbAddOpponentBtn")?.addEventListener("click",()=>addTbMarker("opponent"));
+$("tbBallBtn")?.addEventListener("click",()=>{if(!canEditSite())return;tbState.ball.visible=true;tbSelected={kind:"ball",id:null};renderTacticalBoard()});
+$("tbArrowBtn")?.addEventListener("click",()=>{if(!canEditSite())return;tbArrowMode=!tbArrowMode;tbSelected=null;renderTacticalBoard();$("tbModeHint").textContent=tbArrowMode?"Режим стрілки: проведи пальцем по полю.":"Перетягуй крапки та м'яч пальцем.";});
+$("tbUndoBtn")?.addEventListener("click",()=>{if(!canEditSite())return;if(tbState.arrows.length)tbState.arrows.pop();renderTacticalBoard();});
+$("tbDeleteSelectedBtn")?.addEventListener("click",deleteTbSelected);
+$("tbClearBtn")?.addEventListener("click",clearTacticalBoard);
+$("tbSaveBtn")?.addEventListener("click",saveTacticalBoard);
+$("tbDeleteBoardBtn")?.addEventListener("click",deleteTacticalBoard);
+
+$("tacticalPitch")?.addEventListener("pointerdown",e=>{
+  if(!canEditSite()||!tbArrowMode)return;
+  if(e.target.closest(".tb-marker,.tb-ball-object"))return;
+  e.preventDefault();
+  const p=tacticalPointFromEvent(e);
+  tbArrowDraft={x1:p.x,y1:p.y,x2:p.x,y2:p.y,pointerId:e.pointerId};
+  try{$("tacticalPitch").setPointerCapture(e.pointerId)}catch(_e){}
+  renderTacticalArrows();
+});
+$("tacticalPitch")?.addEventListener("pointermove",e=>{
+  if(!tbArrowDraft||tbArrowDraft.pointerId!==e.pointerId)return;
+  e.preventDefault();const p=tacticalPointFromEvent(e);tbArrowDraft.x2=p.x;tbArrowDraft.y2=p.y;renderTacticalArrows();
+});
+const finishTbArrow=e=>{
+  if(!tbArrowDraft||tbArrowDraft.pointerId!==e.pointerId)return;
+  const a=tbArrowDraft;tbArrowDraft=null;
+  const dist=Math.hypot(a.x2-a.x1,a.y2-a.y1);
+  if(dist>3)tbState.arrows.push({id:uid(),x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2});
+  renderTacticalBoard();
+};
+$("tacticalPitch")?.addEventListener("pointerup",finishTbArrow);
+$("tacticalPitch")?.addEventListener("pointercancel",()=>{tbArrowDraft=null;renderTacticalArrows();});
+
+
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
@@ -2470,6 +2810,9 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"saved_lineups"},async()=>{
       squads=await getAll("squads");
       renderSquads();
+    })
+    .on("postgres_changes",{event:"*",schema:"public",table:"tactical_boards"},async()=>{
+      await loadTacticalBoards();
     })
     .subscribe();
 }

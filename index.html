@@ -67,6 +67,13 @@
       </div>
     </header>
 
+
+    <button type="button" id="openTacticalBoardBtn" class="tactical-board-launch" data-viewer-allowed="true">
+      <span class="tactical-board-launch-icon">⌁</span>
+      <span><strong>ТАКТИЧНА ДОШКА</strong><small>Вільні схеми, рухи та стандарти</small></span>
+      <b>›</b>
+    </button>
+
     <div class="formation-tabs">
       <button class="formation active" data-formation="451">4-5-1</button>
       <button class="formation" data-formation="3421">3-4-2-1</button>
@@ -84,6 +91,122 @@
 
     <button type="button" id="saveLineupBtn" class="gold-btn full">ЗБЕРЕГТИ СКЛАД</button>
   </section>
+
+
+
+  <!-- TACTICAL BOARD -->
+  <section id="screen-tactical-board" class="screen inner-screen tactical-board-screen">
+    <header class="topbar tactical-board-topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>ТАКТИЧНА ДОШКА</h1>
+      </div>
+      <button type="button" id="backToTacticsBtn" class="dark-btn" data-viewer-allowed="true">← ТАКТИКА</button>
+    </header>
+
+    <div class="tactical-board-tabs">
+      <button type="button" id="tbBoardTab" class="tactical-board-tab active" data-viewer-allowed="true">ДОШКА</button>
+      <button type="button" id="tbSavedTab" class="tactical-board-tab" data-viewer-allowed="true">ЗБЕРЕЖЕНІ</button>
+    </div>
+
+    <div id="tbBoardPane" class="tactical-board-pane">
+      <div class="tb-form-card">
+        <div class="tb-form-grid">
+          <label>НАЗВА ТАКТИКИ
+            <input id="tbNameInput" maxlength="70" placeholder="Кутовий №1 — ближня стійка">
+          </label>
+          <label>КАТЕГОРІЯ
+            <select id="tbCategoryInput">
+              <option>Кутові</option>
+              <option>Штрафні</option>
+              <option>Аути</option>
+              <option>Атака</option>
+              <option>Оборона</option>
+              <option>Пресинг</option>
+              <option>Розіграш від воріт</option>
+              <option>Інше</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="tb-edit-tools tb-edit-only">
+          <button type="button" id="tbNewBtn" class="dark-btn">＋ НОВА</button>
+          <button type="button" id="tbAddOwnBtn" class="tb-tool own">＋ СВОЯ</button>
+          <button type="button" id="tbAddOpponentBtn" class="tb-tool opponent">＋ СУПЕРНИК</button>
+          <button type="button" id="tbBallBtn" class="tb-tool">⚽ М'ЯЧ</button>
+          <button type="button" id="tbArrowBtn" class="tb-tool">➜ СТРІЛКА</button>
+          <button type="button" id="tbUndoBtn" class="tb-tool">↶ СКАСУВАТИ</button>
+          <button type="button" id="tbDeleteSelectedBtn" class="tb-tool danger-soft">× ОБ'ЄКТ</button>
+          <button type="button" id="tbClearBtn" class="tb-tool danger-soft">ОЧИСТИТИ</button>
+        </div>
+        <div id="tbModeHint" class="tb-mode-hint">Перетягуй крапки та м'яч пальцем.</div>
+      </div>
+
+      <div class="tactical-pitch-shell">
+        <div id="tacticalPitch" class="tactical-pitch" aria-label="Тактична дошка">
+          <svg class="tactical-pitch-lines" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="97" height="137" rx="1.5"></rect>
+            <line x1="1.5" y1="70" x2="98.5" y2="70"></line>
+            <circle cx="50" cy="70" r="13"></circle>
+            <circle cx="50" cy="70" r="0.9" class="pitch-dot"></circle>
+            <rect x="25" y="1.5" width="50" height="22"></rect>
+            <rect x="37" y="1.5" width="26" height="8"></rect>
+            <circle cx="50" cy="16" r="0.8" class="pitch-dot"></circle>
+            <rect x="25" y="116.5" width="50" height="22"></rect>
+            <rect x="37" y="130.5" width="26" height="8"></rect>
+            <circle cx="50" cy="124" r="0.8" class="pitch-dot"></circle>
+          </svg>
+          <svg id="tbArrowSvg" class="tb-arrow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <marker id="tbArrowHead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L7,3.5 L0,7 z"></path>
+              </marker>
+            </defs>
+            <g id="tbArrowGroup"></g>
+          </svg>
+          <div id="tbMarkerLayer" class="tb-marker-layer"></div>
+          <button type="button" id="tbBallObject" class="tb-ball-object" aria-label="М'яч" data-viewer-allowed="true">⚽</button>
+        </div>
+      </div>
+
+      <div class="tb-legend">
+        <span><i class="tb-legend-dot own"></i>СВОЇ</span>
+        <span><i class="tb-legend-dot opponent"></i>СУПЕРНИК</span>
+        <span>➜ РУХ / ПАС</span>
+      </div>
+
+      <label class="tb-description-label">ОПИС
+        <textarea id="tbDescriptionInput" rows="5" maxlength="1200" placeholder="Наприклад: гравець №4 відкривається на ближню, №7 блокує суперника, подача у зону воротарського..."></textarea>
+      </label>
+
+      <div class="tb-save-actions tb-edit-only">
+        <button type="button" id="tbDeleteBoardBtn" class="danger-btn permission-hidden">ВИДАЛИТИ ТАКТИКУ</button>
+        <button type="button" id="tbSaveBtn" class="gold-btn">ЗБЕРЕГТИ ТАКТИКУ</button>
+      </div>
+    </div>
+
+    <div id="tbSavedPane" class="tactical-board-pane hidden">
+      <div class="tb-saved-head">
+        <div>
+          <strong>ЗБЕРЕЖЕНІ ТАКТИКИ</strong>
+          <small>Кутові, штрафні, пресинг та інші схеми</small>
+        </div>
+        <select id="tbSavedFilter" data-viewer-allowed="true">
+          <option value="ALL">ВСІ</option>
+          <option>Кутові</option>
+          <option>Штрафні</option>
+          <option>Аути</option>
+          <option>Атака</option>
+          <option>Оборона</option>
+          <option>Пресинг</option>
+          <option>Розіграш від воріт</option>
+          <option>Інше</option>
+        </select>
+      </div>
+      <div id="tbSavedList" class="tb-saved-list"></div>
+    </div>
+  </section>
+
 
   <!-- SAVED SQUADS -->
   <section id="screen-squads" class="screen inner-screen">
