@@ -2001,3 +2001,15 @@ textarea{
   line-height:1;
   text-align:right;
 }
+
+
+/* v5.11 — New exact home screen artwork; calendar is an invisible active hotspot */
+.home-calendar-btn{display:none!important}
+.hs-calendar{
+  left:5.7%;
+  top:89.55%;
+  width:15.7%;
+  height:7.45%;
+  z-index:8;
+  border-radius:50%;
+}
