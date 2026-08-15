@@ -2077,3 +2077,44 @@ textarea{
     box-sizing:border-box;
   }
 }
+
+
+/* v5.14 — hard fix for native iPhone date/time overflow */
+@media(max-width:768px){
+  .calendar-match-date-grid{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+  }
+
+  .calendar-match-date-grid > label{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow:hidden !important;
+    box-sizing:border-box !important;
+  }
+
+  .calendar-match-date-grid input[type="date"],
+  .calendar-match-date-grid input[type="time"]{
+    display:block !important;
+    width:100% !important;
+    inline-size:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    box-sizing:border-box !important;
+    margin:0 !important;
+  }
+
+  /* iOS can give date/time controls an intrinsic minimum width */
+  .calendar-match-edit{
+    contain:layout;
+  }
+
+  .calendar-match-modal-card{
+    padding-left:20px !important;
+    padding-right:20px !important;
+  }
+}
