@@ -2013,3 +2013,18 @@ textarea{
   z-index:8;
   border-radius:50%;
 }
+
+
+/* v5.12 — Match transfer button matches Edit button */
+.calendar-match-view-actions .transfer-match-btn{
+  border-color:rgba(255,255,255,.14) !important;
+  background:#171717 !important;
+  border-radius:10px !important;
+  box-shadow:none !important;
+  color:#e5c66f !important;
+  font-weight:900 !important;
+}
+.calendar-match-view-actions .transfer-match-btn:hover,
+.calendar-match-view-actions .transfer-match-btn:active{
+  background:#1c1c1c !important;
+}
