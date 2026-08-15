@@ -269,6 +269,8 @@ let gatheringsMode="active";
 let gatheringsPollTimer=null;
 
 
+let homeNextEventData=null;
+let homeNextEventTimer=null;
 let calendarMatches=[];
 let calendarGatherings=[];
 let calendarCursor=new Date();
@@ -380,6 +382,7 @@ async function refreshAuth(){
   await refreshPushSettings();
   await refreshChatAuthState();
   await refreshGatheringsAuthState();
+  await loadHomeNextEvent();
   refreshTacticalBoardPermissions();
   if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
   if(authUser && $("screen-chat")?.classList.contains("active")){
@@ -666,6 +669,7 @@ function navigate(name){
   const nav=$("bottomNav");
   nav.classList.toggle("hidden-nav",name==="home" || name==="calendar");
   nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===(name==="tactical-board"?"tactics":name)));
+  if(name==="home") loadHomeNextEvent();
   if(name==="players") renderPlayers();
   if(name==="tactics") renderPitch();
   if(name==="squads") renderSquads();
@@ -1422,6 +1426,7 @@ async function loadGatherings(){
   gatheringVotes=vData||[];
   await loadTeamProfiles();
   renderGatherings();
+  if($("screen-home")?.classList.contains("active"))loadHomeNextEvent();
 }
 
 function votesForGathering(id){
@@ -2429,6 +2434,204 @@ $("pushGatheringsToggle")?.addEventListener("change",updatePushPreferences);
 
 
 
+
+/* Home — nearest event */
+function homeEventDate(dateStr,timeStr){
+  if(!dateStr)return null;
+  const time=(timeStr||"23:59").slice(0,5);
+  const d=new Date(`${dateStr}T${time}:00`);
+  return Number.isNaN(d.getTime())?null:d;
+}
+
+function homeEventDateLabel(dateStr,timeStr){
+  const eventDate=homeEventDate(dateStr,timeStr);
+  if(!eventDate)return "";
+  const now=new Date();
+  const sameDay=
+    eventDate.getFullYear()===now.getFullYear() &&
+    eventDate.getMonth()===now.getMonth() &&
+    eventDate.getDate()===now.getDate();
+
+  const time=timeStr?timeStr.slice(0,5):"";
+  if(sameDay)return `СЬОГОДНІ${time?` • ${time}`:""}`;
+
+  const date=new Intl.DateTimeFormat("uk-UA",{day:"2-digit",month:"2-digit"}).format(eventDate);
+  return `${date}${time?` • ${time}`:""}`;
+}
+
+function homeCountdownLabel(target){
+  if(!target)return "";
+  let ms=target.getTime()-Date.now();
+  if(ms<=0)return "ЗАРАЗ";
+
+  const totalMinutes=Math.ceil(ms/60000);
+  const days=Math.floor(totalMinutes/1440);
+  const hours=Math.floor((totalMinutes%1440)/60);
+  const minutes=totalMinutes%60;
+
+  if(days>0){
+    if(hours>0)return `ЧЕРЕЗ ${days} Д ${hours} ГОД`;
+    return `ЧЕРЕЗ ${days} Д`;
+  }
+  if(hours>0){
+    if(minutes>0)return `ЧЕРЕЗ ${hours} ГОД ${minutes} ХВ`;
+    return `ЧЕРЕЗ ${hours} ГОД`;
+  }
+  return `ЧЕРЕЗ ${Math.max(1,minutes)} ХВ`;
+}
+
+function homeShortTeamName(name){
+  const value=(name||"").trim();
+  if(!value)return "КОМАНДА";
+  return value.length>14?value.slice(0,13)+"…":value;
+}
+
+function setHomeEventLogo(id,src,name){
+  const img=$(id);
+  if(!img)return;
+  const wrap=img.closest(".home-next-logo");
+  if(src){
+    img.src=src;
+    img.classList.remove("hidden");
+    wrap?.classList.add("has-image");
+    wrap?.style.setProperty("--fallback-text","''");
+  }else{
+    img.removeAttribute("src");
+    img.classList.add("hidden");
+    wrap?.classList.remove("has-image");
+    if(wrap)wrap.dataset.fallback=(name||"?").trim().charAt(0).toUpperCase()||"?";
+  }
+}
+
+function renderHomeNextEvent(){
+  const empty=$("homeNextEmpty");
+  const gatheringBox=$("homeNextGathering");
+  const matchBox=$("homeNextMatch");
+  if(!empty||!gatheringBox||!matchBox)return;
+
+  const event=homeNextEventData;
+  empty.classList.toggle("hidden",!!event);
+  gatheringBox.classList.add("hidden");
+  matchBox.classList.add("hidden");
+
+  if(!event)return;
+
+  if(event.type==="gathering"){
+    gatheringBox.classList.remove("hidden");
+    $("homeNextGatheringTitle").textContent=event.title||"Збір команди";
+    $("homeNextGatheringDate").textContent=homeEventDateLabel(event.date,event.time);
+    $("homeNextGatheringCountdown").textContent=homeCountdownLabel(event.when);
+  }else{
+    matchBox.classList.remove("hidden");
+    $("homeNextHomeName").textContent=homeShortTeamName(event.homeName||"Centuria Athletics");
+    $("homeNextAwayName").textContent=homeShortTeamName(event.awayName||"Суперник");
+    $("homeNextMatchDate").textContent=homeEventDateLabel(event.date,event.time);
+    $("homeNextMatchCountdown").textContent=homeCountdownLabel(event.when);
+    setHomeEventLogo("homeNextHomeLogo",event.homeImage,event.homeName);
+    setHomeEventLogo("homeNextAwayLogo",event.awayImage,event.awayName);
+  }
+}
+
+async function loadHomeNextEvent(){
+  if(!sb){
+    homeNextEventData=null;
+    renderHomeNextEvent();
+    return;
+  }
+
+  const matchPromise=sb.from("calendar_matches")
+    .select("id,match_date,match_time,home_team_name,home_team_image,away_team_name,away_team_image,competition_name")
+    .order("match_date",{ascending:true});
+
+  const gatheringPromise=authUser
+    ? sb.from("gatherings")
+        .select("id,title,gathering_date,gathering_time,is_closed")
+        .eq("is_closed",false)
+        .order("gathering_date",{ascending:true})
+    : Promise.resolve({data:[],error:null});
+
+  try{
+    const [{data:matches,error:mErr},{data:gathers,error:gErr}]=await Promise.all([matchPromise,gatheringPromise]);
+    if(mErr)console.warn("Home next match load failed",mErr);
+    if(gErr)console.warn("Home next gathering load failed",gErr);
+
+    const now=Date.now();
+    const candidates=[];
+
+    (matches||[]).forEach(m=>{
+      const when=homeEventDate(m.match_date,m.match_time);
+      if(when && when.getTime()>=now-60000){
+        candidates.push({
+          type:"match",
+          id:m.id,
+          date:m.match_date,
+          time:m.match_time,
+          when,
+          homeName:m.home_team_name||"Centuria Athletics",
+          homeImage:m.home_team_image||null,
+          awayName:m.away_team_name||"Суперник",
+          awayImage:m.away_team_image||null
+        });
+      }
+    });
+
+    (gathers||[]).forEach(g=>{
+      const when=homeEventDate(g.gathering_date,g.gathering_time);
+      if(when && when.getTime()>=now-60000){
+        candidates.push({
+          type:"gathering",
+          id:g.id,
+          title:g.title||"Збір команди",
+          date:g.gathering_date,
+          time:g.gathering_time,
+          when
+        });
+      }
+    });
+
+    candidates.sort((a,b)=>a.when-b.when);
+    homeNextEventData=candidates[0]||null;
+    renderHomeNextEvent();
+  }catch(err){
+    console.warn("Home next event error",err);
+    homeNextEventData=null;
+    renderHomeNextEvent();
+  }
+
+  if(!homeNextEventTimer){
+    homeNextEventTimer=setInterval(()=>{
+      if(homeNextEventData && homeNextEventData.when.getTime()<Date.now()-60000){
+        loadHomeNextEvent();
+      }else{
+        renderHomeNextEvent();
+      }
+    },30000);
+  }
+}
+
+async function openHomeNextEvent(){
+  const event=homeNextEventData;
+  if(!event)return;
+
+  if(event.type==="gathering"){
+    navigate("gatherings");
+    return;
+  }
+
+  navigate("calendar");
+  await loadCalendarData();
+  const match=calendarMatches.find(m=>m.id===event.id);
+  if(match){
+    $("calendarMatchModal")?.classList.remove("hidden");
+    showCalendarMatchView(match);
+  }else{
+    openCalendarDay(event.date);
+  }
+}
+
+$("homeNextEvent")?.addEventListener("click",openHomeNextEvent);
+
+
 /* Calendar */
 const CALENDAR_MONTHS=["СІЧЕНЬ","ЛЮТИЙ","БЕРЕЗЕНЬ","КВІТЕНЬ","ТРАВЕНЬ","ЧЕРВЕНЬ","ЛИПЕНЬ","СЕРПЕНЬ","ВЕРЕСЕНЬ","ЖОВТЕНЬ","ЛИСТОПАД","ГРУДЕНЬ"];
 function calendarDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;}
@@ -2450,6 +2653,7 @@ async function loadCalendarData(){
   if(!mErr)calendarMatches=mData||[];
   if(!gErr)calendarGatherings=gData||[];
   renderCalendar();
+  if($("screen-home")?.classList.contains("active"))loadHomeNextEvent();
 }
 
 function renderCalendar(){

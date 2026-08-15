@@ -19,6 +19,40 @@
       <img src="home-screen.jpg" class="home-art" alt="Centuria Athletics">
       <button class="hotspot hs-chat" data-nav="chat" aria-label="Чат"></button>
       <div id="homeOnlineBadge" class="home-online-badge" aria-label="Користувачів онлайн"><span class="home-online-dot"></span><span id="homeOnlineCount">0</span></div>
+
+      <button id="homeNextEvent" class="home-next-event" type="button" data-viewer-allowed="true" aria-label="Найближча подія">
+        <div id="homeNextEmpty" class="home-next-empty">
+          <div class="home-next-marquee"><span>НЕМАЄ ЗАПЛАНОВАНИХ ПОДІЙ</span><span>НЕМАЄ ЗАПЛАНОВАНИХ ПОДІЙ</span></div>
+        </div>
+
+        <div id="homeNextGathering" class="home-next-content home-next-gathering hidden">
+          <div class="home-next-type">ЗБІР</div>
+          <div class="home-next-gathering-icon">✓</div>
+          <div class="home-next-main">
+            <strong id="homeNextGatheringTitle">Збір команди</strong>
+            <span id="homeNextGatheringDate">—</span>
+          </div>
+          <div class="home-next-countdown" id="homeNextGatheringCountdown">—</div>
+        </div>
+
+        <div id="homeNextMatch" class="home-next-content home-next-match hidden">
+          <div class="home-next-type">МАТЧ</div>
+          <div class="home-next-team">
+            <div class="home-next-logo"><img id="homeNextHomeLogo" alt=""></div>
+            <small id="homeNextHomeName">Centuria</small>
+          </div>
+          <div class="home-next-vs">
+            <strong>VS</strong>
+            <span id="homeNextMatchDate">—</span>
+            <b id="homeNextMatchCountdown">—</b>
+          </div>
+          <div class="home-next-team">
+            <div class="home-next-logo"><img id="homeNextAwayLogo" alt=""></div>
+            <small id="homeNextAwayName">Суперник</small>
+          </div>
+        </div>
+      </button>
+
       <button class="hotspot hs-gatherings" data-nav="gatherings" aria-label="Голосування / Збори"></button>
       <button class="hotspot hs-players" data-nav="players" aria-label="Гравці"></button>
       <button class="hotspot hs-tactics" data-nav="tactics" aria-label="Тактика"></button>
