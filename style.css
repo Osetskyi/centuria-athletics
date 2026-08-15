@@ -2118,3 +2118,125 @@ textarea{
     padding-right:20px !important;
   }
 }
+
+
+/* v5.15 — definitive iOS Safari date/time sizing */
+@supports (-webkit-touch-callout: none) {
+  @media (max-width:768px) {
+    .calendar-match-date-grid{
+      display:block !important;
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      overflow:visible !important;
+    }
+
+    .calendar-match-date-grid > label{
+      display:block !important;
+      width:100% !important;
+      max-width:100% !important;
+      min-width:0 !important;
+      margin:0 0 12px 0 !important;
+      padding:0 !important;
+      box-sizing:border-box !important;
+      overflow:visible !important;
+    }
+
+    .calendar-match-date-grid input[type="date"],
+    .calendar-match-date-grid input[type="time"]{
+      -webkit-appearance:none !important;
+      appearance:none !important;
+      display:block !important;
+      position:relative !important;
+      width:calc(100vw - 82px) !important;
+      inline-size:calc(100vw - 82px) !important;
+      max-width:calc(100vw - 82px) !important;
+      min-width:0 !important;
+      height:52px !important;
+      margin:6px 0 0 0 !important;
+      padding:0 12px !important;
+      box-sizing:border-box !important;
+      overflow:hidden !important;
+      border-radius:10px !important;
+    }
+
+    .calendar-match-date-grid input[type="date"]::-webkit-date-and-time-value,
+    .calendar-match-date-grid input[type="time"]::-webkit-date-and-time-value{
+      min-width:0 !important;
+      width:auto !important;
+      text-align:center !important;
+      margin:0 !important;
+    }
+
+    .calendar-match-date-grid input[type="date"]::-webkit-calendar-picker-indicator,
+    .calendar-match-date-grid input[type="time"]::-webkit-calendar-picker-indicator{
+      margin:0 !important;
+      padding:0 !important;
+      flex:0 0 auto !important;
+    }
+  }
+
+  @media (max-width:390px) {
+    .calendar-match-date-grid input[type="date"],
+    .calendar-match-date-grid input[type="time"]{
+      width:calc(100vw - 72px) !important;
+      inline-size:calc(100vw - 72px) !important;
+      max-width:calc(100vw - 72px) !important;
+    }
+  }
+}
+
+
+/* v5.16 — smaller centered date/time controls */
+@media(max-width:768px){
+  .calendar-match-date-grid{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    width:100% !important;
+    max-width:100% !important;
+    gap:10px !important;
+  }
+
+  .calendar-match-date-grid > label{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    width:78% !important;
+    max-width:310px !important;
+    min-width:0 !important;
+    margin:0 auto !important;
+    box-sizing:border-box !important;
+  }
+
+  .calendar-match-date-grid > label{
+    text-align:center !important;
+  }
+
+  .calendar-match-date-grid input[type="date"],
+  .calendar-match-date-grid input[type="time"]{
+    display:block !important;
+    width:100% !important;
+    inline-size:100% !important;
+    max-width:310px !important;
+    min-width:0 !important;
+    height:48px !important;
+    margin:6px auto 0 !important;
+    padding:0 10px !important;
+    box-sizing:border-box !important;
+    text-align:center !important;
+  }
+}
+
+@supports (-webkit-touch-callout: none){
+  @media(max-width:768px){
+    .calendar-match-date-grid input[type="date"],
+    .calendar-match-date-grid input[type="time"]{
+      width:100% !important;
+      inline-size:100% !important;
+      max-width:310px !important;
+      margin-left:auto !important;
+      margin-right:auto !important;
+    }
+  }
+}
