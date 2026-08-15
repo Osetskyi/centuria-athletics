@@ -268,6 +268,15 @@ let gatheringVotes=[];
 let gatheringsMode="active";
 let gatheringsPollTimer=null;
 
+
+let calendarMatches=[];
+let calendarGatherings=[];
+let calendarCursor=new Date();
+calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth(),1);
+let calendarSelectedDate=null;
+let calendarSelectedMatch=null;
+let calendarDraftImages={competition:null,home:null,away:null};
+
 let tacticalBoards=[];
 let tacticalBoardId=null;
 let tbSelected=null;
@@ -286,7 +295,7 @@ function canEditSite(){
 
 function applyPermissions(){
   const editable = canEditSite();
-  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn"].forEach(id=>{
+  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn","saveCalendarMatchBtn","editCalendarMatchBtn","transferCalendarMatchBtn","confirmTransferMatchBtn","cancelTransferMatchBtn","deleteCalendarMatchBtn","addAnotherCalendarMatchBtn","chooseMatchCompetitionImage","chooseMatchHomeImage","chooseMatchAwayImage"].forEach(id=>{
     const el=$(id);
     if(el) el.classList.toggle("permission-hidden", !editable);
   });
@@ -294,6 +303,7 @@ function applyPermissions(){
   document.body.classList.toggle("read-only", !editable);
   refreshEditOnlyVisibility();
   refreshTacticalBoardPermissions();
+  refreshCalendarPermissions();
 
   const btn=$("authBtn");
   if(btn){
@@ -323,6 +333,18 @@ function refreshEditOnlyVisibility(){
   });
 }
 
+
+
+
+function refreshCalendarPermissions(){
+  const editable=canEditSite();
+  document.querySelectorAll(".calendar-match-edit-only").forEach(el=>el.classList.toggle("permission-hidden",!editable));
+  const editing=!$("calendarMatchEdit")?.classList.contains("hidden");
+  if(editing && !editable){
+    $("calendarMatchEdit")?.classList.add("hidden");
+    if(calendarSelectedMatch)$("calendarMatchView")?.classList.remove("hidden");
+  }
+}
 
 function refreshTacticalBoardPermissions(){
   const editable=canEditSite();
@@ -642,13 +664,14 @@ function navigate(name){
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   $("screen-"+name).classList.add("active");
   const nav=$("bottomNav");
-  nav.classList.toggle("hidden-nav",name==="home");
+  nav.classList.toggle("hidden-nav",name==="home" || name==="calendar");
   nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===(name==="tactical-board"?"tactics":name)));
   if(name==="players") renderPlayers();
   if(name==="tactics") renderPitch();
   if(name==="squads") renderSquads();
   if(name==="chat") openChatScreen();
   if(name==="gatherings") openGatheringsScreen();
+  if(name==="calendar") openCalendarScreen();
   if(name==="tactical-board") openTacticalBoardScreen();
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
@@ -2404,6 +2427,334 @@ $("pushGatheringsToggle")?.addEventListener("change",updatePushPreferences);
 
 
 
+
+
+/* Calendar */
+const CALENDAR_MONTHS=["СІЧЕНЬ","ЛЮТИЙ","БЕРЕЗЕНЬ","КВІТЕНЬ","ТРАВЕНЬ","ЧЕРВЕНЬ","ЛИПЕНЬ","СЕРПЕНЬ","ВЕРЕСЕНЬ","ЖОВТЕНЬ","ЛИСТОПАД","ГРУДЕНЬ"];
+function calendarDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;}
+function calendarTodayKey(){const d=new Date();return calendarDateKey(d.getFullYear(),d.getMonth(),d.getDate());}
+function formatCalendarDate(key){
+  if(!key)return "—";const [y,m,d]=key.split("-").map(Number);
+  return new Intl.DateTimeFormat("uk-UA",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(new Date(y,m-1,d));
+}
+
+async function loadCalendarData(){
+  if(!sb)return;
+  const matchQuery=sb.from("calendar_matches").select("*").order("match_date",{ascending:true});
+  const gathersQuery=authUser
+    ? sb.from("gatherings").select("id,title,gathering_date,gathering_time,note,is_closed").order("gathering_date",{ascending:true})
+    : Promise.resolve({data:[],error:null});
+  const [{data:mData,error:mErr},{data:gData,error:gErr}]=await Promise.all([matchQuery,gathersQuery]);
+  if(mErr)console.error("Calendar matches load",mErr);
+  if(gErr)console.error("Calendar gatherings load",gErr);
+  if(!mErr)calendarMatches=mData||[];
+  if(!gErr)calendarGatherings=gData||[];
+  renderCalendar();
+}
+
+function renderCalendar(){
+  const grid=$("calendarGrid");if(!grid)return;
+  const y=calendarCursor.getFullYear(),m=calendarCursor.getMonth();
+  $("calendarMonthTitle").textContent=CALENDAR_MONTHS[m];
+  $("calendarYearTitle").textContent=String(y);
+  const first=new Date(y,m,1);
+  const offset=(first.getDay()+6)%7;
+  const days=new Date(y,m+1,0).getDate();
+  const prevDays=new Date(y,m,0).getDate();
+  const today=calendarTodayKey();
+  const cells=[];
+  for(let i=0;i<42;i++){
+    let cy=y,cm=m,day=i-offset+1,outside=false;
+    if(day<1){cm=m-1;if(cm<0){cm=11;cy=y-1}day=prevDays+day;outside=true;}
+    else if(day>days){day-=days;cm=m+1;if(cm>11){cm=0;cy=y+1}outside=true;}
+    const key=calendarDateKey(cy,cm,day);
+    const dayMatches=calendarMatches.filter(v=>v.match_date===key);
+    const gathers=calendarGatherings.filter(v=>v.gathering_date===key && !v.is_closed);
+    cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""}" data-calendar-date="${key}" data-viewer-allowed="true">
+      <span class="calendar-day-number">${day}</span>
+      <span class="calendar-day-events">
+        ${dayMatches.length?`<span class="calendar-event-badge match">⚽ <b>${dayMatches.length>1?`МАТЧІ ${dayMatches.length}`:"МАТЧ"}</b></span>`:""}
+        ${gathers.length?`<span class="calendar-event-badge gathering">✓ <b>${gathers.length>1?`ЗБОРИ ${gathers.length}`:"ЗБІР"}</b></span>`:""}
+      </span>
+    </button>`);
+  }
+  grid.innerHTML=cells.join("");
+  grid.querySelectorAll("[data-calendar-date]").forEach(btn=>btn.addEventListener("click",()=>openCalendarDay(btn.dataset.calendarDate)));
+}
+
+async function openCalendarScreen(){
+  await loadCalendarData();
+}
+
+function showCalendarMatchView(match){
+  calendarSelectedMatch=match;
+  calendarSelectedDate=match.match_date;
+  $("calendarDayMatchesPane")?.classList.add("hidden");
+  $("calendarMatchEdit").classList.add("hidden");
+  $("calendarTransferBox")?.classList.add("hidden");
+  $("calendarMatchView").classList.remove("hidden");
+  const compWrap=$("matchViewCompetition");
+  const hasComp=Boolean(match.competition_image||match.competition_name);
+  compWrap.classList.toggle("hidden",!hasComp);
+  const compImg=$("matchViewCompetitionImg");
+  if(match.competition_image){compImg.src=match.competition_image;compImg.classList.remove("hidden");}else{compImg.removeAttribute("src");compImg.classList.add("hidden");}
+  $("matchViewCompetitionName").textContent=match.competition_name||"";
+  setCalendarViewLogo("matchViewHomeImg",match.home_team_image);
+  setCalendarViewLogo("matchViewAwayImg",match.away_team_image);
+  $("matchViewHomeName").textContent=match.home_team_name||"Centuria Athletics";
+  $("matchViewAwayName").textContent=match.away_team_name||"Суперник";
+  $("matchViewTime").textContent=match.match_time?match.match_time.slice(0,5):"ЧАС НЕ ВКАЗАНО";
+  $("matchViewDate").textContent=formatCalendarDate(match.match_date);
+  $("calendarMatchTitle").textContent="МАТЧ";
+  refreshCalendarPermissions();
+}
+
+function setCalendarViewLogo(id,src){
+  const img=$(id);if(!img)return;
+  if(src){img.src=src;img.classList.remove("hidden");img.parentElement?.classList.add("has-image");}
+  else{img.removeAttribute("src");img.classList.add("hidden");img.parentElement?.classList.remove("has-image");}
+}
+
+function setMatchPreview(id,src,label){
+  const box=$(id);if(!box)return;
+  box.innerHTML=src?`<img src="${src}" alt="">`:`<span>${label}</span>`;
+}
+
+function showCalendarMatchEdit(match,dateKey){
+  if(!canEditSite()){if(match)showCalendarMatchView(match);return;}
+  $("calendarDayMatchesPane")?.classList.add("hidden");
+  $("calendarTransferBox")?.classList.add("hidden");
+  calendarSelectedMatch=match||null;
+  calendarSelectedDate=dateKey || match?.match_date || calendarTodayKey();
+  calendarDraftImages={competition:match?.competition_image||null,home:match?.home_team_image||null,away:match?.away_team_image||null};
+  $("calendarMatchView").classList.add("hidden");
+  $("calendarMatchEdit").classList.remove("hidden");
+  $("calendarMatchTitle").textContent=match?"РЕДАГУВАННЯ МАТЧУ":"НОВИЙ МАТЧ";
+  $("matchCompetitionName").value=match?.competition_name||"";
+  $("matchHomeName").value=match?.home_team_name||"Centuria Athletics";
+  $("matchAwayName").value=match?.away_team_name||"";
+  $("matchDateInput").value=calendarSelectedDate;
+  $("matchTimeInput").value=match?.match_time?match.match_time.slice(0,5):"21:00";
+  $("calendarMatchStatus").textContent="";
+  setMatchPreview("matchCompetitionPreview",calendarDraftImages.competition,"ЛОГО ЛІГИ");
+  setMatchPreview("matchHomePreview",calendarDraftImages.home,"КОМАНДА 1");
+  setMatchPreview("matchAwayPreview",calendarDraftImages.away,"КОМАНДА 2");
+  refreshCalendarPermissions();
+}
+
+function renderCalendarDayMatches(dateKey){
+  calendarSelectedDate=dateKey;
+  calendarSelectedMatch=null;
+
+  const pane=$("calendarDayMatchesPane");
+  const list=$("calendarDayMatchesList");
+  if(!pane||!list)return;
+
+  $("calendarMatchView")?.classList.add("hidden");
+  $("calendarMatchEdit")?.classList.add("hidden");
+  $("calendarTransferBox")?.classList.add("hidden");
+
+  const matches=calendarMatches
+    .filter(v=>v.match_date===dateKey)
+    .sort((a,b)=>(a.match_time||"99:99").localeCompare(b.match_time||"99:99"));
+
+  $("calendarMatchTitle").textContent=matches.length>1?`МАТЧІ — ${matches.length}`:"МАТЧ";
+  $("calendarDayMatchesDate").textContent=formatCalendarDate(dateKey);
+  list.innerHTML="";
+
+  matches.forEach(match=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className="calendar-day-match-choice";
+    btn.dataset.viewerAllowed="true";
+
+    const time=match.match_time?match.match_time.slice(0,5):"—";
+    const league=match.competition_name||"Матч";
+    btn.innerHTML=`
+      <span class="calendar-day-match-time">${esc(time)}</span>
+      <span class="calendar-day-match-copy">
+        <small>${esc(league)}</small>
+        <strong>${esc(match.home_team_name||"Centuria Athletics")} <b>VS</b> ${esc(match.away_team_name||"Суперник")}</strong>
+      </span>
+      <span class="calendar-day-match-open">›</span>`;
+    btn.addEventListener("click",()=>showCalendarMatchView(match));
+    list.appendChild(btn);
+  });
+
+  pane.classList.remove("hidden");
+  refreshCalendarPermissions();
+}
+
+function openCalendarDay(dateKey){
+  calendarSelectedDate=dateKey;
+  const matches=calendarMatches.filter(v=>v.match_date===dateKey);
+
+  if(!matches.length && !canEditSite()){
+    const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
+    showToast(gathers.length?"Цього дня є збір. Матчу немає.":"Матчу цього дня немає");
+    return;
+  }
+
+  $("calendarMatchModal").classList.remove("hidden");
+
+  if(matches.length===0){
+    showCalendarMatchEdit(null,dateKey);
+  }else if(matches.length===1){
+    showCalendarMatchView(matches[0]);
+  }else{
+    renderCalendarDayMatches(dateKey);
+  }
+}
+
+function closeCalendarMatchModal(){
+  $("calendarMatchModal")?.classList.add("hidden");
+  $("calendarDayMatchesPane")?.classList.add("hidden");
+  $("calendarTransferBox")?.classList.add("hidden");
+  calendarDraftImages={competition:null,home:null,away:null};
+}
+
+async function chooseCalendarImage(inputId,kind,previewId,label){
+  const input=$(inputId);if(!input)return;
+  input.value="";input.click();
+  input.onchange=async()=>{
+    const file=input.files?.[0];if(!file)return;
+    if(!["image/jpeg","image/png","image/webp"].includes(file.type)){showToast("Потрібне JPG, PNG або WEBP");return;}
+    try{
+      const data=await resizeImage(file,420,420,.9);
+      calendarDraftImages[kind]=data;
+      setMatchPreview(previewId,data,label);
+    }catch(err){console.error(err);showToast("Не вдалося завантажити зображення");}
+  };
+}
+
+
+function openCalendarMatchTransfer(){
+  if(!calendarSelectedMatch || !canEditSite())return;
+  const box=$("calendarTransferBox");
+  if(!box)return;
+  $("transferMatchDateInput").value=calendarSelectedMatch.match_date||calendarSelectedDate||calendarTodayKey();
+  $("calendarTransferStatus").textContent="";
+  box.classList.remove("hidden");
+  setTimeout(()=>$("transferMatchDateInput")?.focus(),50);
+}
+
+function closeCalendarMatchTransfer(){
+  $("calendarTransferBox")?.classList.add("hidden");
+  if($("calendarTransferStatus"))$("calendarTransferStatus").textContent="";
+}
+
+async function confirmCalendarMatchTransfer(){
+  if(!sb||!authUser||!calendarSelectedMatch||!canEditSite())return;
+  const newDate=$("transferMatchDateInput")?.value;
+  if(!newDate){
+    $("calendarTransferStatus").textContent="Вибери нову дату.";
+    return;
+  }
+  if(newDate===calendarSelectedMatch.match_date){
+    $("calendarTransferStatus").textContent="Це вже поточна дата матчу.";
+    return;
+  }
+
+  const btn=$("confirmTransferMatchBtn");
+  if(btn)btn.disabled=true;
+  $("calendarTransferStatus").textContent="Перенесення…";
+
+  try{
+    const {data,error}=await sb.from("calendar_matches")
+      .update({match_date:newDate})
+      .eq("id",calendarSelectedMatch.id)
+      .select("*")
+      .single();
+
+    if(error)throw error;
+
+    calendarSelectedMatch=data;
+    calendarSelectedDate=data.match_date;
+
+    const [y,m]=newDate.split("-").map(Number);
+    calendarCursor=new Date(y,m-1,1);
+
+    await loadCalendarData();
+    closeCalendarMatchTransfer();
+    showCalendarMatchView(data);
+    showToast("Матч перенесено ✓");
+  }catch(err){
+    console.error(err);
+    $("calendarTransferStatus").textContent="Не вдалося перенести матч.";
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
+async function saveCalendarMatch(){
+  if(!sb||!authUser||!canEditSite()){showToast("Потрібні права редактора");return;}
+  const date=$("matchDateInput").value;
+  const home=$("matchHomeName").value.trim()||"Centuria Athletics";
+  const away=$("matchAwayName").value.trim();
+  if(!date||!away){$("calendarMatchStatus").textContent="Вкажи дату та назву суперника.";return;}
+  const payload={
+    match_date:date,
+    match_time:$("matchTimeInput").value||null,
+    competition_name:$("matchCompetitionName").value.trim()||null,
+    competition_image:calendarDraftImages.competition,
+    home_team_name:home,
+    home_team_image:calendarDraftImages.home,
+    away_team_name:away,
+    away_team_image:calendarDraftImages.away
+  };
+  const btn=$("saveCalendarMatchBtn");btn.disabled=true;$("calendarMatchStatus").textContent="Збереження…";
+  try{
+    let data,error;
+    if(calendarSelectedMatch){
+      ({data,error}=await sb.from("calendar_matches").update(payload).eq("id",calendarSelectedMatch.id).select("*").single());
+    }else{
+      ({data,error}=await sb.from("calendar_matches").insert({...payload,created_by:authUser.id}).select("*").single());
+    }
+    if(error)throw error;
+    calendarSelectedMatch=data;calendarSelectedDate=data.match_date;
+    await loadCalendarData();showCalendarMatchView(data);showToast("Матч збережено ✓");
+  }catch(err){
+    console.error(err);
+    $("calendarMatchStatus").textContent="Не вдалося зберегти матч.";
+  }finally{btn.disabled=false;}
+}
+
+async function deleteCalendarMatch(){
+  if(!sb||!calendarSelectedMatch||!canEditSite())return;
+  if(!confirm("Видалити цей матч із календаря?"))return;
+  const {error}=await sb.from("calendar_matches").delete().eq("id",calendarSelectedMatch.id);
+  if(error){console.error(error);showToast("Не вдалося видалити матч");return;}
+  const deletedDate=calendarSelectedMatch.match_date;
+  calendarSelectedMatch=null;
+  await loadCalendarData();
+  const remaining=calendarMatches.filter(v=>v.match_date===deletedDate);
+  if(remaining.length>1){
+    renderCalendarDayMatches(deletedDate);
+  }else if(remaining.length===1){
+    showCalendarMatchView(remaining[0]);
+  }else{
+    closeCalendarMatchModal();
+  }
+  showToast("Матч видалено");
+}
+
+$("calendarBackHomeBtn")?.addEventListener("click",()=>navigate("home"));
+$("calendarPrevBtn")?.addEventListener("click",()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar();});
+$("calendarNextBtn")?.addEventListener("click",()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar();});
+$("closeCalendarMatchModal")?.addEventListener("click",closeCalendarMatchModal);
+document.querySelectorAll("[data-close-calendar-match]").forEach(el=>el.addEventListener("click",closeCalendarMatchModal));
+$("editCalendarMatchBtn")?.addEventListener("click",()=>showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate));
+$("addAnotherCalendarMatchBtn")?.addEventListener("click",()=>showCalendarMatchEdit(null,calendarSelectedDate));
+$("transferCalendarMatchBtn")?.addEventListener("click",openCalendarMatchTransfer);
+$("cancelTransferMatchBtn")?.addEventListener("click",closeCalendarMatchTransfer);
+$("confirmTransferMatchBtn")?.addEventListener("click",confirmCalendarMatchTransfer);
+$("deleteCalendarMatchBtn")?.addEventListener("click",deleteCalendarMatch);
+$("saveCalendarMatchBtn")?.addEventListener("click",saveCalendarMatch);
+$("chooseMatchCompetitionImage")?.addEventListener("click",()=>chooseCalendarImage("matchCompetitionImageInput","competition","matchCompetitionPreview","ЛОГО ЛІГИ"));
+$("chooseMatchHomeImage")?.addEventListener("click",()=>chooseCalendarImage("matchHomeImageInput","home","matchHomePreview","КОМАНДА 1"));
+$("chooseMatchAwayImage")?.addEventListener("click",()=>chooseCalendarImage("matchAwayImageInput","away","matchAwayPreview","КОМАНДА 2"));
+
+
 /* Tactical board */
 function cloneTacticalState(state){
   try{return JSON.parse(JSON.stringify(state||{}));}catch(_e){return {markers:[],ball:{x:50,y:70,visible:true},arrows:[]};}
@@ -2814,6 +3165,12 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"tactical_boards"},async()=>{
       await loadTacticalBoards();
     })
+    .on("postgres_changes",{event:"*",schema:"public",table:"calendar_matches"},async()=>{
+      await loadCalendarData();
+    })
+    .on("postgres_changes",{event:"*",schema:"public",table:"gatherings"},async()=>{
+      if($("screen-calendar")?.classList.contains("active"))await loadCalendarData();
+    })
     .subscribe();
 }
 
@@ -2856,5 +3213,8 @@ document.addEventListener("keydown",e=>{
   }
   if(e.key==="Escape" && $("gatheringModal") && !$("gatheringModal").classList.contains("hidden")){
     closeGatheringModal();
+  }
+  if(e.key==="Escape" && $("calendarMatchModal") && !$("calendarMatchModal").classList.contains("hidden")){
+    closeCalendarMatchModal();
   }
 });

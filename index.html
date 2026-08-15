@@ -23,9 +23,46 @@
       <button class="hotspot hs-players" data-nav="players" aria-label="Гравці"></button>
       <button class="hotspot hs-tactics" data-nav="tactics" aria-label="Тактика"></button>
       <button class="hotspot hs-squads" data-nav="squads" aria-label="Збережені склади"></button>
+
+      <button class="home-calendar-btn" data-nav="calendar" aria-label="Календар" data-viewer-allowed="true"><span>▦</span></button>
       <button class="hotspot hs-settings" data-nav="settings" aria-label="Налаштування"></button>
     </div>
   </section>
+
+
+
+  <!-- CALENDAR -->
+  <section id="screen-calendar" class="screen inner-screen calendar-screen">
+    <header class="topbar calendar-topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>КАЛЕНДАР</h1>
+        <div class="subline">МАТЧІ ТА ЗБОРИ КОМАНДИ</div>
+      </div>
+      <button type="button" id="calendarBackHomeBtn" class="dark-btn" data-viewer-allowed="true">← ГОЛОВНА</button>
+    </header>
+
+    <div class="calendar-month-bar">
+      <button type="button" id="calendarPrevBtn" class="calendar-month-arrow" data-viewer-allowed="true">‹</button>
+      <div>
+        <strong id="calendarMonthTitle">—</strong>
+        <small id="calendarYearTitle">—</small>
+      </div>
+      <button type="button" id="calendarNextBtn" class="calendar-month-arrow" data-viewer-allowed="true">›</button>
+    </div>
+
+    <div class="calendar-weekdays">
+      <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span><span>ПТ</span><span>СБ</span><span>НД</span>
+    </div>
+    <div id="calendarGrid" class="calendar-grid"></div>
+
+    <div class="calendar-legend">
+      <span><i class="calendar-dot match"></i> МАТЧ</span>
+      <span><i class="calendar-dot gathering"></i> ЗБІР</span>
+    </div>
+    <div class="calendar-note">Натисни на день, щоб відкрити матч. Збори підтягуються автоматично.</div>
+  </section>
+
 
   <!-- PLAYERS -->
   <section id="screen-players" class="screen inner-screen">
@@ -605,6 +642,103 @@
 
     <button id="saveGatheringBtn" class="primary-btn full" type="button">СТВОРИТИ ЗБІР</button>
     <div id="gatheringModalStatus" class="auth-status"></div>
+  </div>
+</div>
+
+
+
+<div id="calendarMatchModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="calendarMatchTitle">
+  <div class="modal-backdrop" data-close-calendar-match></div>
+  <div class="modal-card calendar-match-modal-card">
+    <button id="closeCalendarMatchModal" class="modal-close" type="button" data-viewer-allowed="true">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2 id="calendarMatchTitle">МАТЧ</h2>
+
+    <div id="calendarDayMatchesPane" class="calendar-day-matches-pane hidden">
+      <div class="calendar-day-matches-head">
+        <strong id="calendarDayMatchesDate">—</strong>
+        <small>Вибери матч цього дня</small>
+      </div>
+      <div id="calendarDayMatchesList" class="calendar-day-matches-list"></div>
+      <button id="addAnotherCalendarMatchBtn" class="primary-btn full calendar-match-edit-only" type="button">＋ ДОДАТИ ЩЕ МАТЧ</button>
+    </div>
+
+    <div id="calendarMatchView" class="calendar-match-view hidden">
+      <div id="matchViewCompetition" class="match-view-competition hidden">
+        <img id="matchViewCompetitionImg" alt="Ліга">
+        <strong id="matchViewCompetitionName"></strong>
+      </div>
+      <div class="match-view-teams">
+        <div class="match-view-team">
+          <div class="match-view-logo"><img id="matchViewHomeImg" alt="Команда 1"></div>
+          <strong id="matchViewHomeName">Centuria Athletics</strong>
+        </div>
+        <div class="match-view-vs">
+          <span>VS</span>
+          <strong id="matchViewTime">—</strong>
+          <small id="matchViewDate">—</small>
+        </div>
+        <div class="match-view-team">
+          <div class="match-view-logo"><img id="matchViewAwayImg" alt="Команда 2"></div>
+          <strong id="matchViewAwayName">Суперник</strong>
+        </div>
+      </div>
+      <div class="calendar-match-view-actions calendar-match-edit-only">
+        <button id="editCalendarMatchBtn" class="secondary-btn" type="button">РЕДАГУВАТИ</button>
+        <button id="transferCalendarMatchBtn" class="secondary-btn transfer-match-btn" type="button">ПЕРЕНЕСТИ МАТЧ</button>
+        <button id="deleteCalendarMatchBtn" class="danger-btn" type="button">ВИДАЛИТИ</button>
+      </div>
+
+      <div id="calendarTransferBox" class="calendar-transfer-box hidden calendar-match-edit-only">
+        <label>НОВА ДАТА
+          <input id="transferMatchDateInput" type="date">
+        </label>
+        <div class="calendar-transfer-actions">
+          <button id="cancelTransferMatchBtn" class="secondary-btn" type="button">СКАСУВАТИ</button>
+          <button id="confirmTransferMatchBtn" class="primary-btn" type="button">ПЕРЕНЕСТИ</button>
+        </div>
+        <div id="calendarTransferStatus" class="auth-status"></div>
+      </div>
+    </div>
+
+    <div id="calendarMatchEdit" class="calendar-match-edit hidden">
+      <label>ЛІГА / ТУРНІР
+        <input id="matchCompetitionName" type="text" maxlength="60" placeholder="Наприклад: UCFL">
+      </label>
+      <div class="match-image-picker competition-picker">
+        <div id="matchCompetitionPreview" class="match-image-preview"><span>ЛОГО ЛІГИ</span></div>
+        <input id="matchCompetitionImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <button id="chooseMatchCompetitionImage" class="secondary-btn" type="button">ВСТАВИТИ ЗОБРАЖЕННЯ ЛІГИ</button>
+      </div>
+
+      <div class="match-team-edit-grid">
+        <div class="match-team-editor">
+          <div id="matchHomePreview" class="match-team-preview"><span>КОМАНДА 1</span></div>
+          <input id="matchHomeImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <button id="chooseMatchHomeImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
+          <input id="matchHomeName" type="text" maxlength="50" value="Centuria Athletics" placeholder="Команда 1">
+        </div>
+        <div class="match-edit-vs">VS</div>
+        <div class="match-team-editor">
+          <div id="matchAwayPreview" class="match-team-preview"><span>КОМАНДА 2</span></div>
+          <input id="matchAwayImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <button id="chooseMatchAwayImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
+          <input id="matchAwayName" type="text" maxlength="50" placeholder="Назва суперника">
+        </div>
+      </div>
+
+      <div class="form-grid calendar-match-date-grid">
+        <label>ДАТА
+          <input id="matchDateInput" type="date">
+        </label>
+        <label>ЧАС
+          <input id="matchTimeInput" type="time">
+        </label>
+      </div>
+
+      <button id="saveCalendarMatchBtn" class="primary-btn full" type="button">ЗБЕРЕГТИ МАТЧ</button>
+      <div id="calendarMatchStatus" class="auth-status"></div>
+    </div>
   </div>
 </div>
 
