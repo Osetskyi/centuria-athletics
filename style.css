@@ -2028,3 +2028,52 @@ textarea{
 .calendar-match-view-actions .transfer-match-btn:active{
   background:#1c1c1c !important;
 }
+
+
+/* v5.13 — Fix match date/time fields on phones */
+.calendar-match-date-grid{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+
+.calendar-match-date-grid label{
+  min-width:0;
+  max-width:100%;
+}
+
+.calendar-match-date-grid input{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  box-sizing:border-box;
+}
+
+@media(max-width:520px){
+  .calendar-match-date-grid{
+    display:grid !important;
+    grid-template-columns:1fr !important;
+    gap:10px !important;
+  }
+
+  .calendar-match-modal-card{
+    width:calc(100vw - 20px);
+    max-width:calc(100vw - 20px);
+    box-sizing:border-box;
+    overflow-x:hidden;
+  }
+
+  .calendar-match-edit{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+  }
+
+  .calendar-match-edit input,
+  .calendar-match-edit select,
+  .calendar-match-edit textarea,
+  .calendar-match-edit button{
+    max-width:100%;
+    box-sizing:border-box;
+  }
+}
