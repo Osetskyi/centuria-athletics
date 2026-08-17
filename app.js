@@ -4264,3 +4264,30 @@ document.addEventListener("click",e=>{
   if(!btn)return;
   applySiteTheme(btn.dataset.themeValue);
 });
+
+/* v5.30 home MVP */
+function renderHomeMvp(){
+ const card=document.getElementById("homeMvpCard"); if(!card)return;
+ try{
+  const all=[];
+  if(Array.isArray(trainingDays)&&Array.isArray(trainingStats)) trainingDays.forEach(d=>{
+   const r=trainingStats.filter(x=>x.training_day_id===d.id&&Number.isFinite(Number(x.rating)));
+   if(r.length){const mx=Math.max(...r.map(x=>Number(x.rating)));all.push({date:d.training_date||"",rating:mx,row:r.find(x=>Number(x.rating)===mx)});}
+  });
+  if(Array.isArray(calendarMatches)&&Array.isArray(officialMatchStats)) calendarMatches.forEach(m=>{
+   const r=officialMatchStats.filter(x=>x.match_id===m.id&&Number.isFinite(Number(x.rating)));
+   if(r.length){const mx=Math.max(...r.map(x=>Number(x.rating)));all.push({date:m.match_date||"",rating:mx,row:r.find(x=>Number(x.rating)===mx)});}
+  });
+  all.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const best=all[0], p=best&&players.find(x=>x.id===best.row.player_id);
+  if(!best||!p){card.classList.add("hidden");return;}
+  const img=document.getElementById("homeMvpPhoto");
+  img.src=p.cardImage||p.card_image||(typeof PLAYER_PLACEHOLDER!=="undefined"?PLAYER_PLACEHOLDER:"");
+  document.getElementById("homeMvpName").textContent=p.name||"—";
+  document.getElementById("homeMvpRating").textContent=Number(best.rating).toFixed(1);
+  card.classList.remove("hidden");
+ }catch(e){console.warn("MVP",e);card.classList.add("hidden");}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(renderHomeMvp,120));
+window.addEventListener("load",()=>setTimeout(renderHomeMvp,120));
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(renderHomeMvp,100)});

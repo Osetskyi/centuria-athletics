@@ -3853,3 +3853,479 @@ html[data-site-theme="light"] .general-stats-slide{
 }
 html[data-site-theme="light"] .settings-version{color:#8a8377!important}
 html[data-site-theme="light"] .settings-version strong{color:#96701d!important}
+
+/* v5.30 home event + MVP */
+.home-event-mvp-row{width:min(92vw,760px);margin:0 auto;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(105px,.65fr);gap:8px;align-items:stretch}
+.home-event-mvp-row>:not(.home-mvp-card){width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box}
+.home-mvp-card{position:relative;min-height:118px;border:1px solid rgba(211,174,79,.75);border-radius:16px;background:radial-gradient(circle at 50% 10%,rgba(222,186,92,.15),transparent 44%),linear-gradient(160deg,#17140f,#080808);box-shadow:inset 0 0 0 1px rgba(255,226,145,.07),0 8px 22px rgba(0,0,0,.24);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:27px 6px 9px;color:#fff;overflow:hidden}
+.home-mvp-card.hidden{display:none!important}.home-mvp-label{position:absolute;top:8px;color:#e5c35e;font-family:Georgia,serif;font-size:10px;font-weight:900;letter-spacing:2px}.home-mvp-label:after{content:"";display:block;width:38px;height:1px;margin:4px auto;background:linear-gradient(90deg,transparent,#d8b44f,transparent)}
+.home-mvp-photo{display:block;width:72px;height:58px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))}.home-mvp-name{width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:7px;font-weight:900;margin-top:2px}.home-mvp-rating{font-size:14px;font-weight:1000;color:#e8c968;margin-top:3px}
+html[data-site-theme="light"] .home-mvp-card,html.light-theme .home-mvp-card,body[data-site-theme="light"] .home-mvp-card,body.light-theme .home-mvp-card{color:#29241b!important;border-color:#cba84d!important;background:radial-gradient(circle at 50% 10%,rgba(224,185,83,.18),transparent 44%),linear-gradient(155deg,#fffefa,#f5eddb)!important;box-shadow:inset 0 0 0 1px #fff,0 7px 20px rgba(103,77,25,.12)!important}
+html[data-site-theme="light"] .home-mvp-label,html.light-theme .home-mvp-label,body[data-site-theme="light"] .home-mvp-label,body.light-theme .home-mvp-label,html[data-site-theme="light"] .home-mvp-rating,html.light-theme .home-mvp-rating{color:#987019!important}
+@media(max-width:520px){.home-event-mvp-row{width:91vw;grid-template-columns:minmax(0,1.7fr) minmax(102px,.63fr);gap:7px}.home-mvp-card{min-height:110px;border-radius:14px}.home-mvp-photo{width:65px;height:52px}}
+
+
+/* ==========================================================
+   v5.31 — FULL LIGHT THEME REFINEMENT
+   Visual target: near-white / milk / restrained gold / graphite
+   inspired by the approved light home screen.
+   ========================================================== */
+
+html[data-site-theme="light"],
+html.light-theme{
+  --ca-light-bg:#fbfaf6;
+  --ca-light-bg-2:#f6f2e8;
+  --ca-light-card:#fffefa;
+  --ca-light-card-2:#fbf7ed;
+  --ca-light-text:#2c2922;
+  --ca-light-muted:#8a8274;
+  --ca-light-line:#ddd4c3;
+  --ca-light-gold:#b68a28;
+  --ca-light-gold-soft:#d7b45d;
+  --ca-light-green:#4d7e58;
+  --ca-light-red:#a85149;
+  --ca-light-shadow:0 8px 24px rgba(77,59,22,.06);
+}
+
+/* Base and screen surfaces */
+html[data-site-theme="light"] body,
+html.light-theme body,
+body[data-site-theme="light"],
+body.light-theme{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(214,178,84,.055),transparent 26%),
+    var(--ca-light-bg)!important;
+  color:var(--ca-light-text)!important;
+}
+
+html[data-site-theme="light"] .inner-screen,
+html.light-theme .inner-screen,
+body[data-site-theme="light"] .inner-screen,
+body.light-theme .inner-screen{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(213,174,73,.05),transparent 25%),
+    linear-gradient(180deg,#fffefa 0%,#fbfaf6 24%,#f8f5ee 100%)!important;
+  color:var(--ca-light-text)!important;
+}
+
+/* Header */
+html[data-site-theme="light"] .topbar,
+html[data-site-theme="light"] .screen-header,
+html.light-theme .topbar,
+html.light-theme .screen-header{
+  background:rgba(255,254,250,.96)!important;
+  border-bottom:1px solid rgba(182,138,40,.22)!important;
+  box-shadow:0 4px 18px rgba(79,59,18,.045)!important;
+  backdrop-filter:blur(12px);
+}
+html[data-site-theme="light"] .topbar h1,
+html[data-site-theme="light"] .screen-header h1,
+html.light-theme .topbar h1,
+html.light-theme .screen-header h1{
+  color:#2b2822!important;
+}
+html[data-site-theme="light"] .eyebrow,
+html.light-theme .eyebrow{
+  color:var(--ca-light-gold)!important;
+}
+
+/* Main cards */
+html[data-site-theme="light"] .settings-card,
+html[data-site-theme="light"] .modal-card,
+html[data-site-theme="light"] .calendar-shell,
+html[data-site-theme="light"] .gathering-card,
+html[data-site-theme="light"] .squad-card,
+html[data-site-theme="light"] .tb-form-card,
+html[data-site-theme="light"] .player-card,
+html[data-site-theme="light"] .chat-card,
+html[data-site-theme="light"] .tactic-card,
+html.light-theme .settings-card,
+html.light-theme .modal-card,
+html.light-theme .calendar-shell,
+html.light-theme .gathering-card,
+html.light-theme .squad-card,
+html.light-theme .tb-form-card,
+html.light-theme .player-card,
+html.light-theme .chat-card,
+html.light-theme .tactic-card{
+  background:linear-gradient(180deg,rgba(255,255,252,.98),rgba(255,253,247,.98))!important;
+  border:1px solid rgba(182,138,40,.25)!important;
+  color:var(--ca-light-text)!important;
+  box-shadow:var(--ca-light-shadow)!important;
+}
+
+/* Inputs / forms */
+html[data-site-theme="light"] input,
+html[data-site-theme="light"] select,
+html[data-site-theme="light"] textarea,
+html.light-theme input,
+html.light-theme select,
+html.light-theme textarea{
+  background:#fff!important;
+  color:var(--ca-light-text)!important;
+  border:1px solid #ddd5c6!important;
+  box-shadow:inset 0 1px 2px rgba(66,51,20,.025)!important;
+}
+html[data-site-theme="light"] input:focus,
+html[data-site-theme="light"] select:focus,
+html[data-site-theme="light"] textarea:focus,
+html.light-theme input:focus,
+html.light-theme select:focus,
+html.light-theme textarea:focus{
+  border-color:#caa64d!important;
+  box-shadow:0 0 0 3px rgba(202,166,77,.10)!important;
+  outline:none!important;
+}
+html[data-site-theme="light"] label,
+html.light-theme label{
+  color:#6d665a!important;
+}
+
+/* Buttons */
+html[data-site-theme="light"] .primary-btn,
+html[data-site-theme="light"] .gold-btn,
+html.light-theme .primary-btn,
+html.light-theme .gold-btn{
+  background:linear-gradient(180deg,#d0ac50,#ae8127)!important;
+  color:#fffdf7!important;
+  border:1px solid #a37920!important;
+  box-shadow:0 4px 12px rgba(111,82,21,.13)!important;
+}
+html[data-site-theme="light"] .secondary-btn,
+html[data-site-theme="light"] .dark-btn,
+html[data-site-theme="light"] .tb-tool,
+html.light-theme .secondary-btn,
+html.light-theme .dark-btn,
+html.light-theme .tb-tool{
+  background:linear-gradient(180deg,#fffefa,#f8f3e8)!important;
+  color:#4a4439!important;
+  border:1px solid #dfd6c4!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .danger-btn,
+html.light-theme .danger-btn{
+  background:#fff8f6!important;
+  color:var(--ca-light-red)!important;
+  border:1px solid #e4c5c0!important;
+}
+
+/* Players */
+html[data-site-theme="light"] .general-stats-launch,
+html.light-theme .general-stats-launch{
+  background:
+    radial-gradient(circle at 80% 20%,rgba(214,177,82,.11),transparent 28%),
+    linear-gradient(135deg,#fffefa,#fbf4e5)!important;
+  border:1px solid rgba(182,138,40,.35)!important;
+  color:var(--ca-light-text)!important;
+  box-shadow:var(--ca-light-shadow)!important;
+}
+html[data-site-theme="light"] .general-stats-launch strong,
+html.light-theme .general-stats-launch strong{
+  color:#956d17!important;
+}
+html[data-site-theme="light"] .general-stats-launch small,
+html.light-theme .general-stats-launch small{
+  color:var(--ca-light-muted)!important;
+}
+html[data-site-theme="light"] .filters button,
+html[data-site-theme="light"] .filter-btn,
+html.light-theme .filters button,
+html.light-theme .filter-btn{
+  background:#fff!important;
+  color:#6a6357!important;
+  border:1px solid #ddd5c6!important;
+}
+html[data-site-theme="light"] .filters button.active,
+html[data-site-theme="light"] .filter-btn.active,
+html.light-theme .filters button.active,
+html.light-theme .filter-btn.active{
+  background:#fff1c9!important;
+  color:#8f6817!important;
+  border-color:#cda94e!important;
+}
+
+/* Player profile + statistics */
+html[data-site-theme="light"] .player-stats-columns,
+html[data-site-theme="light"] .general-stats-columns,
+html.light-theme .player-stats-columns,
+html.light-theme .general-stats-columns{
+  background:#fffefa!important;
+  border-color:#ddd3bf!important;
+}
+html[data-site-theme="light"] .player-stats-column+.player-stats-column,
+html[data-site-theme="light"] .general-stats-columns section+section,
+html.light-theme .player-stats-column+.player-stats-column,
+html.light-theme .general-stats-columns section+section{
+  border-left-color:#cfa84f!important;
+}
+html[data-site-theme="light"] .stat-line,
+html.light-theme .stat-line{
+  border-bottom-color:#eee8dd!important;
+}
+html[data-site-theme="light"] .stat-line span,
+html.light-theme .stat-line span{
+  color:#766f63!important;
+}
+html[data-site-theme="light"] .stat-line b,
+html.light-theme .stat-line b{
+  color:#2f2b24!important;
+}
+html[data-site-theme="light"] .stat-line-mvp,
+html.light-theme .stat-line-mvp{
+  background:linear-gradient(90deg,#fff4d7,rgba(255,244,215,.18))!important;
+}
+html[data-site-theme="light"] .stat-line-mvp>span,
+html[data-site-theme="light"] .stat-line-mvp>b,
+html[data-site-theme="light"] .stat-line-mvp em,
+html.light-theme .stat-line-mvp>span,
+html.light-theme .stat-line-mvp>b,
+html.light-theme .stat-line-mvp em{
+  color:#956d16!important;
+}
+
+/* General statistics 5 slides */
+html[data-site-theme="light"] .advanced-general-stats,
+html.light-theme .advanced-general-stats{
+  background:linear-gradient(180deg,#fffefa,#fbf8f0)!important;
+  border:1px solid rgba(182,138,40,.28)!important;
+}
+html[data-site-theme="light"] .general-player-full-row,
+html[data-site-theme="light"] .general-streak-card,
+html[data-site-theme="light"] .general-record-card,
+html[data-site-theme="light"] .general-award-card,
+html.light-theme .general-player-full-row,
+html.light-theme .general-streak-card,
+html.light-theme .general-record-card,
+html.light-theme .general-award-card{
+  background:#fff!important;
+  color:var(--ca-light-text)!important;
+  border-color:#e2dacb!important;
+  box-shadow:0 4px 14px rgba(74,57,22,.035)!important;
+}
+html[data-site-theme="light"] .general-streak-card.best,
+html.light-theme .general-streak-card.best,
+html[data-site-theme="light"] .general-award-card.main,
+html.light-theme .general-award-card.main{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(215,177,82,.13),transparent 44%),
+    linear-gradient(145deg,#fffefa,#f8f0dd)!important;
+  border-color:#cba64b!important;
+}
+html[data-site-theme="light"] .general-player-full-row>b,
+html[data-site-theme="light"] .general-streak-line b,
+html[data-site-theme="light"] .general-record-winner b,
+html[data-site-theme="light"] .general-award-card b,
+html.light-theme .general-player-full-row>b,
+html.light-theme .general-streak-line b,
+html.light-theme .general-record-winner b,
+html.light-theme .general-award-card b{
+  color:#9a7119!important;
+}
+
+/* Calendar */
+html[data-site-theme="light"] .calendar-shell,
+html.light-theme .calendar-shell{
+  background:#fffefa!important;
+}
+html[data-site-theme="light"] .calendar-day,
+html.light-theme .calendar-day{
+  background:#fff!important;
+  color:#2f2b24!important;
+  border:1px solid #e5ded2!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .calendar-day.outside,
+html.light-theme .calendar-day.outside{
+  background:#f6f3ec!important;
+  color:#aaa397!important;
+}
+html[data-site-theme="light"] .calendar-day.today,
+html.light-theme .calendar-day.today{
+  background:#fff5d9!important;
+  border-color:#c99e38!important;
+  box-shadow:inset 0 0 0 1px rgba(201,158,56,.16)!important;
+}
+html[data-site-theme="light"] .calendar-event-badge.match,
+html.light-theme .calendar-event-badge.match{
+  background:#edf4ee!important;
+  color:#4e7b58!important;
+}
+html[data-site-theme="light"] .calendar-event-badge.gathering,
+html.light-theme .calendar-event-badge.gathering{
+  background:#f9efd5!important;
+  color:#8f6818!important;
+}
+
+/* Gathering / voting */
+html[data-site-theme="light"] .gathering-card,
+html.light-theme .gathering-card{
+  background:#fff!important;
+}
+html[data-site-theme="light"] .vote-yes,
+html.light-theme .vote-yes{
+  color:var(--ca-light-green)!important;
+}
+html[data-site-theme="light"] .vote-no,
+html.light-theme .vote-no{
+  color:var(--ca-light-red)!important;
+}
+
+/* Chat */
+html[data-site-theme="light"] .chat-messages,
+html.light-theme .chat-messages{
+  background:linear-gradient(180deg,#faf8f2,#f6f2e9)!important;
+  border-color:#e0d8ca!important;
+}
+html[data-site-theme="light"] .message-bubble,
+html[data-site-theme="light"] .chat-message,
+html.light-theme .message-bubble,
+html.light-theme .chat-message{
+  background:#fff!important;
+  color:var(--ca-light-text)!important;
+  border:1px solid #e3dccf!important;
+}
+html[data-site-theme="light"] .message-bubble.mine,
+html[data-site-theme="light"] .chat-message.mine,
+html.light-theme .message-bubble.mine,
+html.light-theme .chat-message.mine{
+  background:#fff3d7!important;
+  border-color:#d9bc72!important;
+}
+html[data-site-theme="light"] .chat-author,
+html.light-theme .chat-author{
+  color:#a1771f!important;
+}
+
+/* Tactics / tactical board */
+html[data-site-theme="light"] .pitch,
+html[data-site-theme="light"] .tb-stage,
+html.light-theme .pitch,
+html.light-theme .tb-stage{
+  filter:none!important;
+  box-shadow:0 6px 20px rgba(50,75,48,.09)!important;
+}
+html[data-site-theme="light"] .tb-tool.active,
+html.light-theme .tb-tool.active{
+  background:#fff0c7!important;
+  color:#866116!important;
+  border-color:#caa64b!important;
+}
+html[data-site-theme="light"] .tb-saved-card,
+html.light-theme .tb-saved-card{
+  background:#fff!important;
+  color:var(--ca-light-text)!important;
+  border-color:#dfd7ca!important;
+}
+
+/* Squads */
+html[data-site-theme="light"] .squad-card,
+html.light-theme .squad-card{
+  background:#fff!important;
+  border-color:#e1dacd!important;
+}
+html[data-site-theme="light"] .squad-card small,
+html.light-theme .squad-card small{
+  color:var(--ca-light-muted)!important;
+}
+
+/* Settings */
+html[data-site-theme="light"] .theme-choice,
+html.light-theme .theme-choice{
+  background:linear-gradient(180deg,#fffefa,#f7f2e8)!important;
+  color:#6a6459!important;
+  border-color:#ddd5c7!important;
+}
+html[data-site-theme="light"] .theme-choice.active,
+html.light-theme .theme-choice.active{
+  background:#fff1ca!important;
+  color:#886315!important;
+  border-color:#caa74e!important;
+}
+html[data-site-theme="light"] .settings-version,
+html.light-theme .settings-version{
+  color:#8f877b!important;
+}
+html[data-site-theme="light"] .settings-version strong,
+html.light-theme .settings-version strong{
+  color:#9a7118!important;
+}
+
+/* Match / training statistics lists */
+html[data-site-theme="light"] .training-rank-row,
+html[data-site-theme="light"] .official-stat-row,
+html[data-site-theme="light"] .training-player-row,
+html.light-theme .training-rank-row,
+html.light-theme .official-stat-row,
+html.light-theme .training-player-row{
+  background:#fff!important;
+  color:var(--ca-light-text)!important;
+  border-color:#e3dccf!important;
+}
+
+/* Modal overlay */
+html[data-site-theme="light"] .modal-backdrop,
+html[data-site-theme="light"] .auth-overlay .modal-backdrop,
+html.light-theme .modal-backdrop,
+html.light-theme .auth-overlay .modal-backdrop{
+  background:rgba(51,43,29,.34)!important;
+  backdrop-filter:blur(4px);
+}
+html[data-site-theme="light"] .modal-close,
+html.light-theme .modal-close{
+  background:#faf6ed!important;
+  color:#6a6358!important;
+  border-color:#ded5c4!important;
+}
+
+/* Bottom navigation */
+html[data-site-theme="light"] .bottom-nav,
+html.light-theme .bottom-nav{
+  background:rgba(255,254,250,.98)!important;
+  border-top:1px solid rgba(182,138,40,.18)!important;
+  box-shadow:0 -5px 18px rgba(61,47,18,.045)!important;
+}
+html[data-site-theme="light"] .bottom-nav button,
+html.light-theme .bottom-nav button{
+  color:#837b6f!important;
+}
+html[data-site-theme="light"] .bottom-nav button.active,
+html.light-theme .bottom-nav button.active{
+  color:#a1771e!important;
+}
+
+/* Home: preserve the new dedicated MVP card and the approved white/gold mood */
+html[data-site-theme="light"] #screen-home,
+html.light-theme #screen-home{
+  background:#fffdf8!important;
+}
+html[data-site-theme="light"] #screen-home .home-bg,
+html.light-theme #screen-home .home-bg{
+  filter:brightness(1.16) saturate(.72) contrast(.92)!important;
+}
+html[data-site-theme="light"] #screen-home::after,
+html.light-theme #screen-home::after{
+  background:
+    linear-gradient(180deg,rgba(255,253,247,.18),rgba(248,244,235,.10))!important;
+}
+
+/* Mobile polish */
+@media(max-width:520px){
+  html[data-site-theme="light"] .settings-card,
+  html[data-site-theme="light"] .modal-card,
+  html[data-site-theme="light"] .gathering-card,
+  html[data-site-theme="light"] .squad-card,
+  html[data-site-theme="light"] .general-player-full-row,
+  html[data-site-theme="light"] .general-streak-card,
+  html[data-site-theme="light"] .general-record-card,
+  html[data-site-theme="light"] .general-award-card,
+  html.light-theme .settings-card,
+  html.light-theme .modal-card,
+  html.light-theme .gathering-card,
+  html.light-theme .squad-card,
+  html.light-theme .general-player-full-row,
+  html.light-theme .general-streak-card,
+  html.light-theme .general-record-card,
+  html.light-theme .general-award-card{
+    box-shadow:0 5px 16px rgba(70,53,21,.035)!important;
+  }
+}
