@@ -22,9 +22,9 @@
 
       
       <button id="homeMvpCard" class="home-mvp-card hidden" type="button" data-viewer-allowed="true" aria-label="Останній MVP">
-        <span class="home-mvp-trophy">🏆</span>
+        <span class="home-mvp-photo"><img id="homeMvpPhoto" alt=""></span>
         <span class="home-mvp-copy">
-          <small>MVP ДНЯ</small>
+          <small>🏆 MVP ДНЯ</small>
           <strong id="homeMvpName">—</strong>
           <span id="homeMvpMeta">—</span>
         </span>
@@ -103,10 +103,9 @@
 
     <div class="calendar-legend">
       <span><i class="calendar-dot match"></i> МАТЧ</span>
-      <span><i class="calendar-dot training"></i> ТРЕНУВАННЯ</span>
       <span><i class="calendar-dot gathering"></i> ЗБІР</span>
     </div>
-    <div class="calendar-note">Натисни на день, щоб відкрити матч. Збори підтягуються автоматично.</div>
+    <div class="calendar-note">Матчі створюються в календарі. Збори підтягуються автоматично, а тут до них додається статистика.</div>
   </section>
 
 
@@ -127,6 +126,12 @@
     <div id="searchRow" class="search-row hidden">
       <input id="playerSearch" placeholder="Пошук за ніком...">
     </div>
+
+    <button type="button" id="openGeneralStatsBtn" class="general-stats-launch" data-viewer-allowed="true">
+      <span>📊</span>
+      <span><strong>ЗАГАЛЬНА СТАТИСТИКА</strong><small>Топ гравців: офіційні матчі та тренування</small></span>
+      <b>›</b>
+    </button>
 
     <div class="filters">
       <button class="filter active" data-filter="ALL">ВСІ</button>
@@ -556,7 +561,9 @@
               <div class="stat-line"><span>Голи</span><b id="statOfficialGoals">0</b></div>
               <div class="stat-line"><span>Асисти</span><b id="statOfficialAssists">0</b></div>
               <div class="stat-line"><span>Середня оцінка</span><b id="statOfficialAvg">—</b></div>
-              <div class="stat-line"><span>MVP</span><b id="statOfficialMvp">0</b></div>
+              <div class="stat-line"><span>Найкраща оцінка</span><b id="statOfficialBest">—</b></div>
+              <div class="stat-line"><span>Найгірша оцінка</span><b id="statOfficialWorst">—</b></div>
+              <div class="stat-line"><span>Кількість MVP</span><b id="statOfficialMvp">0</b></div>
               <div class="stat-form-block">
                 <small>ФОРМА — ОСТАННІ 5</small>
                 <div id="statOfficialForm" class="stat-form-row"></div>
@@ -565,11 +572,13 @@
 
             <section>
               <h3>🏋 ТРЕНУВАННЯ</h3>
-              <div class="stat-line"><span>Тренування</span><b id="statTrainingDays">0</b></div>
+              <div class="stat-line"><span>Матчі</span><b id="statTrainingMatches">0</b></div>
+              <div class="stat-line"><span>Голи</span><b id="statTrainingGoals">0</b></div>
+              <div class="stat-line"><span>Асисти</span><b id="statTrainingAssists">0</b></div>
               <div class="stat-line"><span>Середня оцінка</span><b id="statTrainingAvg">—</b></div>
               <div class="stat-line"><span>Найкраща оцінка</span><b id="statTrainingBest">—</b></div>
-              <div class="stat-line"><span>MVP</span><b id="statTrainingMvp">0</b></div>
-              <div class="stat-line"><span>Остання оцінка</span><b id="statTrainingLast">—</b></div>
+              <div class="stat-line"><span>Найгірша оцінка</span><b id="statTrainingWorst">—</b></div>
+              <div class="stat-line"><span>Кількість MVP</span><b id="statTrainingMvp">0</b></div>
               <div class="stat-form-block">
                 <small>ФОРМА — ОСТАННІ 5</small>
                 <div id="statTrainingForm" class="stat-form-row"></div>
@@ -750,7 +759,6 @@
     <p id="calendarDayActionDate" class="calendar-day-action-date">—</p>
     <div class="calendar-day-action-buttons calendar-match-edit-only">
       <button id="createMatchFromDayBtn" class="primary-btn" type="button">⚽ ДОДАТИ МАТЧ</button>
-      <button id="createTrainingFromDayBtn" class="secondary-btn training-action-btn" type="button">🏋 ДОДАТИ ТРЕНУВАННЯ</button>
     </div>
     <div id="calendarDayExistingEvents" class="calendar-day-existing-events"></div>
   </div>
@@ -881,7 +889,7 @@
   <div class="modal-card training-day-modal-card">
     <button id="closeTrainingDayModal" class="modal-close" type="button" data-viewer-allowed="true">✕</button>
     <div class="eyebrow">CENTURIA ATHLETICS</div>
-    <h2 id="trainingDayModalTitle">ТРЕНУВАННЯ</h2>
+    <h2 id="trainingDayModalTitle">СТАТИСТИКА ЗБОРУ</h2>
 
     <div id="trainingDayView" class="training-day-view hidden">
       <div class="training-day-summary">
@@ -912,18 +920,45 @@
     </div>
 
     <div id="trainingDayEdit" class="training-day-edit hidden">
-      <div class="form-grid">
-        <label>ДАТА
-          <input id="trainingDateInput" type="date">
-        </label>
-        <label>СКІЛЬКИ МАТЧІВ ЗІГРАЛИ
-          <input id="trainingMatchesInput" type="number" min="1" max="99" value="1">
-        </label>
+      <div class="training-gathering-info">
+        <small>ЗБІР</small>
+        <strong id="trainingGatheringTitle">—</strong>
+        <span id="trainingGatheringDate">—</span>
       </div>
-      <p class="training-edit-hint">Вкажи одну підсумкову середню оцінку кожному гравцю за весь тренувальний день.</p>
+      <label class="training-matches-label">СКІЛЬКИ МАТЧІВ ЗІГРАЛИ
+        <input id="trainingMatchesInput" type="number" min="1" max="99" value="1">
+      </label>
+      <p class="training-edit-hint">Внеси підсумкову статистику кожного гравця за весь збір: оцінка, голи та асисти.</p>
       <div id="trainingPlayerInputs" class="training-player-inputs"></div>
-      <button id="saveTrainingDayBtn" class="primary-btn full" type="button">ЗБЕРЕГТИ ТРЕНУВАННЯ</button>
+      <button id="saveTrainingDayBtn" class="primary-btn full" type="button">ЗБЕРЕГТИ СТАТИСТИКУ ЗБОРУ</button>
       <div id="trainingDayStatus" class="auth-status"></div>
+    </div>
+  </div>
+</div>
+
+
+<div id="generalStatsModal" class="auth-overlay hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-general-stats></div>
+  <div class="modal-card general-stats-modal-card">
+    <button id="closeGeneralStatsModal" class="modal-close" type="button" data-viewer-allowed="true">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2>ЗАГАЛЬНА СТАТИСТИКА</h2>
+
+    <div class="general-stat-sort">
+      <button class="general-sort-btn active" data-general-sort="average" type="button" data-viewer-allowed="true">СЕРЕДНЯ ОЦІНКА</button>
+      <button class="general-sort-btn" data-general-sort="goals" type="button" data-viewer-allowed="true">ГОЛИ</button>
+      <button class="general-sort-btn" data-general-sort="assists" type="button" data-viewer-allowed="true">АСИСТИ</button>
+    </div>
+
+    <div class="general-stats-columns">
+      <section>
+        <h3>⚽ ОФІЦІЙНІ МАТЧІ</h3>
+        <div id="generalOfficialRanking" class="general-ranking"></div>
+      </section>
+      <section>
+        <h3>🏋 ТРЕНУВАННЯ</h3>
+        <div id="generalTrainingRanking" class="general-ranking"></div>
+      </section>
     </div>
   </div>
 </div>

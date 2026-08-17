@@ -275,6 +275,8 @@ let trainingDays=[];
 let trainingStats=[];
 let officialMatchStats=[];
 let currentTrainingDay=null;
+let currentTrainingGathering=null;
+let generalStatsSort="average";
 let homeMvpData=null;
 let calendarMatches=[];
 let calendarGatherings=[];
@@ -833,7 +835,7 @@ async function loadPlayerStatistics(playerId){
   if(!sb||!playerId)return;
   const [officialRes,trainingRes]=await Promise.all([
     sb.from("official_match_player_stats").select("rating,goals,assists,match_id,calendar_matches(match_date)").eq("player_id",playerId),
-    sb.from("training_player_stats").select("rating,training_day_id,training_days(training_date)").eq("player_id",playerId)
+    sb.from("training_player_stats").select("rating,goals,assists,training_day_id,training_days(training_date,matches_played,gathering_id)").eq("player_id",playerId)
   ]);
   const official=(officialRes.data||[]).filter(r=>r.rating!=null || r.goals || r.assists);
   const training=(trainingRes.data||[]).filter(r=>r.rating!=null);
@@ -842,8 +844,14 @@ async function loadPlayerStatistics(playerId){
   training.sort((a,b)=>String(b.training_days?.training_date||"").localeCompare(String(a.training_days?.training_date||"")));
 
   const offAvg=averageRating(official);
+  const offRatings=official.map(r=>Number(r.rating)).filter(Number.isFinite);
+  const offBest=offRatings.length?Math.max(...offRatings):null;
+  const offWorst=offRatings.length?Math.min(...offRatings):null;
   const trAvg=averageRating(training);
-  const trBest=training.length?Math.max(...training.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
+  const trRatings=training.map(r=>Number(r.rating)).filter(Number.isFinite);
+  const trBest=trRatings.length?Math.max(...trRatings):null;
+  const trWorst=trRatings.length?Math.min(...trRatings):null;
+  const trMatches=training.reduce((sum,r)=>sum+(Number(r.training_days?.matches_played)||0),0);
 
   // MVP count = how many events this player's rating equals the best rating for that event.
   let officialMvp=0, trainingMvp=0;
@@ -875,14 +883,18 @@ async function loadPlayerStatistics(playerId){
   $("statOfficialGoals").textContent=official.reduce((s,r)=>s+(Number(r.goals)||0),0);
   $("statOfficialAssists").textContent=official.reduce((s,r)=>s+(Number(r.assists)||0),0);
   $("statOfficialAvg").textContent=fmtRating(offAvg);
+  $("statOfficialBest").textContent=fmtRating(offBest);
+  $("statOfficialWorst").textContent=fmtRating(offWorst);
   $("statOfficialMvp").textContent=officialMvp;
   $("statOfficialForm").innerHTML=statFormHtml(official.slice(0,5).map(r=>r.rating));
 
-  $("statTrainingDays").textContent=trainingIds.length;
+  $("statTrainingMatches").textContent=trMatches;
+  $("statTrainingGoals").textContent=training.reduce((s,r)=>s+(Number(r.goals)||0),0);
+  $("statTrainingAssists").textContent=training.reduce((s,r)=>s+(Number(r.assists)||0),0);
   $("statTrainingAvg").textContent=fmtRating(trAvg);
   $("statTrainingBest").textContent=fmtRating(trBest);
+  $("statTrainingWorst").textContent=fmtRating(trWorst);
   $("statTrainingMvp").textContent=trainingMvp;
-  $("statTrainingLast").textContent=training.length?fmtRating(Number(training[0].rating)):"—";
   $("statTrainingForm").innerHTML=statFormHtml(training.slice(0,5).map(r=>r.rating));
 }
 
@@ -2750,6 +2762,7 @@ async function loadStatisticsData(){
 }
 
 function trainingForDate(date){return trainingDays.find(t=>t.training_date===date)||null;}
+function trainingForGathering(gatheringId){return trainingDays.find(t=>t.gathering_id===gatheringId)||null;}
 function statsForTraining(id){return trainingStats.filter(s=>s.training_day_id===id && s.rating!=null);}
 function statsForMatch(id){return officialMatchStats.filter(s=>s.match_id===id);}
 
@@ -2792,7 +2805,12 @@ function renderHomeMvp(){
   box.classList.remove("hidden");
   $("homeMvpName").textContent=homeMvpData.player.name;
   $("homeMvpRating").textContent=Number(homeMvpData.rating).toFixed(1);
-  $("homeMvpMeta").textContent=`${homeMvpData.date.split("-").reverse().join(".")} • ${homeMvpData.type==="training"?"тренування":"матч"}`;
+  $("homeMvpMeta").textContent=`${homeMvpData.date.split("-").reverse().join(".")} • ${homeMvpData.type==="training"?"збір":"матч"}`;
+  const mvpPhoto=$("homeMvpPhoto");
+  if(mvpPhoto){
+    mvpPhoto.src=homeMvpData.player.cardImage||PLAYER_PLACEHOLDER;
+    mvpPhoto.classList.remove("hidden");
+  }
 }
 
 async function openHomeMvp(){
@@ -2816,16 +2834,16 @@ function showDayActionModal(dateKey){
   $("calendarDayActionTitle").textContent="ПОДІЇ ДНЯ";
   const list=$("calendarDayExistingEvents");
   const matches=calendarMatches.filter(m=>m.match_date===dateKey);
-  const training=trainingForDate(dateKey);
   const gathers=calendarGatherings.filter(g=>g.gathering_date===dateKey);
   const items=[];
-  if(training)items.push(`<button type="button" class="day-existing-event training" data-open-training="${training.id}">🏋 ТРЕНУВАННЯ <b>${training.matches_played} матчів</b></button>`);
   matches.forEach(m=>items.push(`<button type="button" class="day-existing-event match" data-open-match="${m.id}">⚽ ${esc(m.home_team_name||"Centuria")} — ${esc(m.away_team_name||"Суперник")} <b>${m.match_time?m.match_time.slice(0,5):""}</b></button>`));
-  gathers.forEach(g=>items.push(`<button type="button" class="day-existing-event gathering" data-open-gathering="1">✓ ${esc(g.title||"Збір")} <b>${g.gathering_time?g.gathering_time.slice(0,5):""}</b></button>`));
+  gathers.forEach(g=>{
+    const day=trainingForGathering(g.id);
+    items.push(`<button type="button" class="day-existing-event gathering" data-open-gathering-stats="${g.id}">✓ ${esc(g.title||"Збір")} <b>${day?"📊":"＋ СТАТА"}</b></button>`);
+  });
   list.innerHTML=items.join("");
-  list.querySelectorAll("[data-open-training]").forEach(b=>b.addEventListener("click",()=>{closeDayActionModal();openTrainingDay(trainingDays.find(t=>t.id===b.dataset.openTraining));}));
   list.querySelectorAll("[data-open-match]").forEach(b=>b.addEventListener("click",()=>{const m=calendarMatches.find(x=>x.id===b.dataset.openMatch);closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchView(m);}));
-  list.querySelectorAll("[data-open-gathering]").forEach(b=>b.addEventListener("click",()=>{closeDayActionModal();navigate("gatherings");}));
+  list.querySelectorAll("[data-open-gathering-stats]").forEach(b=>b.addEventListener("click",()=>{const g=calendarGatherings.find(x=>x.id===b.dataset.openGatheringStats);closeDayActionModal();openGatheringStats(g);}));
   $("calendarDayActionModal").classList.remove("hidden");
   refreshCalendarPermissions();
 }
@@ -2834,31 +2852,55 @@ function renderTrainingInputs(day=null){
   const box=$("trainingPlayerInputs");if(!box)return;
   const existing=day?statsForTraining(day.id):[];
   box.innerHTML=players.map(p=>{
-    const row=existing.find(r=>r.player_id===p.id);
-    return `<label class="training-player-row">
+    const row=existing.find(r=>r.player_id===p.id)||{};
+    return `<div class="training-player-row extended">
       <span><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p.name)}</b></span>
-      <input type="number" step="0.1" min="0" max="10" inputmode="decimal" data-training-player="${p.id}" value="${row?.rating??""}" placeholder="—">
-    </label>`;
+      <input type="number" step="0.1" min="0" max="10" inputmode="decimal" data-training-rating="${p.id}" value="${row.rating??""}" placeholder="оцінка">
+      <input type="number" min="0" max="99" data-training-goals="${p.id}" value="${row.goals||""}" placeholder="голи">
+      <input type="number" min="0" max="99" data-training-assists="${p.id}" value="${row.assists||""}" placeholder="асисти">
+    </div>`;
   }).join("");
 }
 
-function showTrainingEdit(day=null,dateKey=null){
+function showTrainingEdit(day=null,gathering=null){
   if(!canEditSite())return;
   currentTrainingDay=day||null;
+  currentTrainingGathering=gathering||currentTrainingGathering;
   $("trainingDayView").classList.add("hidden");
   $("trainingDayEdit").classList.remove("hidden");
-  $("trainingDayModalTitle").textContent=day?"РЕДАГУВАННЯ ТРЕНУВАННЯ":"НОВЕ ТРЕНУВАННЯ";
-  $("trainingDateInput").value=day?.training_date||dateKey||calendarTodayKey();
+  $("trainingDayModalTitle").textContent=day?"РЕДАГУВАННЯ СТАТИСТИКИ":"СТАТИСТИКА ЗБОРУ";
+  $("trainingGatheringTitle").textContent=currentTrainingGathering?.title||"Збір";
+  $("trainingGatheringDate").textContent=currentTrainingGathering?formatCalendarDate(currentTrainingGathering.gathering_date):"—";
   $("trainingMatchesInput").value=day?.matches_played||1;
   $("trainingDayStatus").textContent="";
   renderTrainingInputs(day);
+}
+
+function openGatheringStats(gathering){
+  if(!gathering)return;
+  currentTrainingGathering=gathering;
+  const day=trainingForGathering(gathering.id);
+  $("trainingDayModal").classList.remove("hidden");
+  if(day)renderTrainingView(day);
+  else if(canEditSite())showTrainingEdit(null,gathering);
+  else{
+    $("trainingDayView").classList.remove("hidden");
+    $("trainingDayEdit").classList.add("hidden");
+    $("trainingDayModalTitle").textContent=gathering.title||"ЗБІР";
+    $("trainingViewDate").textContent=formatCalendarDate(gathering.gathering_date);
+    $("trainingViewMatches").textContent="—";
+    $("trainingViewMvp").textContent="Статистики ще немає";
+    $("trainingViewMvpRating").textContent="—";
+    $("trainingViewTeamAvg").textContent="—";
+    $("trainingViewRanking").innerHTML='<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор додасть її після збору.</span></div>';
+  }
 }
 
 function renderTrainingView(day){
   currentTrainingDay=day;
   $("trainingDayEdit").classList.add("hidden");
   $("trainingDayView").classList.remove("hidden");
-  $("trainingDayModalTitle").textContent=day.title||"ТРЕНУВАННЯ";
+  $("trainingDayModalTitle").textContent=currentTrainingGathering?.title||day.title||"ЗБІР";
   $("trainingViewDate").textContent=formatCalendarDate(day.training_date);
   $("trainingViewMatches").textContent=day.matches_played||0;
 
@@ -2874,6 +2916,7 @@ function renderTrainingView(day){
     return `<div class="training-rank-row ${i===0?"mvp":""}">
       <span class="rank-place">${i+1}</span>
       <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${i===0?`<small>🏆 MVP</small>`:""}</span>
+      <small class="rank-extra">⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
       <strong>${fmtRating(Number(r.rating))}</strong>
     </div>`;
   }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор може внести оцінки.</span></div>`;
@@ -2888,45 +2931,60 @@ function openTrainingDay(day){
 function closeTrainingDayModal(){$("trainingDayModal")?.classList.add("hidden");currentTrainingDay=null;}
 
 async function saveTrainingDay(){
-  if(!sb||!authUser||!canEditSite())return;
-  const date=$("trainingDateInput").value;
+  if(!sb||!authUser||!canEditSite()||!currentTrainingGathering)return;
+  const date=currentTrainingGathering.gathering_date;
   const matches=Number($("trainingMatchesInput").value||0);
-  if(!date||matches<1){$("trainingDayStatus").textContent="Вкажи дату і кількість матчів.";return;}
+  if(matches<1){$("trainingDayStatus").textContent="Вкажи кількість матчів.";return;}
   const btn=$("saveTrainingDayBtn");btn.disabled=true;
   try{
     let day,error;
+    const payload={
+      training_date:date,
+      title:currentTrainingGathering.title||"Збір",
+      matches_played:matches,
+      gathering_id:currentTrainingGathering.id
+    };
     if(currentTrainingDay){
-      ({data:day,error}=await sb.from("training_days").update({training_date:date,matches_played:matches}).eq("id",currentTrainingDay.id).select("*").single());
+      ({data:day,error}=await sb.from("training_days").update(payload).eq("id",currentTrainingDay.id).select("*").single());
     }else{
-      ({data:day,error}=await sb.from("training_days").insert({training_date:date,matches_played:matches,created_by:authUser.id}).select("*").single());
+      ({data:day,error}=await sb.from("training_days").insert({...payload,created_by:authUser.id}).select("*").single());
     }
     if(error)throw error;
 
-    const inputs=[...document.querySelectorAll("[data-training-player]")];
-    const rows=inputs.map(input=>({player_id:input.dataset.trainingPlayer,rating:input.value===""?null:Number(input.value)})).filter(r=>r.rating!=null);
+    const rows=players.map(p=>({
+      player_id:p.id,
+      rating:document.querySelector(`[data-training-rating="${p.id}"]`)?.value||"",
+      goals:document.querySelector(`[data-training-goals="${p.id}"]`)?.value||"",
+      assists:document.querySelector(`[data-training-assists="${p.id}"]`)?.value||""
+    })).filter(r=>r.rating!==""||r.goals!==""||r.assists!=="").map(r=>({
+      training_day_id:day.id,
+      player_id:r.player_id,
+      rating:r.rating===""?null:Number(r.rating),
+      goals:Number(r.goals||0),
+      assists:Number(r.assists||0)
+    }));
     await sb.from("training_player_stats").delete().eq("training_day_id",day.id);
     if(rows.length){
-      const {error:statsErr}=await sb.from("training_player_stats").insert(rows.map(r=>({...r,training_day_id:day.id})));
+      const {error:statsErr}=await sb.from("training_player_stats").insert(rows);
       if(statsErr)throw statsErr;
     }
-
     await loadStatisticsData();
     currentTrainingDay=trainingDays.find(t=>t.id===day.id)||day;
     renderTrainingView(currentTrainingDay);
-    showToast("Тренування збережено ✓");
+    showToast("Статистику збору збережено ✓");
   }catch(err){
     console.error(err);
-    $("trainingDayStatus").textContent=String(err?.message||"").includes("duplicate")?"На цю дату тренування вже існує.":"Не вдалося зберегти тренування.";
+    $("trainingDayStatus").textContent="Не вдалося зберегти статистику збору.";
   }finally{btn.disabled=false;}
 }
 
 async function deleteTrainingDay(){
-  if(!currentTrainingDay||!canEditSite()||!confirm("Видалити це тренування і всю статистику дня?"))return;
+  if(!currentTrainingDay||!canEditSite()||!confirm("Видалити статистику цього збору? Сам збір залишиться."))return;
   const {error}=await sb.from("training_days").delete().eq("id",currentTrainingDay.id);
   if(error){showToast("Не вдалося видалити тренування");return;}
   closeTrainingDayModal();
   await loadStatisticsData();
-  showToast("Тренування видалено");
+  showToast("Статистику збору видалено");
 }
 
 async function loadOfficialStatsForMatch(match){
@@ -3032,13 +3090,11 @@ function renderCalendar(){
     else if(day>days){day-=days;cm=m+1;if(cm>11){cm=0;cy=y+1}outside=true;}
     const key=calendarDateKey(cy,cm,day);
     const dayMatches=calendarMatches.filter(v=>v.match_date===key);
-    const training=trainingForDate(key);
     const gathers=calendarGatherings.filter(v=>v.gathering_date===key && !v.is_closed);
-    cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""} ${training?"has-training":""}" data-calendar-date="${key}" data-viewer-allowed="true">
+    cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""}" data-calendar-date="${key}" data-viewer-allowed="true">
       <span class="calendar-day-number">${day}</span>
       <span class="calendar-day-events">
         ${dayMatches.length?`<span class="calendar-event-badge match">⚽ <b>${dayMatches.length>1?`МАТЧІ ${dayMatches.length}`:"МАТЧ"}</b></span>`:""}
-        ${training?`<span class="calendar-event-badge training">🏋 <b>ТРЕН ${training.matches_played}</b></span>`:""}
         ${gathers.length?`<span class="calendar-event-badge gathering">✓ <b>${gathers.length>1?`ЗБОРИ ${gathers.length}`:"ЗБІР"}</b></span>`:""}
       </span>
     </button>`);
@@ -3155,21 +3211,16 @@ function renderCalendarDayMatches(dateKey){
 function openCalendarDay(dateKey){
   calendarSelectedDate=dateKey;
   const matches=calendarMatches.filter(v=>v.match_date===dateKey);
-  const training=trainingForDate(dateKey);
   const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
-  const eventCount=matches.length+(training?1:0)+gathers.length;
+  const eventCount=matches.length+gathers.length;
 
   if(eventCount===1 && matches.length===1){
     $("calendarMatchModal").classList.remove("hidden");
     showCalendarMatchView(matches[0]);
     return;
   }
-  if(eventCount===1 && training){
-    openTrainingDay(training);
-    return;
-  }
   if(eventCount===1 && gathers.length===1){
-    navigate("gatherings");
+    openGatheringStats(gathers[0]);
     return;
   }
   if(eventCount===0 && !canEditSite()){
@@ -3652,13 +3703,74 @@ $("tacticalPitch")?.addEventListener("pointercancel",()=>{tbArrowDraft=null;rend
 $("closeCalendarDayActionModal")?.addEventListener("click",closeDayActionModal);
 document.querySelectorAll("[data-close-calendar-day-action]").forEach(el=>el.addEventListener("click",closeDayActionModal));
 $("createMatchFromDayBtn")?.addEventListener("click",()=>{closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchEdit(null,calendarSelectedDate);});
-$("createTrainingFromDayBtn")?.addEventListener("click",()=>{closeDayActionModal();$("trainingDayModal").classList.remove("hidden");showTrainingEdit(null,calendarSelectedDate);});
 
 $("closeTrainingDayModal")?.addEventListener("click",closeTrainingDayModal);
 document.querySelectorAll("[data-close-training-day]").forEach(el=>el.addEventListener("click",closeTrainingDayModal));
-$("editTrainingDayBtn")?.addEventListener("click",()=>showTrainingEdit(currentTrainingDay,currentTrainingDay?.training_date));
+$("editTrainingDayBtn")?.addEventListener("click",()=>showTrainingEdit(currentTrainingDay,currentTrainingGathering));
 $("deleteTrainingDayBtn")?.addEventListener("click",deleteTrainingDay);
 $("saveTrainingDayBtn")?.addEventListener("click",saveTrainingDay);
+
+
+/* General players statistics */
+function aggregateOfficialPlayer(playerId){
+  const rows=officialMatchStats.filter(r=>r.player_id===playerId);
+  const ratings=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
+  return {
+    matches:new Set(rows.map(r=>r.match_id)).size,
+    goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
+    assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
+    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0
+  };
+}
+function aggregateTrainingPlayer(playerId){
+  const rows=trainingStats.filter(r=>r.player_id===playerId);
+  const ratings=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
+  const dayIds=[...new Set(rows.map(r=>r.training_day_id))];
+  const matches=dayIds.reduce((sum,id)=>sum+(Number(trainingDays.find(d=>d.id===id)?.matches_played)||0),0);
+  return {
+    matches,
+    goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
+    assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
+    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0
+  };
+}
+function renderGeneralRanking(targetId,type){
+  const box=$(targetId);if(!box)return;
+  const rows=players.map(p=>({player:p,stats:type==="official"?aggregateOfficialPlayer(p.id):aggregateTrainingPlayer(p.id)}));
+  rows.sort((a,b)=>{
+    const key=generalStatsSort;
+    const diff=(b.stats[key]||0)-(a.stats[key]||0);
+    return diff || (b.stats.average||0)-(a.stats.average||0);
+  });
+  box.innerHTML=rows.map((item,i)=>{
+    const value=generalStatsSort==="average"?(item.stats.average?item.stats.average.toFixed(1):"—"):item.stats[generalStatsSort];
+    return `<div class="general-rank-row">
+      <span>${i+1}</span>
+      <img src="${item.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
+      <b>${esc(item.player.name)}</b>
+      <small>${item.stats.matches} матч.</small>
+      <strong>${value}</strong>
+    </div>`;
+  }).join("");
+}
+function renderGeneralStats(){
+  renderGeneralRanking("generalOfficialRanking","official");
+  renderGeneralRanking("generalTrainingRanking","training");
+}
+function openGeneralStats(){
+  $("generalStatsModal")?.classList.remove("hidden");
+  renderGeneralStats();
+}
+function closeGeneralStats(){$("generalStatsModal")?.classList.add("hidden");}
+$("openGeneralStatsBtn")?.addEventListener("click",openGeneralStats);
+$("closeGeneralStatsModal")?.addEventListener("click",closeGeneralStats);
+document.querySelectorAll("[data-close-general-stats]").forEach(el=>el.addEventListener("click",closeGeneralStats));
+document.querySelectorAll("[data-general-sort]").forEach(btn=>btn.addEventListener("click",()=>{
+  generalStatsSort=btn.dataset.generalSort;
+  document.querySelectorAll("[data-general-sort]").forEach(b=>b.classList.toggle("active",b===btn));
+  renderGeneralStats();
+}));
+
 
 /* Supabase Auth */
 const authModal=$("authModal");
