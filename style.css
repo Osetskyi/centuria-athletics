@@ -4398,3 +4398,19 @@ body.dark-theme #themeDarkBtn{
   color:#efd16f!important;
   background:rgba(217,184,79,.10)!important;
 }
+
+
+/* v5.33 — the light home now uses a real dedicated image, not CSS whitening */
+html[data-site-theme="light"] #screen-home .home-bg,
+html.light-theme #screen-home .home-bg,
+body[data-site-theme="light"] #screen-home .home-bg,
+body.light-theme #screen-home .home-bg{
+  filter:none!important;
+  opacity:1!important;
+}
+html[data-site-theme="light"] #screen-home::after,
+html.light-theme #screen-home::after,
+body[data-site-theme="light"] #screen-home::after,
+body.light-theme #screen-home::after{
+  background:transparent!important;
+}

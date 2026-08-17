@@ -4284,3 +4284,28 @@ function renderHomeMvp(){
 document.addEventListener("DOMContentLoaded",()=>setTimeout(renderHomeMvp,120));
 window.addEventListener("load",()=>setTimeout(renderHomeMvp,120));
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(renderHomeMvp,100)});
+
+
+/* v5.33 — dedicated home background for light theme */
+function applyHomeBackgroundForTheme(theme){
+  const img=document.getElementById("homeBackgroundImage");
+  if(!img)return;
+  const light=theme==="light";
+  const wanted=light?"home-screen-light.jpg":"home-screen.jpg";
+  if(!img.src.endsWith(wanted)) img.src=wanted;
+  img.dataset.themeBackground=light?"light":"dark";
+}
+
+window.addEventListener("centuria-theme-change",e=>{
+  applyHomeBackgroundForTheme(e.detail?.theme||"dark");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  let theme=document.documentElement.getAttribute("data-site-theme")||"dark";
+  applyHomeBackgroundForTheme(theme);
+});
+
+window.addEventListener("load",()=>{
+  let theme=document.documentElement.getAttribute("data-site-theme")||"dark";
+  applyHomeBackgroundForTheme(theme);
+});
