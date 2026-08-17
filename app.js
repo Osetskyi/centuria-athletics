@@ -3711,66 +3711,363 @@ $("deleteTrainingDayBtn")?.addEventListener("click",deleteTrainingDay);
 $("saveTrainingDayBtn")?.addEventListener("click",saveTrainingDay);
 
 
-/* General players statistics */
-function aggregateOfficialPlayer(playerId){
-  const rows=officialMatchStats.filter(r=>r.player_id===playerId);
-  const ratings=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
-  return {
-    matches:new Set(rows.map(r=>r.match_id)).size,
-    goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
-    assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
-    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0
-  };
+
+/* General statistics center — v5.26 */
+let generalStatsSlide=0;
+let generalStatsMode="official";
+generalStatsSort="average";
+let generalAwardsMonthCursor=new Date();
+const GENERAL_TITLES=["ГРАВЦІ КОМАНДИ","СЕРІЇ","РЕКОРДИ","НАГОРОДИ","ПОРІВНЯННЯ"];
+
+function generalPlayerRows(playerId){
+  if(generalStatsMode==="official"){
+    return officialMatchStats
+      .filter(r=>r.player_id===playerId)
+      .map(r=>({...r,event_date:calendarMatches.find(m=>m.id===r.match_id)?.match_date||null,event_id:r.match_id}))
+      .sort((a,b)=>String(a.event_date||"").localeCompare(String(b.event_date||"")));
+  }
+  return trainingStats
+    .filter(r=>r.player_id===playerId)
+    .map(r=>({...r,event_date:trainingDays.find(d=>d.id===r.training_day_id)?.training_date||null,event_id:r.training_day_id}))
+    .sort((a,b)=>String(a.event_date||"").localeCompare(String(b.event_date||"")));
 }
-function aggregateTrainingPlayer(playerId){
-  const rows=trainingStats.filter(r=>r.player_id===playerId);
+
+function generalEventMvpMap(){
+  const source=generalStatsMode==="official"?officialMatchStats:trainingStats;
+  const key=generalStatsMode==="official"?"match_id":"training_day_id";
+  const grouped={};
+  source.forEach(r=>{
+    if(r.rating==null)return;
+    (grouped[r[key]]??=[]).push(r);
+  });
+  const result={};
+  Object.entries(grouped).forEach(([id,rows])=>{
+    const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+    result[id]=new Set(rows.filter(r=>Number(r.rating)===max).map(r=>r.player_id));
+  });
+  return result;
+}
+
+function generalAggregatePlayer(player){
+  const rows=generalPlayerRows(player.id);
   const ratings=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
-  const dayIds=[...new Set(rows.map(r=>r.training_day_id))];
-  const matches=dayIds.reduce((sum,id)=>sum+(Number(trainingDays.find(d=>d.id===id)?.matches_played)||0),0);
+  const mvpMap=generalEventMvpMap();
+  const eventKey=generalStatsMode==="official"?"match_id":"training_day_id";
+  const eventIds=[...new Set(rows.map(r=>r[eventKey]))];
+  const mvp=eventIds.reduce((sum,id)=>sum+(mvpMap[id]?.has(player.id)?1:0),0);
+
+  let matches=eventIds.length;
+  if(generalStatsMode==="training"){
+    matches=eventIds.reduce((sum,id)=>sum+(Number(trainingDays.find(d=>d.id===id)?.matches_played)||0),0);
+  }
+
   return {
     matches,
+    eventCount:eventIds.length,
     goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
     assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
-    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0
+    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0,
+    best:ratings.length?Math.max(...ratings):0,
+    worst:ratings.length?Math.min(...ratings):0,
+    mvp,
+    form:ratings.slice(-5)
   };
 }
-function renderGeneralRanking(targetId,type){
-  const box=$(targetId);if(!box)return;
-  const rows=players.map(p=>({player:p,stats:type==="official"?aggregateOfficialPlayer(p.id):aggregateTrainingPlayer(p.id)}));
-  rows.sort((a,b)=>{
-    const key=generalStatsSort;
-    const diff=(b.stats[key]||0)-(a.stats[key]||0);
-    return diff || (b.stats.average||0)-(a.stats.average||0);
+
+function generalStreak(rows,test){
+  let current=0,best=0;
+  rows.forEach(r=>{
+    if(test(r)){current++;best=Math.max(best,current)}
+    else current=0;
   });
-  box.innerHTML=rows.map((item,i)=>{
-    const value=generalStatsSort==="average"?(item.stats.average?item.stats.average.toFixed(1):"—"):item.stats[generalStatsSort];
-    return `<div class="general-rank-row">
-      <span>${i+1}</span>
-      <img src="${item.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
-      <b>${esc(item.player.name)}</b>
-      <small>${item.stats.matches} матч.</small>
-      <strong>${value}</strong>
-    </div>`;
-  }).join("");
+  let active=0;
+  for(let i=rows.length-1;i>=0;i--){
+    if(test(rows[i]))active++;
+    else break;
+  }
+  return {active,best};
 }
-function renderGeneralStats(){
-  renderGeneralRanking("generalOfficialRanking","official");
-  renderGeneralRanking("generalTrainingRanking","training");
+
+function generalPlayerStreaks(player){
+  const rows=generalPlayerRows(player.id);
+  const mvpMap=generalEventMvpMap();
+  const eventKey=generalStatsMode==="official"?"match_id":"training_day_id";
+  return {
+    goal:generalStreak(rows,r=>(Number(r.goals)||0)>0),
+    assist:generalStreak(rows,r=>(Number(r.assists)||0)>0),
+    seven:generalStreak(rows,r=>Number(r.rating)>=7),
+    eight:generalStreak(rows,r=>Number(r.rating)>=8),
+    mvp:generalStreak(rows,r=>mvpMap[r[eventKey]]?.has(player.id)),
+    contribution:generalStreak(rows,r=>(Number(r.goals)||0)>0||(Number(r.assists)||0)>0)
+  };
 }
-function openGeneralStats(){
-  $("generalStatsModal")?.classList.remove("hidden");
+
+function setGeneralStatsSlide(index){
+  generalStatsSlide=Math.max(0,Math.min(4,index));
+  $("generalStatsTrack").style.transform=`translateX(-${generalStatsSlide*20}%)`;
+  $("generalStatsSlideTitle").textContent=GENERAL_TITLES[generalStatsSlide];
+  document.querySelectorAll("#generalStatsDots i").forEach((d,i)=>d.classList.toggle("active",i===generalStatsSlide));
   renderGeneralStats();
 }
+
+function renderGeneralPlayers(){
+  const rows=players.map(p=>({player:p,stats:generalAggregatePlayer(p)}));
+  rows.sort((a,b)=>{
+    const diff=(b.stats[generalStatsSort]||0)-(a.stats[generalStatsSort]||0);
+    return diff || b.stats.average-a.stats.average;
+  });
+
+  $("generalPlayersSummary").textContent=`Гравців: ${players.length}`;
+
+  $("generalPlayersRanking").innerHTML=rows.length?rows.map((x,i)=>{
+    const value=generalStatsSort==="average"?(x.stats.average?x.stats.average.toFixed(2):"—"):x.stats[generalStatsSort];
+    return `<button type="button" class="general-player-full-row" data-general-player="${x.player.id}" data-viewer-allowed="true">
+      <span class="general-place ${i<3?`top-${i+1}`:""}">${i+1}</span>
+      <img src="${x.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
+      <span class="general-player-info">
+        <strong>${esc(x.player.name)}</strong>
+        <small>Матчі ${x.stats.matches} • Голи ${x.stats.goals} • Асисти ${x.stats.assists}</small>
+        <small>Ср. ${x.stats.average?x.stats.average.toFixed(1):"—"} • MVP ${x.stats.mvp}</small>
+      </span>
+      <b>${value}</b>
+    </button>`;
+  }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong></div>`;
+
+  document.querySelectorAll("[data-general-player]").forEach(btn=>btn.addEventListener("click",()=>{
+    closeGeneralStats();
+    openPlayerModal(btn.dataset.generalPlayer);
+    setTimeout(()=>playerViewSlide(1),80);
+  }));
+}
+
+function renderGeneralStreaks(){
+  const cards=[];
+  players.forEach(player=>{
+    const s=generalPlayerStreaks(player);
+    const active=[
+      ["⚽","Гольова серія",s.goal],
+      ["🎯","Серія асистів",s.assist],
+      ["⭐","Оцінка 7.0+",s.seven],
+      ["🔥","Топ-форма 8.0+",s.eight],
+      ["🏆","MVP-серія",s.mvp],
+      ["🤝","Гол або асист",s.contribution]
+    ].filter(x=>x[2].active>=2);
+    if(active.length)cards.push({player,active,max:Math.max(...active.map(x=>x[2].active))});
+  });
+  cards.sort((a,b)=>b.max-a.max);
+
+  $("generalStreaksList").innerHTML=cards.length?cards.map((c,i)=>`
+    <div class="general-streak-card ${i===0?"best":""}">
+      ${i===0?`<span class="general-best-streak">🔥 НАЙКРАЩА СЕРІЯ</span>`:""}
+      <div class="general-streak-player"><img src="${c.player.cardImage||PLAYER_PLACEHOLDER}" alt=""><strong>${esc(c.player.name)}</strong></div>
+      ${c.active.map(x=>`<div class="general-streak-line"><span>${x[0]} ${x[1]}</span><b>${x[2].active}</b><small>Рекорд ${x[2].best}</small></div>`).join("")}
+    </div>`).join(""):`<div class="empty-state"><strong>АКТИВНИХ СЕРІЙ НЕМАЄ</strong><span>Серія з’являється від 2 подій поспіль.</span></div>`;
+}
+
+function recordWinners(items,valueFn){
+  if(!items.length)return [];
+  const max=Math.max(...items.map(valueFn));
+  if(!(max>0))return [];
+  return items.filter(x=>valueFn(x)===max);
+}
+
+function renderGeneralRecords(){
+  const perPlayer=players.map(player=>({player,stats:generalAggregatePlayer(player),streaks:generalPlayerStreaks(player)}));
+  const single=[];
+  players.forEach(player=>generalPlayerRows(player.id).forEach(row=>single.push({player,row})));
+
+  const specs=[
+    ["⭐","НАЙВИЩА ОЦІНКА",single,x=>Number(x.row.rating)||0,x=>(Number(x.row.rating)||0).toFixed(1)],
+    ["⚽","НАЙБІЛЬШЕ ГОЛІВ ЗА ГРУ",single,x=>Number(x.row.goals)||0,x=>`${Number(x.row.goals)||0}`],
+    ["🎯","НАЙБІЛЬШЕ АСИСТІВ ЗА ГРУ",single,x=>Number(x.row.assists)||0,x=>`${Number(x.row.assists)||0}`],
+    ["🔥","НАЙДОВША ГОЛЬОВА СЕРІЯ",perPlayer,x=>x.streaks.goal.best,x=>`${x.streaks.goal.best}`],
+    ["🎯","НАЙДОВША СЕРІЯ АСИСТІВ",perPlayer,x=>x.streaks.assist.best,x=>`${x.streaks.assist.best}`],
+    ["🤝","НАЙДОВША РЕЗУЛЬТАТИВНА СЕРІЯ",perPlayer,x=>x.streaks.contribution.best,x=>`${x.streaks.contribution.best}`],
+    ["⭐","НАЙДОВША СЕРІЯ 8.0+",perPlayer,x=>x.streaks.eight.best,x=>`${x.streaks.eight.best}`],
+    ["🏆","НАЙБІЛЬШЕ MVP",perPlayer,x=>x.stats.mvp,x=>`${x.stats.mvp}`],
+    ["⚽","НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
+    ["🎯","НАЙБІЛЬШЕ АСИСТІВ",perPlayer,x=>x.stats.assists,x=>`${x.stats.assists}`],
+    ["👑","НАЙВИЩА СЕРЕДНЯ",perPlayer.filter(x=>x.stats.eventCount>=10),x=>x.stats.average,x=>x.stats.average.toFixed(2)]
+  ];
+
+  const cards=[];
+  specs.forEach(([icon,title,items,val,fmt])=>{
+    const winners=recordWinners(items,val);
+    if(!winners.length)return;
+    cards.push(`<div class="general-record-card"><small>${icon} ${title}</small>
+      ${winners.map(w=>{
+        const p=w.player;
+        const date=w.row?.event_date;
+        return `<div class="general-record-winner">
+          <img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="">
+          <span><strong>${esc(p.name)}</strong><b>${fmt(w)}</b>${date?`<em>${formatCalendarDate(date)}</em>`:""}</span>
+        </div>`;
+      }).join("")}
+    </div>`);
+  });
+
+  $("generalRecordsList").innerHTML=cards.join("")||`<div class="empty-state"><strong>НЕДОСТАТНЬО ДАНИХ</strong></div>`;
+}
+
+function generalMonthKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;}
+function generalMonthAggregate(player,date){
+  const key=generalMonthKey(date);
+  const rows=generalPlayerRows(player.id).filter(r=>{
+    if(!r.event_date)return false;
+    const d=new Date(`${r.event_date}T12:00:00`);
+    return generalMonthKey(d)===key;
+  });
+  const ratings=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
+  const mvpMap=generalEventMvpMap();
+  const eventKey=generalStatsMode==="official"?"match_id":"training_day_id";
+  const eventIds=[...new Set(rows.map(r=>r[eventKey]))];
+  return {
+    events:eventIds.length,
+    goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
+    assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
+    average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0,
+    mvp:eventIds.reduce((s,id)=>s+(mvpMap[id]?.has(player.id)?1:0),0)
+  };
+}
+
+function renderGeneralAwards(){
+  const now=new Date();
+  $("generalAwardsMonth").textContent=generalAwardsMonthCursor.toLocaleDateString("uk-UA",{month:"long",year:"numeric"}).toUpperCase();
+  const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
+  $("generalAwardsState").textContent=current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ";
+
+  const data=players.map(player=>({player,stats:generalMonthAggregate(player,generalAwardsMonthCursor)})).filter(x=>x.stats.events>0);
+  const maxEvents=Math.max(0,...data.map(x=>x.stats.events));
+  const eligible=data.filter(x=>x.stats.events>=Math.max(1,Math.ceil(maxEvents*.5)));
+  const pick=(arr,key)=>arr.length?arr.slice().sort((a,b)=>b.stats[key]-a.stats[key])[0]:null;
+
+  const awards=[
+    ["👑","ГРАВЕЦЬ МІСЯЦЯ",pick(eligible,"average"),"average"],
+    ["⚽","БОМБАРДИР",pick(data,"goals"),"goals"],
+    ["🎯","АСИСТЕНТ",pick(data,"assists"),"assists"],
+    ["🏆","MVP",pick(data,"mvp"),"mvp"]
+  ];
+
+  $("generalAwardsList").innerHTML=data.length?awards.map((a,i)=>{
+    const x=a[2]; if(!x)return "";
+    const val=a[3]==="average"?x.stats.average.toFixed(2):x.stats[a[3]];
+    return `<div class="general-award-card ${i===0?"main":""}">
+      <small>${a[0]} ${a[1]}</small>
+      <img src="${x.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
+      <strong>${esc(x.player.name)}</strong>
+      <b>${val}</b>
+    </div>`;
+  }).join(""):`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
+
+  $("generalAwardsNext").disabled=generalMonthKey(generalAwardsMonthCursor)>=generalMonthKey(now);
+}
+
+function fillGeneralCompare(){
+  const selects=[$("generalCompareA"),$("generalCompareB")];
+  selects.forEach((select,i)=>{
+    const current=select.value;
+    select.innerHTML=players.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+    if(players.some(p=>p.id===current))select.value=current;
+    else if(players[i])select.value=players[i].id;
+  });
+}
+
+function generalCompareRow(label,a,b,decimals=false){
+  return `<div class="general-compare-row"><b class="${a>b?"win":""}">${decimals?a.toFixed(2):a}</b><span>${label}</span><b class="${b>a?"win":""}">${decimals?b.toFixed(2):b}</b></div>`;
+}
+
+function renderGeneralCompare(){
+  const aPlayer=players.find(p=>p.id===$("generalCompareA").value)||players[0];
+  const bPlayer=players.find(p=>p.id===$("generalCompareB").value)||players[1];
+  if(!aPlayer||!bPlayer){
+    $("generalCompareContent").innerHTML=`<div class="empty-state"><strong>ПОТРІБНО ДВА ГРАВЦІ</strong></div>`;
+    return;
+  }
+
+  const A=generalAggregatePlayer(aPlayer), B=generalAggregatePlayer(bPlayer);
+  const rows=[
+    ["МАТЧІ",A.matches,B.matches,false],
+    ["ГОЛИ",A.goals,B.goals,false],
+    ["АСИСТИ",A.assists,B.assists,false],
+    ["СЕРЕДНЯ ОЦІНКА",A.average,B.average,true],
+    ["НАЙКРАЩА ОЦІНКА",A.best,B.best,true],
+    ["НАЙГІРША ОЦІНКА",A.worst,B.worst,true],
+    ["MVP",A.mvp,B.mvp,false]
+  ];
+
+  let aWins=0,bWins=0;
+  rows.forEach(r=>{if(r[1]>r[2])aWins++;else if(r[2]>r[1])bWins++;});
+
+  $("generalCompareContent").innerHTML=`
+    <div class="general-compare-hero">
+      <div><img src="${aPlayer.cardImage||PLAYER_PLACEHOLDER}" alt=""><strong>${esc(aPlayer.name)}</strong></div>
+      <b>VS</b>
+      <div><img src="${bPlayer.cardImage||PLAYER_PLACEHOLDER}" alt=""><strong>${esc(bPlayer.name)}</strong></div>
+    </div>
+    <div class="general-compare-table">${rows.map(r=>generalCompareRow(...r)).join("")}</div>
+    <div class="general-compare-form">
+      <span>${A.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span>
+      <small>ФОРМА ОСТАННІХ 5</small>
+      <span>${B.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span>
+    </div>
+    <div class="general-compare-score"><small>ПЕРЕВАГА ЗА ПОКАЗНИКАМИ</small><strong>${esc(aPlayer.name)} ${aWins} : ${bWins} ${esc(bPlayer.name)}</strong></div>`;
+}
+
+function renderGeneralStats(){
+  document.querySelectorAll("[data-general-mode]").forEach(btn=>btn.classList.toggle("active",btn.dataset.generalMode===generalStatsMode));
+  if(generalStatsSlide===0)renderGeneralPlayers();
+  if(generalStatsSlide===1)renderGeneralStreaks();
+  if(generalStatsSlide===2)renderGeneralRecords();
+  if(generalStatsSlide===3)renderGeneralAwards();
+  if(generalStatsSlide===4){fillGeneralCompare();renderGeneralCompare();}
+}
+
+function openGeneralStats(){
+  $("generalStatsModal")?.classList.remove("hidden");
+  generalAwardsMonthCursor=new Date();
+  setGeneralStatsSlide(0);
+}
 function closeGeneralStats(){$("generalStatsModal")?.classList.add("hidden");}
+
 $("openGeneralStatsBtn")?.addEventListener("click",openGeneralStats);
 $("closeGeneralStatsModal")?.addEventListener("click",closeGeneralStats);
 document.querySelectorAll("[data-close-general-stats]").forEach(el=>el.addEventListener("click",closeGeneralStats));
+
+document.querySelectorAll("[data-general-mode]").forEach(btn=>btn.addEventListener("click",()=>{
+  generalStatsMode=btn.dataset.generalMode;
+  renderGeneralStats();
+}));
 document.querySelectorAll("[data-general-sort]").forEach(btn=>btn.addEventListener("click",()=>{
   generalStatsSort=btn.dataset.generalSort;
   document.querySelectorAll("[data-general-sort]").forEach(b=>b.classList.toggle("active",b===btn));
-  renderGeneralStats();
+  renderGeneralPlayers();
 }));
 
+$("generalAwardsPrev")?.addEventListener("click",()=>{
+  generalAwardsMonthCursor=new Date(generalAwardsMonthCursor.getFullYear(),generalAwardsMonthCursor.getMonth()-1,1);
+  renderGeneralAwards();
+});
+$("generalAwardsNext")?.addEventListener("click",()=>{
+  const next=new Date(generalAwardsMonthCursor.getFullYear(),generalAwardsMonthCursor.getMonth()+1,1);
+  if(generalMonthKey(next)<=generalMonthKey(new Date())){
+    generalAwardsMonthCursor=next;
+    renderGeneralAwards();
+  }
+});
+$("generalCompareA")?.addEventListener("change",renderGeneralCompare);
+$("generalCompareB")?.addEventListener("change",renderGeneralCompare);
+
+let generalStatsTouchX=null;
+$("generalStatsViewport")?.addEventListener("touchstart",e=>{
+  generalStatsTouchX=e.touches?.[0]?.clientX??null;
+},{passive:true});
+$("generalStatsViewport")?.addEventListener("touchend",e=>{
+  if(generalStatsTouchX==null)return;
+  const x=e.changedTouches?.[0]?.clientX??generalStatsTouchX;
+  const dx=x-generalStatsTouchX;
+  generalStatsTouchX=null;
+  if(Math.abs(dx)>45)setGeneralStatsSlide(generalStatsSlide+(dx<0?1:-1));
+},{passive:true});
 
 
 /* Theme */
@@ -3950,50 +4247,3 @@ document.addEventListener("keydown",e=>{
     closeCalendarMatchModal();
   }
 });
-
-/* v5.25 — 5-slide general statistics */
-let advSlide=0,advMode="official",advSort="rating",awardMonth=new Date();
-const advTitles=["ГРАВЦІ КОМАНДИ","СЕРІЇ","РЕКОРДИ","НАГОРОДИ","ПОРІВНЯННЯ"];
-const ae=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-const an=v=>Number.isFinite(Number(v))?Number(v):0;
-function AP(){return Array.isArray(state?.players)?state.players:[]}
-function AI(p){return String(p?.id??p?.playerId??p?.nick??p?.nickname??p?.name??"")}
-function AN(p){return p?.nick||p?.nickname||p?.name||"Гравець"}
-function AF(p){return p?.photo||p?.image||p?.cardImage||"player-placeholder.png"}
-function AD(e){let x=e?.date||e?.eventDate||e?.createdAt||e?.created_at,d=x?new Date(x):null;return d&&isFinite(d)?d:null}
-function AR(e){return an(e?.rating??e?.avgRating??e?.averageRating)}
-function AG(e){return an(e?.goals)} function AA(e){return an(e?.assists)}
-function AM(e){return e?.mvp===true||e?.isMvp===true||e?.is_mvp===true?1:an(e?.mvpCount)}
-function AE(){
- let o=Array.isArray(state?.officialStats)?state.officialStats:(Array.isArray(state?.matchStats)?state.matchStats:[]);
- let t=Array.isArray(state?.trainingStats)?state.trainingStats:[];
- return advMode==="official"?o:t
-}
-function rows(p){let id=AI(p),nm=AN(p).toLowerCase();return AE().filter(e=>String(e?.playerId??e?.player_id??e?.id??"")===id||String(e?.nick||e?.nickname||e?.playerName||"").toLowerCase()===nm).sort((a,b)=>(AD(a)?.getTime()||0)-(AD(b)?.getTime()||0))}
-function agg(p){let r=rows(p),rs=r.map(AR).filter(Boolean);return{matches:r.length,goals:r.reduce((s,e)=>s+AG(e),0),assists:r.reduce((s,e)=>s+AA(e),0),rating:rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:0,best:rs.length?Math.max(...rs):0,worst:rs.length?Math.min(...rs):0,mvp:r.reduce((s,e)=>s+AM(e),0),form:rs.slice(-5)}}
-function streak(r,fn){let c=0,b=0;r.forEach(e=>{if(fn(e)){c++;b=Math.max(b,c)}else c=0});let a=0;for(let i=r.length-1;i>=0&&fn(r[i]);i--)a++;return{active:a,best:b}}
-function streaks(p){let r=rows(p);return{goal:streak(r,e=>AG(e)>0),assist:streak(r,e=>AA(e)>0),seven:streak(r,e=>AR(e)>=7),eight:streak(r,e=>AR(e)>=8),mvp:streak(r,e=>AM(e)>0),contrib:streak(r,e=>AG(e)>0||AA(e)>0)}}
-function goAdv(i){advSlide=Math.max(0,Math.min(4,i));$("advancedStatsTrack").style.transform=`translateX(-${advSlide*20}%)`;$("advancedSlideTitle").textContent=advTitles[advSlide];document.querySelectorAll("#advancedDots i").forEach((x,n)=>x.classList.toggle("active",n===advSlide));renderAdv()}
-function renderPlayers(){let d=AP().map(p=>({p,a:agg(p)})).sort((x,y)=>(y.a[advSort]||0)-(x.a[advSort]||0));$("advancedPlayersSummary").textContent=`Гравців: ${d.length}`;$("advancedPlayersList").innerHTML=d.length?d.map((x,i)=>`<div class="advanced-player-row"><b class="adv-rank">${i+1}</b><img src="${ae(AF(x.p))}"><span><strong>${ae(AN(x.p))}</strong><small>Матчі ${x.a.matches} • Голи ${x.a.goals} • Асисти ${x.a.assists} • MVP ${x.a.mvp}</small></span><em>${advSort==="rating"?x.a.rating.toFixed(2):x.a[advSort]}</em></div>`).join(""):'<div class="advanced-empty">Статистики поки немає</div>'}
-function renderStreaks(){let d=[];AP().forEach(p=>{let s=streaks(p),a=[["⚽","Гольова",s.goal],["🎯","Асисти",s.assist],["⭐","7.0+",s.seven],["🔥","8.0+",s.eight],["🏆","MVP",s.mvp],["🤝","Гол або асист",s.contrib]].filter(x=>x[2].active>=2);if(a.length)d.push({p,a,max:Math.max(...a.map(x=>x[2].active))})});d.sort((a,b)=>b.max-a.max);$("advancedStreaksList").innerHTML=d.length?d.map((x,i)=>`<div class="streak-card">${i===0?'<small class="best-streak">🔥 НАЙКРАЩА СЕРІЯ</small>':""}<div class="streak-player"><img src="${ae(AF(x.p))}"><strong>${ae(AN(x.p))}</strong></div>${x.a.map(v=>`<div class="streak-line"><span>${v[0]} ${v[1]}</span><b>${v[2].active}</b><small>Рекорд ${v[2].best}</small></div>`).join("")}</div>`).join(""):'<div class="advanced-empty">Активних серій від 2 подій немає</div>'}
-function recordCard(icon,title,winners,value){return `<div class="record-card"><small>${icon} ${title}</small>${winners.map(x=>`<div class="record-winner"><img src="${ae(AF(x.p))}"><span><strong>${ae(AN(x.p))}</strong><b>${value(x)}</b></span></div>`).join("")}</div>`}
-function renderRecords(){let ps=AP(),ag=ps.map(p=>({p,a:agg(p),s:streaks(p)})),all=[];ps.forEach(p=>rows(p).forEach(e=>all.push({p,e})));let specs=[
-["⭐","НАЙВИЩА ОЦІНКА",all,x=>AR(x.e),x=>AR(x.e).toFixed(1)],["⚽","ГОЛІВ ЗА ГРУ",all,x=>AG(x.e),x=>AG(x.e)],["🎯","АСИСТІВ ЗА ГРУ",all,x=>AA(x.e),x=>AA(x.e)],
-["🔥","ГОЛЬОВА СЕРІЯ",ag,x=>x.s.goal.best,x=>x.s.goal.best],["🎯","СЕРІЯ АСИСТІВ",ag,x=>x.s.assist.best,x=>x.s.assist.best],["🤝","РЕЗУЛЬТАТИВНА СЕРІЯ",ag,x=>x.s.contrib.best,x=>x.s.contrib.best],
-["⭐","СЕРІЯ 8.0+",ag,x=>x.s.eight.best,x=>x.s.eight.best],["🏆","НАЙБІЛЬШЕ MVP",ag,x=>x.a.mvp,x=>x.a.mvp],["⚽","ГОЛІВ ЗАГАЛОМ",ag,x=>x.a.goals,x=>x.a.goals],["🎯","АСИСТІВ ЗАГАЛОМ",ag,x=>x.a.assists,x=>x.a.assists],
-["👑","НАЙВИЩА СЕРЕДНЯ",ag.filter(x=>x.a.matches>=10),x=>x.a.rating,x=>x.a.rating.toFixed(2)]];
-let out="";specs.forEach(s=>{if(!s[2].length)return;let m=Math.max(...s[2].map(s[3]));if(m<=0)return;out+=recordCard(s[0],s[1],s[2].filter(x=>s[3](x)===m),s[4])});$("advancedRecordsList").innerHTML=out||'<div class="advanced-empty">Недостатньо даних</div>'}
-function mk(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`}
-function ma(p,d){let r=rows(p).filter(e=>AD(e)&&mk(AD(e))===mk(d)),rs=r.map(AR).filter(Boolean);return{matches:r.length,goals:r.reduce((s,e)=>s+AG(e),0),assists:r.reduce((s,e)=>s+AA(e),0),rating:rs.length?rs.reduce((a,b)=>a+b,0)/rs.length:0,mvp:r.reduce((s,e)=>s+AM(e),0)}}
-function renderAwards(){let now=new Date();$("awardsMonthLabel").textContent=awardMonth.toLocaleDateString("uk-UA",{month:"long",year:"numeric"}).toUpperCase();$("awardsStateLabel").textContent=mk(now)===mk(awardMonth)?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ";let d=AP().map(p=>({p,a:ma(p,awardMonth)})).filter(x=>x.a.matches),ev=Math.max(0,...d.map(x=>x.a.matches)),el=d.filter(x=>x.a.matches>=Math.max(1,Math.ceil(ev*.5))),pick=(a,k)=>a.length?a.slice().sort((x,y)=>y.a[k]-x.a[k])[0]:null,aw=[["👑","ГРАВЕЦЬ МІСЯЦЯ",pick(el,"rating"),"rating"],["⚽","БОМБАРДИР",pick(d,"goals"),"goals"],["🎯","АСИСТЕНТ",pick(d,"assists"),"assists"],["🏆","MVP",pick(d,"mvp"),"mvp"]];$("advancedAwardsList").innerHTML=d.length?aw.map((x,i)=>x[2]?`<div class="award-card ${i===0?"award-main":""}"><small>${x[0]} ${x[1]}</small><img src="${ae(AF(x[2].p))}"><strong>${ae(AN(x[2].p))}</strong><b>${x[3]==="rating"?x[2].a[x[3]].toFixed(2):x[2].a[x[3]]}</b></div>`:"").join(""):'<div class="advanced-empty">У цьому місяці статистики немає</div>';$("awardsNextMonth").disabled=mk(awardMonth)>=mk(now)}
-function fillCompare(){let p=AP();["comparePlayerA","comparePlayerB"].forEach((id,n)=>{let e=$(id),v=e.value;e.innerHTML=p.map(x=>`<option value="${ae(AI(x))}">${ae(AN(x))}</option>`).join("");if(p.some(x=>AI(x)===v))e.value=v;else if(p[n])e.value=AI(p[n])})}
-function cr(l,a,b,d=false){return `<div class="compare-row"><b class="${a>b?"win":""}">${d?a.toFixed(2):a}</b><span>${l}</span><b class="${b>a?"win":""}">${d?b.toFixed(2):b}</b></div>`}
-function renderCompare(){let ps=AP(),p=ps.find(x=>AI(x)===$("comparePlayerA").value)||ps[0],q=ps.find(x=>AI(x)===$("comparePlayerB").value)||ps[1];if(!p||!q){$("advancedCompareContent").innerHTML='<div class="advanced-empty">Потрібно два гравці</div>';return}let a=agg(p),b=agg(q),rr=[["МАТЧІ",a.matches,b.matches,false],["ГОЛИ",a.goals,b.goals,false],["АСИСТИ",a.assists,b.assists,false],["СЕРЕДНЯ ОЦІНКА",a.rating,b.rating,true],["НАЙКРАЩА ОЦІНКА",a.best,b.best,true],["НАЙГІРША ОЦІНКА",a.worst,b.worst,true],["MVP",a.mvp,b.mvp,false]],aw=0,bw=0;rr.forEach(x=>x[1]>x[2]?aw++:x[2]>x[1]?bw++:0);$("advancedCompareContent").innerHTML=`<div class="compare-hero"><div><img src="${ae(AF(p))}"><strong>${ae(AN(p))}</strong></div><b>VS</b><div><img src="${ae(AF(q))}"><strong>${ae(AN(q))}</strong></div></div><div class="compare-table">${rr.map(x=>cr(...x)).join("")}</div><div class="compare-form"><span>${a.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span><small>ФОРМА ОСТАННІХ 5</small><span>${b.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span></div><div class="compare-score"><small>ПЕРЕВАГА ЗА ПОКАЗНИКАМИ</small><strong>${ae(AN(p))} ${aw} : ${bw} ${ae(AN(q))}</strong></div>`}
-function renderAdv(){document.querySelectorAll(".advanced-mode-btn").forEach(b=>b.classList.toggle("active",b.dataset.advancedMode===advMode));if(advSlide===0)renderPlayers();if(advSlide===1)renderStreaks();if(advSlide===2)renderRecords();if(advSlide===3)renderAwards();if(advSlide===4){fillCompare();renderCompare()}}
-function openAdv(){$("advancedStatsModal").classList.remove("hidden");awardMonth=new Date();goAdv(0)}
-function closeAdv(){$("advancedStatsModal").classList.add("hidden")}
-document.addEventListener("click",e=>{let l=e.target.closest("#openGeneralStats,.general-stats-launch");if(l){e.preventDefault();e.stopPropagation();openAdv();return}if(e.target.closest("[data-close-advanced-stats]"))closeAdv();let m=e.target.closest("[data-advanced-mode]");if(m){advMode=m.dataset.advancedMode;renderAdv()}let s=e.target.closest("[data-advanced-sort]");if(s){advSort=s.dataset.advancedSort;document.querySelectorAll("[data-advanced-sort]").forEach(b=>b.classList.toggle("active",b===s));renderPlayers()}});
-$("comparePlayerA")?.addEventListener("change",renderCompare);$("comparePlayerB")?.addEventListener("change",renderCompare);
-$("awardsPrevMonth")?.addEventListener("click",()=>{awardMonth=new Date(awardMonth.getFullYear(),awardMonth.getMonth()-1,1);renderAwards()});
-$("awardsNextMonth")?.addEventListener("click",()=>{let n=new Date(awardMonth.getFullYear(),awardMonth.getMonth()+1,1),now=new Date();if(mk(n)<=mk(now)){awardMonth=n;renderAwards()}});
-let tx=null;$("advancedStatsViewport")?.addEventListener("touchstart",e=>tx=e.touches[0].clientX,{passive:true});$("advancedStatsViewport")?.addEventListener("touchend",e=>{let dx=e.changedTouches[0].clientX-tx;if(Math.abs(dx)>45)goAdv(advSlide+(dx<0?1:-1));tx=null},{passive:true});

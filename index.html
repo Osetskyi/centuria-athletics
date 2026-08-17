@@ -952,43 +952,73 @@
 </div>
 
 
-<div id="advancedStatsModal" class="modal hidden">
-<div class="modal-backdrop" data-close-advanced-stats></div>
-<div class="modal-card advanced-stats-card">
-<button class="modal-close" type="button" data-close-advanced-stats>×</button>
-<div class="advanced-head"><small>СТАТИСТИКА CENTURIA</small><h2 id="advancedSlideTitle">ГРАВЦІ КОМАНДИ</h2>
-<div class="advanced-dots" id="advancedDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
-<div class="advanced-mode"><button class="advanced-mode-btn active" data-advanced-mode="official">ОФІЦІЙНІ МАТЧІ</button><button class="advanced-mode-btn" data-advanced-mode="training">ТРЕНУВАННЯ</button></div></div>
-<div class="advanced-viewport" id="advancedStatsViewport"><div class="advanced-track" id="advancedStatsTrack">
-<section class="advanced-slide"><div id="advancedPlayersSummary" class="advanced-summary"></div><div class="advanced-sort"><button class="active" data-advanced-sort="rating">⭐ ОЦІНКА</button><button data-advanced-sort="goals">⚽ ГОЛИ</button><button data-advanced-sort="assists">🎯 АСИСТИ</button><button data-advanced-sort="mvp">🏆 MVP</button></div><div id="advancedPlayersList" class="advanced-list"></div></section>
-<section class="advanced-slide"><div class="advanced-section-title">🔥 АКТИВНІ СЕРІЇ</div><div id="advancedStreaksList" class="advanced-list"></div></section>
-<section class="advanced-slide"><div class="advanced-section-title">🏆 КНИГА РЕКОРДІВ CENTURIA</div><div id="advancedRecordsList" class="records-grid"></div></section>
-<section class="advanced-slide"><div class="awards-month-nav"><button id="awardsPrevMonth">‹</button><strong id="awardsMonthLabel"></strong><button id="awardsNextMonth">›</button></div><div id="awardsStateLabel" class="awards-state"></div><div id="advancedAwardsList" class="awards-grid"></div></section>
-<section class="advanced-slide"><div class="compare-pickers"><select id="comparePlayerA"></select><b>VS</b><select id="comparePlayerB"></select></div><div id="advancedCompareContent"></div></section>
-</div></div><div class="advanced-swipe-hint">СВАЙПАЙ ВЛІВО / ВПРАВО</div></div></div>
+
 <div id="generalStatsModal" class="auth-overlay hidden" role="dialog" aria-modal="true">
   <div class="modal-backdrop" data-close-general-stats></div>
-  <div class="modal-card general-stats-modal-card">
+  <div class="modal-card general-stats-modal-card advanced-general-stats">
     <button id="closeGeneralStatsModal" class="modal-close" type="button" data-viewer-allowed="true">✕</button>
-    <div class="eyebrow">CENTURIA ATHLETICS</div>
-    <h2>ЗАГАЛЬНА СТАТИСТИКА</h2>
 
-    <div class="general-stat-sort">
-      <button class="general-sort-btn active" data-general-sort="average" type="button" data-viewer-allowed="true">СЕРЕДНЯ ОЦІНКА</button>
-      <button class="general-sort-btn" data-general-sort="goals" type="button" data-viewer-allowed="true">ГОЛИ</button>
-      <button class="general-sort-btn" data-general-sort="assists" type="button" data-viewer-allowed="true">АСИСТИ</button>
+    <div class="general-stats-head">
+      <div class="eyebrow">CENTURIA ATHLETICS</div>
+      <h2 id="generalStatsSlideTitle">ГРАВЦІ КОМАНДИ</h2>
+
+      <div id="generalStatsDots" class="general-stats-dots" aria-label="Сторінки статистики">
+        <i class="active"></i><i></i><i></i><i></i><i></i>
+      </div>
+
+      <div class="general-stats-mode">
+        <button type="button" class="general-mode-btn active" data-general-mode="official" data-viewer-allowed="true">⚽ ОФІЦІЙНІ МАТЧІ</button>
+        <button type="button" class="general-mode-btn" data-general-mode="training" data-viewer-allowed="true">🏋 ТРЕНУВАННЯ</button>
+      </div>
     </div>
 
-    <div class="general-stats-columns">
-      <section>
-        <h3>⚽ ОФІЦІЙНІ МАТЧІ</h3>
-        <div id="generalOfficialRanking" class="general-ranking"></div>
-      </section>
-      <section>
-        <h3>🏋 ТРЕНУВАННЯ</h3>
-        <div id="generalTrainingRanking" class="general-ranking"></div>
-      </section>
+    <div id="generalStatsViewport" class="general-stats-viewport">
+      <div id="generalStatsTrack" class="general-stats-track">
+
+        <section class="general-stats-slide">
+          <div id="generalPlayersSummary" class="general-slide-summary">—</div>
+          <div class="general-stat-sort general-stat-sort-4">
+            <button class="general-sort-btn active" data-general-sort="average" type="button" data-viewer-allowed="true">⭐ ОЦІНКА</button>
+            <button class="general-sort-btn" data-general-sort="goals" type="button" data-viewer-allowed="true">⚽ ГОЛИ</button>
+            <button class="general-sort-btn" data-general-sort="assists" type="button" data-viewer-allowed="true">🎯 АСИСТИ</button>
+            <button class="general-sort-btn" data-general-sort="mvp" type="button" data-viewer-allowed="true">🏆 MVP</button>
+          </div>
+          <div id="generalPlayersRanking" class="general-players-ranking"></div>
+        </section>
+
+        <section class="general-stats-slide">
+          <div class="general-section-label">🔥 АКТИВНІ СЕРІЇ</div>
+          <div id="generalStreaksList" class="general-streaks-list"></div>
+        </section>
+
+        <section class="general-stats-slide">
+          <div class="general-section-label">🏆 КНИГА РЕКОРДІВ CENTURIA</div>
+          <div id="generalRecordsList" class="general-records-grid"></div>
+        </section>
+
+        <section class="general-stats-slide">
+          <div class="general-awards-month">
+            <button id="generalAwardsPrev" type="button" data-viewer-allowed="true">‹</button>
+            <strong id="generalAwardsMonth">—</strong>
+            <button id="generalAwardsNext" type="button" data-viewer-allowed="true">›</button>
+          </div>
+          <div id="generalAwardsState" class="general-awards-state">—</div>
+          <div id="generalAwardsList" class="general-awards-grid"></div>
+        </section>
+
+        <section class="general-stats-slide">
+          <div class="general-compare-pickers">
+            <select id="generalCompareA" data-viewer-allowed="true"></select>
+            <b>VS</b>
+            <select id="generalCompareB" data-viewer-allowed="true"></select>
+          </div>
+          <div id="generalCompareContent"></div>
+        </section>
+
+      </div>
     </div>
+
+    <div class="general-stats-swipe-hint">СВАЙПАЙ ВЛІВО / ВПРАВО</div>
   </div>
 </div>
 
