@@ -952,6 +952,20 @@
 </div>
 
 
+<div id="advancedStatsModal" class="modal hidden">
+<div class="modal-backdrop" data-close-advanced-stats></div>
+<div class="modal-card advanced-stats-card">
+<button class="modal-close" type="button" data-close-advanced-stats>×</button>
+<div class="advanced-head"><small>СТАТИСТИКА CENTURIA</small><h2 id="advancedSlideTitle">ГРАВЦІ КОМАНДИ</h2>
+<div class="advanced-dots" id="advancedDots"><i class="active"></i><i></i><i></i><i></i><i></i></div>
+<div class="advanced-mode"><button class="advanced-mode-btn active" data-advanced-mode="official">ОФІЦІЙНІ МАТЧІ</button><button class="advanced-mode-btn" data-advanced-mode="training">ТРЕНУВАННЯ</button></div></div>
+<div class="advanced-viewport" id="advancedStatsViewport"><div class="advanced-track" id="advancedStatsTrack">
+<section class="advanced-slide"><div id="advancedPlayersSummary" class="advanced-summary"></div><div class="advanced-sort"><button class="active" data-advanced-sort="rating">⭐ ОЦІНКА</button><button data-advanced-sort="goals">⚽ ГОЛИ</button><button data-advanced-sort="assists">🎯 АСИСТИ</button><button data-advanced-sort="mvp">🏆 MVP</button></div><div id="advancedPlayersList" class="advanced-list"></div></section>
+<section class="advanced-slide"><div class="advanced-section-title">🔥 АКТИВНІ СЕРІЇ</div><div id="advancedStreaksList" class="advanced-list"></div></section>
+<section class="advanced-slide"><div class="advanced-section-title">🏆 КНИГА РЕКОРДІВ CENTURIA</div><div id="advancedRecordsList" class="records-grid"></div></section>
+<section class="advanced-slide"><div class="awards-month-nav"><button id="awardsPrevMonth">‹</button><strong id="awardsMonthLabel"></strong><button id="awardsNextMonth">›</button></div><div id="awardsStateLabel" class="awards-state"></div><div id="advancedAwardsList" class="awards-grid"></div></section>
+<section class="advanced-slide"><div class="compare-pickers"><select id="comparePlayerA"></select><b>VS</b><select id="comparePlayerB"></select></div><div id="advancedCompareContent"></div></section>
+</div></div><div class="advanced-swipe-hint">СВАЙПАЙ ВЛІВО / ВПРАВО</div></div></div>
 <div id="generalStatsModal" class="auth-overlay hidden" role="dialog" aria-modal="true">
   <div class="modal-backdrop" data-close-general-stats></div>
   <div class="modal-card general-stats-modal-card">
