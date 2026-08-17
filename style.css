@@ -4329,3 +4329,72 @@ html.light-theme #screen-home::after{
     box-shadow:0 5px 16px rgba(70,53,21,.035)!important;
   }
 }
+
+
+/* ==========================================================
+   v5.32 — hard light-theme fallback
+   Independent from app.js; activates from html/body classes or data attribute.
+   ========================================================== */
+html.light-theme,
+html[data-site-theme="light"],
+body.light-theme,
+body[data-site-theme="light"]{
+  color-scheme:light!important;
+}
+
+html.light-theme body,
+html[data-site-theme="light"] body,
+body.light-theme,
+body[data-site-theme="light"]{
+  background:#fbfaf6!important;
+  color:#2c2922!important;
+}
+
+/* Force every non-home screen to visibly change */
+html.light-theme .screen:not(#screen-home),
+html[data-site-theme="light"] .screen:not(#screen-home),
+body.light-theme .screen:not(#screen-home),
+body[data-site-theme="light"] .screen:not(#screen-home){
+  background:
+    radial-gradient(circle at 50% 0%,rgba(212,173,74,.07),transparent 24%),
+    linear-gradient(180deg,#fffefa 0%,#fbfaf6 42%,#f7f3ea 100%)!important;
+  color:#2c2922!important;
+}
+
+/* Strongly override generic dark surfaces */
+html.light-theme .screen:not(#screen-home) .card,
+html.light-theme .screen:not(#screen-home) [class*="-card"],
+html.light-theme .screen:not(#screen-home) [class*="-panel"],
+html.light-theme .screen:not(#screen-home) [class*="-row"],
+html[data-site-theme="light"] .screen:not(#screen-home) .card,
+html[data-site-theme="light"] .screen:not(#screen-home) [class*="-card"],
+html[data-site-theme="light"] .screen:not(#screen-home) [class*="-panel"],
+html[data-site-theme="light"] .screen:not(#screen-home) [class*="-row"]{
+  --forced-light-bg:#fffefa;
+}
+
+/* Theme selector must visibly reflect current theme */
+html.light-theme #themeLightBtn,
+html[data-site-theme="light"] #themeLightBtn,
+body.light-theme #themeLightBtn,
+body[data-site-theme="light"] #themeLightBtn{
+  background:linear-gradient(180deg,#fff2cf,#f8e6b0)!important;
+  border-color:#c89f3d!important;
+  color:#8a6415!important;
+  box-shadow:0 0 0 2px rgba(200,159,61,.08)!important;
+}
+html.light-theme #themeDarkBtn,
+html[data-site-theme="light"] #themeDarkBtn,
+body.light-theme #themeDarkBtn,
+body[data-site-theme="light"] #themeDarkBtn{
+  background:#fff!important;
+  border-color:#ded6c9!important;
+  color:#777064!important;
+}
+
+html.dark-theme #themeDarkBtn,
+body.dark-theme #themeDarkBtn{
+  border-color:#d9b84f!important;
+  color:#efd16f!important;
+  background:rgba(217,184,79,.10)!important;
+}

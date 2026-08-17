@@ -5,10 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#090909">
   <title>Centuria Athletics</title>
-  <link rel="stylesheet" href="style.css?v=5.31">
+  <link rel="stylesheet" href="style.css?v=5.32">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#090909">
+
+<script>
+(function(){
+  const KEY="centuria_theme";
+  function setTheme(theme){
+    const value=theme==="light"?"light":"dark";
+    const root=document.documentElement;
+    root.setAttribute("data-site-theme",value);
+    root.classList.toggle("light-theme",value==="light");
+    root.classList.toggle("dark-theme",value==="dark");
+
+    if(document.body){
+      document.body.setAttribute("data-site-theme",value);
+      document.body.classList.toggle("light-theme",value==="light");
+      document.body.classList.toggle("dark-theme",value==="dark");
+    }
+
+    try{localStorage.setItem(KEY,value);}catch(e){}
+
+    document.querySelectorAll("[data-theme-value]").forEach(function(btn){
+      btn.classList.toggle("active",btn.getAttribute("data-theme-value")===value);
+      btn.setAttribute("aria-pressed",btn.getAttribute("data-theme-value")===value?"true":"false");
+    });
+
+    const meta=document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute("content",value==="light"?"#fffdf8":"#090909");
+
+    window.dispatchEvent(new CustomEvent("centuria-theme-change",{detail:{theme:value}}));
+  }
+
+  window.setCenturiaTheme=setTheme;
+
+  let saved="dark";
+  try{saved=localStorage.getItem(KEY)||"dark";}catch(e){}
+  setTheme(saved);
+
+  document.addEventListener("DOMContentLoaded",function(){
+    setTheme(saved);
+    document.addEventListener("click",function(e){
+      const btn=e.target.closest && e.target.closest("[data-theme-value]");
+      if(btn){
+        e.preventDefault();
+        e.stopPropagation();
+        setTheme(btn.getAttribute("data-theme-value"));
+      }
+    },true);
+  });
+})();
+</script>
+
 </head>
 <body>
 <div id="app">
@@ -437,10 +487,10 @@
       <h2>ТЕМА САЙТУ</h2>
       <p class="settings-hint">Вибери вигляд інтерфейсу для цього пристрою.</p>
       <div class="theme-switcher">
-        <button type="button" id="themeDarkBtn" class="theme-choice active" data-theme-value="dark" data-viewer-allowed="true">
+        <button type="button" id="themeDarkBtn" class="theme-choice active" data-theme-value="dark" onclick="window.setCenturiaTheme && window.setCenturiaTheme('dark')" data-viewer-allowed="true">
           <span>🌙</span><b>ТЕМНА</b>
         </button>
-        <button type="button" id="themeLightBtn" class="theme-choice" data-theme-value="light" data-viewer-allowed="true">
+        <button type="button" id="themeLightBtn" class="theme-choice" data-theme-value="light" onclick="window.setCenturiaTheme && window.setCenturiaTheme('light')" data-viewer-allowed="true">
           <span>☀️</span><b>СВІТЛА</b>
         </button>
       </div>
@@ -1048,6 +1098,6 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=5.31"></script>
+<script src="app.js?v=5.32"></script>
 </body>
 </html>

@@ -4074,21 +4074,14 @@ $("generalStatsViewport")?.addEventListener("touchend",e=>{
 const SITE_THEME_KEY="centuria_theme";
 
 function applySiteTheme(theme){
+  if(typeof window.setCenturiaTheme==="function"){
+    window.setCenturiaTheme(theme);
+    return;
+  }
   const value=theme==="light"?"light":"dark";
   document.documentElement.dataset.siteTheme=value;
   document.documentElement.classList.toggle("light-theme",value==="light");
   document.documentElement.classList.toggle("dark-theme",value==="dark");
-  if(document.body){
-    document.body.dataset.siteTheme=value;
-    document.body.classList.toggle("light-theme",value==="light");
-    document.body.classList.toggle("dark-theme",value==="dark");
-  }
-  try{localStorage.setItem(SITE_THEME_KEY,value)}catch(_e){}
-  document.querySelectorAll("[data-theme-value]").forEach(btn=>{
-    btn.classList.toggle("active",btn.dataset.themeValue===value);
-  });
-  // Force Safari/PWA to recalculate theme styles immediately.
-  void document.documentElement.offsetHeight;
 }
 
 function initSiteTheme(){
