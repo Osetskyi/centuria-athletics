@@ -271,6 +271,11 @@ let gatheringsPollTimer=null;
 
 let homeNextEventData=null;
 let homeNextEventTimer=null;
+let trainingDays=[];
+let trainingStats=[];
+let officialMatchStats=[];
+let currentTrainingDay=null;
+let homeMvpData=null;
 let calendarMatches=[];
 let calendarGatherings=[];
 let calendarCursor=new Date();
@@ -297,7 +302,7 @@ function canEditSite(){
 
 function applyPermissions(){
   const editable = canEditSite();
-  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn","saveCalendarMatchBtn","editCalendarMatchBtn","transferCalendarMatchBtn","confirmTransferMatchBtn","cancelTransferMatchBtn","deleteCalendarMatchBtn","addAnotherCalendarMatchBtn","chooseMatchCompetitionImage","chooseMatchHomeImage","chooseMatchAwayImage"].forEach(id=>{
+  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn","saveCalendarMatchBtn","editCalendarMatchBtn","transferCalendarMatchBtn","confirmTransferMatchBtn","cancelTransferMatchBtn","deleteCalendarMatchBtn","addAnotherCalendarMatchBtn","chooseMatchCompetitionImage","chooseMatchHomeImage","chooseMatchAwayImage","saveTrainingDayBtn","editTrainingDayBtn","deleteTrainingDayBtn","createTrainingFromDayBtn","createMatchFromDayBtn","editOfficialStatsBtn"].forEach(id=>{
     const el=$(id);
     if(el) el.classList.toggle("permission-hidden", !editable);
   });
@@ -382,6 +387,7 @@ async function refreshAuth(){
   await refreshPushSettings();
   await refreshChatAuthState();
   await refreshGatheringsAuthState();
+  await loadStatisticsData();
   await loadHomeNextEvent();
   refreshTacticalBoardPermissions();
   if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
@@ -804,6 +810,82 @@ document.querySelectorAll(".filter").forEach(b=>b.addEventListener("click",()=>{
 $("playerSearch").addEventListener("input",renderPlayers);
 $("searchToggle").addEventListener("click",()=>$("searchRow").classList.toggle("hidden"));
 
+
+/* Player statistics */
+function playerViewSlide(index){
+  const slider=$("playerViewSlider");
+  if(!slider)return;
+  slider.style.transform=`translateX(-${index*50}%)`;
+  $("playerInfoTab")?.classList.toggle("active",index===0);
+  $("playerStatsTab")?.classList.toggle("active",index===1);
+}
+
+function averageRating(rows){
+  const vals=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
+  return vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null;
+}
+function fmtRating(v){return Number.isFinite(v)?v.toFixed(1):"—";}
+function statFormHtml(values){
+  return values.length?values.map(v=>`<span class="${v>=9?"excellent":v>=8?"good":v<7?"low":""}">${Number(v).toFixed(1)}</span>`).join(""):`<em>Немає даних</em>`;
+}
+
+async function loadPlayerStatistics(playerId){
+  if(!sb||!playerId)return;
+  const [officialRes,trainingRes]=await Promise.all([
+    sb.from("official_match_player_stats").select("rating,goals,assists,match_id,calendar_matches(match_date)").eq("player_id",playerId),
+    sb.from("training_player_stats").select("rating,training_day_id,training_days(training_date)").eq("player_id",playerId)
+  ]);
+  const official=(officialRes.data||[]).filter(r=>r.rating!=null || r.goals || r.assists);
+  const training=(trainingRes.data||[]).filter(r=>r.rating!=null);
+
+  official.sort((a,b)=>String(b.calendar_matches?.match_date||"").localeCompare(String(a.calendar_matches?.match_date||"")));
+  training.sort((a,b)=>String(b.training_days?.training_date||"").localeCompare(String(a.training_days?.training_date||"")));
+
+  const offAvg=averageRating(official);
+  const trAvg=averageRating(training);
+  const trBest=training.length?Math.max(...training.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
+
+  // MVP count = how many events this player's rating equals the best rating for that event.
+  let officialMvp=0, trainingMvp=0;
+  const officialIds=[...new Set(official.map(r=>r.match_id))];
+  const trainingIds=[...new Set(training.map(r=>r.training_day_id))];
+
+  if(officialIds.length){
+    const {data}=await sb.from("official_match_player_stats").select("match_id,player_id,rating").in("match_id",officialIds);
+    const grouped={};
+    (data||[]).forEach(r=>(grouped[r.match_id]??=[]).push(r));
+    officialIds.forEach(id=>{
+      const mine=grouped[id]?.find(r=>r.player_id===playerId);
+      const max=Math.max(...(grouped[id]||[]).map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+      if(mine && Number(mine.rating)===max)officialMvp++;
+    });
+  }
+  if(trainingIds.length){
+    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating").in("training_day_id",trainingIds);
+    const grouped={};
+    (data||[]).forEach(r=>(grouped[r.training_day_id]??=[]).push(r));
+    trainingIds.forEach(id=>{
+      const mine=grouped[id]?.find(r=>r.player_id===playerId);
+      const max=Math.max(...(grouped[id]||[]).map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+      if(mine && Number(mine.rating)===max)trainingMvp++;
+    });
+  }
+
+  $("statOfficialMatches").textContent=officialIds.length;
+  $("statOfficialGoals").textContent=official.reduce((s,r)=>s+(Number(r.goals)||0),0);
+  $("statOfficialAssists").textContent=official.reduce((s,r)=>s+(Number(r.assists)||0),0);
+  $("statOfficialAvg").textContent=fmtRating(offAvg);
+  $("statOfficialMvp").textContent=officialMvp;
+  $("statOfficialForm").innerHTML=statFormHtml(official.slice(0,5).map(r=>r.rating));
+
+  $("statTrainingDays").textContent=trainingIds.length;
+  $("statTrainingAvg").textContent=fmtRating(trAvg);
+  $("statTrainingBest").textContent=fmtRating(trBest);
+  $("statTrainingMvp").textContent=trainingMvp;
+  $("statTrainingLast").textContent=training.length?fmtRating(Number(training[0].rating)):"—";
+  $("statTrainingForm").innerHTML=statFormHtml(training.slice(0,5).map(r=>r.rating));
+}
+
 function resetPlayerModal(){
   editPlayerId=null; currentCardImage="";
   $("playerModalTitle").textContent="ДОДАТИ ГРАВЦЯ";
@@ -822,6 +904,11 @@ function fillViewMode(p){
   $("playerEditMode").classList.add("hidden");
 
   $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
+  $("statsPlayerMiniCard").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
+  $("statsPlayerName").textContent=p.name||"—";
+  playerViewSlide(0);
+  loadPlayerStatistics(p.id);
+
   $("viewName").textContent=p.name||"—";
   $("viewNumber").textContent=p.number!=="" && p.number!=null ? "#"+p.number : "—";
   $("viewAge").textContent=p.age!=="" && p.age!=null ? p.age : "—";
@@ -869,6 +956,20 @@ function openPlayerModal(id=null){
   $("playerDialog").showModal();
   refreshEditOnlyVisibility();
 }
+
+$("playerInfoTab")?.addEventListener("click",()=>playerViewSlide(0));
+$("playerStatsTab")?.addEventListener("click",()=>playerViewSlide(1));
+let playerSwipeStartX=null;
+$("playerViewSlider")?.addEventListener("touchstart",e=>{playerSwipeStartX=e.touches?.[0]?.clientX??null},{passive:true});
+$("playerViewSlider")?.addEventListener("touchend",e=>{
+  if(playerSwipeStartX==null)return;
+  const x=e.changedTouches?.[0]?.clientX??playerSwipeStartX;
+  const dx=x-playerSwipeStartX;
+  if(dx<-45)playerViewSlide(1);
+  if(dx>45)playerViewSlide(0);
+  playerSwipeStartX=null;
+},{passive:true});
+
 $("addPlayerBtn").addEventListener("click",()=>openPlayerModal());
 $("addPlayerBig").addEventListener("click",()=>openPlayerModal());
 $("closePlayerModal").addEventListener("click",()=>$("playerDialog").close());
@@ -2632,6 +2733,264 @@ async function openHomeNextEvent(){
 $("homeNextEvent")?.addEventListener("click",openHomeNextEvent);
 
 
+
+/* Training days, official stats and MVP */
+async function loadStatisticsData(){
+  if(!sb||!authUser)return;
+  const [td,ts,os]=await Promise.all([
+    sb.from("training_days").select("*").order("training_date",{ascending:true}),
+    sb.from("training_player_stats").select("*"),
+    sb.from("official_match_player_stats").select("*")
+  ]);
+  if(!td.error)trainingDays=td.data||[];
+  if(!ts.error)trainingStats=ts.data||[];
+  if(!os.error)officialMatchStats=os.data||[];
+  renderCalendar();
+  await loadLatestMvp();
+}
+
+function trainingForDate(date){return trainingDays.find(t=>t.training_date===date)||null;}
+function statsForTraining(id){return trainingStats.filter(s=>s.training_day_id===id && s.rating!=null);}
+function statsForMatch(id){return officialMatchStats.filter(s=>s.match_id===id);}
+
+function trainingMvp(day){
+  const rows=statsForTraining(day.id);
+  if(!rows.length)return null;
+  const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite));
+  const row=rows.find(r=>Number(r.rating)===max);
+  const player=players.find(p=>p.id===row?.player_id);
+  return row&&player?{player,row,rating:max}:null;
+}
+function officialMvp(match){
+  const rows=statsForMatch(match.id).filter(r=>r.rating!=null);
+  if(!rows.length)return null;
+  const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite));
+  const row=rows.find(r=>Number(r.rating)===max);
+  const player=players.find(p=>p.id===row?.player_id);
+  return row&&player?{player,row,rating:max}:null;
+}
+
+async function loadLatestMvp(){
+  if(!players.length)return;
+  const candidates=[];
+  trainingDays.forEach(day=>{
+    const m=trainingMvp(day);
+    if(m)candidates.push({type:"training",date:day.training_date,entity:day,...m});
+  });
+  calendarMatches.forEach(match=>{
+    const m=officialMvp(match);
+    if(m)candidates.push({type:"match",date:match.match_date,entity:match,...m});
+  });
+  candidates.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  homeMvpData=candidates[0]||null;
+  renderHomeMvp();
+}
+
+function renderHomeMvp(){
+  const box=$("homeMvpCard");if(!box)return;
+  if(!homeMvpData){box.classList.add("hidden");return;}
+  box.classList.remove("hidden");
+  $("homeMvpName").textContent=homeMvpData.player.name;
+  $("homeMvpRating").textContent=Number(homeMvpData.rating).toFixed(1);
+  $("homeMvpMeta").textContent=`${homeMvpData.date.split("-").reverse().join(".")} • ${homeMvpData.type==="training"?"тренування":"матч"}`;
+}
+
+async function openHomeMvp(){
+  if(!homeMvpData)return;
+  navigate("calendar");
+  await loadCalendarData();
+  if(homeMvpData.type==="training"){
+    openTrainingDay(homeMvpData.entity);
+  }else{
+    const match=calendarMatches.find(m=>m.id===homeMvpData.entity.id)||homeMvpData.entity;
+    $("calendarMatchModal")?.classList.remove("hidden");
+    showCalendarMatchView(match);
+  }
+}
+$("homeMvpCard")?.addEventListener("click",openHomeMvp);
+
+function closeDayActionModal(){$("calendarDayActionModal")?.classList.add("hidden");}
+function showDayActionModal(dateKey){
+  calendarSelectedDate=dateKey;
+  $("calendarDayActionDate").textContent=formatCalendarDate(dateKey);
+  $("calendarDayActionTitle").textContent="ПОДІЇ ДНЯ";
+  const list=$("calendarDayExistingEvents");
+  const matches=calendarMatches.filter(m=>m.match_date===dateKey);
+  const training=trainingForDate(dateKey);
+  const gathers=calendarGatherings.filter(g=>g.gathering_date===dateKey);
+  const items=[];
+  if(training)items.push(`<button type="button" class="day-existing-event training" data-open-training="${training.id}">🏋 ТРЕНУВАННЯ <b>${training.matches_played} матчів</b></button>`);
+  matches.forEach(m=>items.push(`<button type="button" class="day-existing-event match" data-open-match="${m.id}">⚽ ${esc(m.home_team_name||"Centuria")} — ${esc(m.away_team_name||"Суперник")} <b>${m.match_time?m.match_time.slice(0,5):""}</b></button>`));
+  gathers.forEach(g=>items.push(`<button type="button" class="day-existing-event gathering" data-open-gathering="1">✓ ${esc(g.title||"Збір")} <b>${g.gathering_time?g.gathering_time.slice(0,5):""}</b></button>`));
+  list.innerHTML=items.join("");
+  list.querySelectorAll("[data-open-training]").forEach(b=>b.addEventListener("click",()=>{closeDayActionModal();openTrainingDay(trainingDays.find(t=>t.id===b.dataset.openTraining));}));
+  list.querySelectorAll("[data-open-match]").forEach(b=>b.addEventListener("click",()=>{const m=calendarMatches.find(x=>x.id===b.dataset.openMatch);closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchView(m);}));
+  list.querySelectorAll("[data-open-gathering]").forEach(b=>b.addEventListener("click",()=>{closeDayActionModal();navigate("gatherings");}));
+  $("calendarDayActionModal").classList.remove("hidden");
+  refreshCalendarPermissions();
+}
+
+function renderTrainingInputs(day=null){
+  const box=$("trainingPlayerInputs");if(!box)return;
+  const existing=day?statsForTraining(day.id):[];
+  box.innerHTML=players.map(p=>{
+    const row=existing.find(r=>r.player_id===p.id);
+    return `<label class="training-player-row">
+      <span><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p.name)}</b></span>
+      <input type="number" step="0.1" min="0" max="10" inputmode="decimal" data-training-player="${p.id}" value="${row?.rating??""}" placeholder="—">
+    </label>`;
+  }).join("");
+}
+
+function showTrainingEdit(day=null,dateKey=null){
+  if(!canEditSite())return;
+  currentTrainingDay=day||null;
+  $("trainingDayView").classList.add("hidden");
+  $("trainingDayEdit").classList.remove("hidden");
+  $("trainingDayModalTitle").textContent=day?"РЕДАГУВАННЯ ТРЕНУВАННЯ":"НОВЕ ТРЕНУВАННЯ";
+  $("trainingDateInput").value=day?.training_date||dateKey||calendarTodayKey();
+  $("trainingMatchesInput").value=day?.matches_played||1;
+  $("trainingDayStatus").textContent="";
+  renderTrainingInputs(day);
+}
+
+function renderTrainingView(day){
+  currentTrainingDay=day;
+  $("trainingDayEdit").classList.add("hidden");
+  $("trainingDayView").classList.remove("hidden");
+  $("trainingDayModalTitle").textContent=day.title||"ТРЕНУВАННЯ";
+  $("trainingViewDate").textContent=formatCalendarDate(day.training_date);
+  $("trainingViewMatches").textContent=day.matches_played||0;
+
+  const rows=statsForTraining(day.id).sort((a,b)=>Number(b.rating)-Number(a.rating));
+  const avg=averageRating(rows);
+  const mvp=trainingMvp(day);
+  $("trainingViewMvp").textContent=mvp?.player?.name||"—";
+  $("trainingViewMvpRating").textContent=mvp?fmtRating(mvp.rating):"—";
+  $("trainingViewTeamAvg").textContent=fmtRating(avg);
+
+  $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
+    const p=players.find(x=>x.id===r.player_id);
+    return `<div class="training-rank-row ${i===0?"mvp":""}">
+      <span class="rank-place">${i+1}</span>
+      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${i===0?`<small>🏆 MVP</small>`:""}</span>
+      <strong>${fmtRating(Number(r.rating))}</strong>
+    </div>`;
+  }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор може внести оцінки.</span></div>`;
+  refreshCalendarPermissions();
+}
+
+function openTrainingDay(day){
+  if(!day)return;
+  $("trainingDayModal").classList.remove("hidden");
+  renderTrainingView(day);
+}
+function closeTrainingDayModal(){$("trainingDayModal")?.classList.add("hidden");currentTrainingDay=null;}
+
+async function saveTrainingDay(){
+  if(!sb||!authUser||!canEditSite())return;
+  const date=$("trainingDateInput").value;
+  const matches=Number($("trainingMatchesInput").value||0);
+  if(!date||matches<1){$("trainingDayStatus").textContent="Вкажи дату і кількість матчів.";return;}
+  const btn=$("saveTrainingDayBtn");btn.disabled=true;
+  try{
+    let day,error;
+    if(currentTrainingDay){
+      ({data:day,error}=await sb.from("training_days").update({training_date:date,matches_played:matches}).eq("id",currentTrainingDay.id).select("*").single());
+    }else{
+      ({data:day,error}=await sb.from("training_days").insert({training_date:date,matches_played:matches,created_by:authUser.id}).select("*").single());
+    }
+    if(error)throw error;
+
+    const inputs=[...document.querySelectorAll("[data-training-player]")];
+    const rows=inputs.map(input=>({player_id:input.dataset.trainingPlayer,rating:input.value===""?null:Number(input.value)})).filter(r=>r.rating!=null);
+    await sb.from("training_player_stats").delete().eq("training_day_id",day.id);
+    if(rows.length){
+      const {error:statsErr}=await sb.from("training_player_stats").insert(rows.map(r=>({...r,training_day_id:day.id})));
+      if(statsErr)throw statsErr;
+    }
+
+    await loadStatisticsData();
+    currentTrainingDay=trainingDays.find(t=>t.id===day.id)||day;
+    renderTrainingView(currentTrainingDay);
+    showToast("Тренування збережено ✓");
+  }catch(err){
+    console.error(err);
+    $("trainingDayStatus").textContent=String(err?.message||"").includes("duplicate")?"На цю дату тренування вже існує.":"Не вдалося зберегти тренування.";
+  }finally{btn.disabled=false;}
+}
+
+async function deleteTrainingDay(){
+  if(!currentTrainingDay||!canEditSite()||!confirm("Видалити це тренування і всю статистику дня?"))return;
+  const {error}=await sb.from("training_days").delete().eq("id",currentTrainingDay.id);
+  if(error){showToast("Не вдалося видалити тренування");return;}
+  closeTrainingDayModal();
+  await loadStatisticsData();
+  showToast("Тренування видалено");
+}
+
+async function loadOfficialStatsForMatch(match){
+  if(!match)return;
+  const rows=statsForMatch(match.id).sort((a,b)=>Number(b.rating||0)-Number(a.rating||0));
+  const score=$("officialMatchScore");
+  if(match.home_score!=null && match.away_score!=null){
+    score.classList.remove("hidden");
+    score.textContent=`${match.home_team_name||"Centuria"} ${match.home_score} : ${match.away_score} ${match.away_team_name||"Суперник"}`;
+  }else score.classList.add("hidden");
+
+  const list=$("officialMatchStatsList");
+  list.innerHTML=rows.length?rows.map((r,i)=>{
+    const p=players.find(x=>x.id===r.player_id);
+    return `<div class="official-stat-row ${i===0?"mvp":""}">
+      <span>${i===0?"🏆 ":""}${esc(p?.name||"Гравець")}</span>
+      <small>${r.goals?`⚽ ${r.goals}`:""} ${r.assists?`🅰 ${r.assists}`:""}</small>
+      <b>${r.rating!=null?fmtRating(Number(r.rating)):"—"}</b>
+    </div>`;
+  }).join(""):`<span class="muted">Статистику ще не внесено.</span>`;
+}
+
+function renderOfficialInputs(match){
+  $("officialHomeScoreInput").value=match?.home_score??"";
+  $("officialAwayScoreInput").value=match?.away_score??"";
+  const existing=match?statsForMatch(match.id):[];
+  $("officialPlayerInputs").innerHTML=players.map(p=>{
+    const r=existing.find(x=>x.player_id===p.id)||{};
+    return `<div class="official-player-row">
+      <span><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p.name)}</b></span>
+      <input data-official-rating="${p.id}" type="number" step="0.1" min="0" max="10" placeholder="оцінка" value="${r.rating??""}">
+      <input data-official-goals="${p.id}" type="number" min="0" max="20" placeholder="голи" value="${r.goals||""}">
+      <input data-official-assists="${p.id}" type="number" min="0" max="20" placeholder="асисти" value="${r.assists||""}">
+    </div>`;
+  }).join("");
+}
+
+async function saveOfficialStats(matchId){
+  if(!matchId||!canEditSite())return;
+  const match=calendarMatches.find(m=>m.id===matchId);if(!match)return;
+  const homeScore=$("officialHomeScoreInput").value===""?null:Number($("officialHomeScoreInput").value);
+  const awayScore=$("officialAwayScoreInput").value===""?null:Number($("officialAwayScoreInput").value);
+  const {error:matchErr}=await sb.from("calendar_matches").update({home_score:homeScore,away_score:awayScore}).eq("id",matchId);
+  if(matchErr)throw matchErr;
+
+  const rows=players.map(p=>({
+    player_id:p.id,
+    rating:document.querySelector(`[data-official-rating="${p.id}"]`)?.value,
+    goals:document.querySelector(`[data-official-goals="${p.id}"]`)?.value,
+    assists:document.querySelector(`[data-official-assists="${p.id}"]`)?.value
+  })).filter(r=>r.rating!==""||r.goals!==""||r.assists!=="").map(r=>({
+    match_id:matchId,player_id:r.player_id,
+    rating:r.rating===""?null:Number(r.rating),
+    goals:Number(r.goals||0),assists:Number(r.assists||0)
+  }));
+  await sb.from("official_match_player_stats").delete().eq("match_id",matchId);
+  if(rows.length){
+    const {error}=await sb.from("official_match_player_stats").insert(rows);
+    if(error)throw error;
+  }
+  await Promise.all([loadCalendarData(),loadStatisticsData()]);
+}
+
+
 /* Calendar */
 const CALENDAR_MONTHS=["СІЧЕНЬ","ЛЮТИЙ","БЕРЕЗЕНЬ","КВІТЕНЬ","ТРАВЕНЬ","ЧЕРВЕНЬ","ЛИПЕНЬ","СЕРПЕНЬ","ВЕРЕСЕНЬ","ЖОВТЕНЬ","ЛИСТОПАД","ГРУДЕНЬ"];
 function calendarDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;}
@@ -2673,11 +3032,13 @@ function renderCalendar(){
     else if(day>days){day-=days;cm=m+1;if(cm>11){cm=0;cy=y+1}outside=true;}
     const key=calendarDateKey(cy,cm,day);
     const dayMatches=calendarMatches.filter(v=>v.match_date===key);
+    const training=trainingForDate(key);
     const gathers=calendarGatherings.filter(v=>v.gathering_date===key && !v.is_closed);
-    cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""}" data-calendar-date="${key}" data-viewer-allowed="true">
+    cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""} ${training?"has-training":""}" data-calendar-date="${key}" data-viewer-allowed="true">
       <span class="calendar-day-number">${day}</span>
       <span class="calendar-day-events">
         ${dayMatches.length?`<span class="calendar-event-badge match">⚽ <b>${dayMatches.length>1?`МАТЧІ ${dayMatches.length}`:"МАТЧ"}</b></span>`:""}
+        ${training?`<span class="calendar-event-badge training">🏋 <b>ТРЕН ${training.matches_played}</b></span>`:""}
         ${gathers.length?`<span class="calendar-event-badge gathering">✓ <b>${gathers.length>1?`ЗБОРИ ${gathers.length}`:"ЗБІР"}</b></span>`:""}
       </span>
     </button>`);
@@ -2710,6 +3071,7 @@ function showCalendarMatchView(match){
   $("matchViewTime").textContent=match.match_time?match.match_time.slice(0,5):"ЧАС НЕ ВКАЗАНО";
   $("matchViewDate").textContent=formatCalendarDate(match.match_date);
   $("calendarMatchTitle").textContent="МАТЧ";
+  loadOfficialStatsForMatch(match);
   refreshCalendarPermissions();
 }
 
@@ -2743,6 +3105,7 @@ function showCalendarMatchEdit(match,dateKey){
   setMatchPreview("matchCompetitionPreview",calendarDraftImages.competition,"ЛОГО ЛІГИ");
   setMatchPreview("matchHomePreview",calendarDraftImages.home,"КОМАНДА 1");
   setMatchPreview("matchAwayPreview",calendarDraftImages.away,"КОМАНДА 2");
+  renderOfficialInputs(match);
   refreshCalendarPermissions();
 }
 
@@ -2792,22 +3155,28 @@ function renderCalendarDayMatches(dateKey){
 function openCalendarDay(dateKey){
   calendarSelectedDate=dateKey;
   const matches=calendarMatches.filter(v=>v.match_date===dateKey);
+  const training=trainingForDate(dateKey);
+  const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
+  const eventCount=matches.length+(training?1:0)+gathers.length;
 
-  if(!matches.length && !canEditSite()){
-    const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
-    showToast(gathers.length?"Цього дня є збір. Матчу немає.":"Матчу цього дня немає");
+  if(eventCount===1 && matches.length===1){
+    $("calendarMatchModal").classList.remove("hidden");
+    showCalendarMatchView(matches[0]);
     return;
   }
-
-  $("calendarMatchModal").classList.remove("hidden");
-
-  if(matches.length===0){
-    showCalendarMatchEdit(null,dateKey);
-  }else if(matches.length===1){
-    showCalendarMatchView(matches[0]);
-  }else{
-    renderCalendarDayMatches(dateKey);
+  if(eventCount===1 && training){
+    openTrainingDay(training);
+    return;
   }
+  if(eventCount===1 && gathers.length===1){
+    navigate("gatherings");
+    return;
+  }
+  if(eventCount===0 && !canEditSite()){
+    showToast("На цей день подій немає");
+    return;
+  }
+  showDayActionModal(dateKey);
 }
 
 function closeCalendarMatchModal(){
@@ -2916,7 +3285,9 @@ async function saveCalendarMatch(){
     }
     if(error)throw error;
     calendarSelectedMatch=data;calendarSelectedDate=data.match_date;
-    await loadCalendarData();showCalendarMatchView(data);showToast("Матч збережено ✓");
+    await saveOfficialStats(data.id);
+    const refreshed=calendarMatches.find(m=>m.id===data.id)||data;
+    showCalendarMatchView(refreshed);showToast("Матч збережено ✓");
   }catch(err){
     console.error(err);
     $("calendarMatchStatus").textContent="Не вдалося зберегти матч.";
@@ -2948,6 +3319,12 @@ $("calendarNextBtn")?.addEventListener("click",()=>{calendarCursor=new Date(cale
 $("closeCalendarMatchModal")?.addEventListener("click",closeCalendarMatchModal);
 document.querySelectorAll("[data-close-calendar-match]").forEach(el=>el.addEventListener("click",closeCalendarMatchModal));
 $("editCalendarMatchBtn")?.addEventListener("click",()=>showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate));
+$("editOfficialStatsBtn")?.addEventListener("click",()=>{
+  if(!calendarSelectedMatch||!canEditSite())return;
+  showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate);
+  $("officialStatsDetails")?.setAttribute("open","");
+  setTimeout(()=>$("officialStatsDetails")?.scrollIntoView({behavior:"smooth",block:"center"}),50);
+});
 $("addAnotherCalendarMatchBtn")?.addEventListener("click",()=>showCalendarMatchEdit(null,calendarSelectedDate));
 $("transferCalendarMatchBtn")?.addEventListener("click",openCalendarMatchTransfer);
 $("cancelTransferMatchBtn")?.addEventListener("click",closeCalendarMatchTransfer);
@@ -3271,6 +3648,18 @@ $("tacticalPitch")?.addEventListener("pointerup",finishTbArrow);
 $("tacticalPitch")?.addEventListener("pointercancel",()=>{tbArrowDraft=null;renderTacticalArrows();});
 
 
+
+$("closeCalendarDayActionModal")?.addEventListener("click",closeDayActionModal);
+document.querySelectorAll("[data-close-calendar-day-action]").forEach(el=>el.addEventListener("click",closeDayActionModal));
+$("createMatchFromDayBtn")?.addEventListener("click",()=>{closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchEdit(null,calendarSelectedDate);});
+$("createTrainingFromDayBtn")?.addEventListener("click",()=>{closeDayActionModal();$("trainingDayModal").classList.remove("hidden");showTrainingEdit(null,calendarSelectedDate);});
+
+$("closeTrainingDayModal")?.addEventListener("click",closeTrainingDayModal);
+document.querySelectorAll("[data-close-training-day]").forEach(el=>el.addEventListener("click",closeTrainingDayModal));
+$("editTrainingDayBtn")?.addEventListener("click",()=>showTrainingEdit(currentTrainingDay,currentTrainingDay?.training_date));
+$("deleteTrainingDayBtn")?.addEventListener("click",deleteTrainingDay);
+$("saveTrainingDayBtn")?.addEventListener("click",saveTrainingDay);
+
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
@@ -3372,6 +3761,9 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"calendar_matches"},async()=>{
       await loadCalendarData();
     })
+    .on("postgres_changes",{event:"*",schema:"public",table:"training_days"},async()=>{await loadStatisticsData();})
+    .on("postgres_changes",{event:"*",schema:"public",table:"training_player_stats"},async()=>{await loadStatisticsData();})
+    .on("postgres_changes",{event:"*",schema:"public",table:"official_match_player_stats"},async()=>{await loadStatisticsData();})
     .on("postgres_changes",{event:"*",schema:"public",table:"gatherings"},async()=>{
       if($("screen-calendar")?.classList.contains("active"))await loadCalendarData();
     })
