@@ -885,7 +885,7 @@ async function loadPlayerStatistics(playerId){
   $("statOfficialAvg").textContent=fmtRating(offAvg);
   $("statOfficialBest").textContent=fmtRating(offBest);
   $("statOfficialWorst").textContent=fmtRating(offWorst);
-  $("statOfficialMvp").textContent=officialMvp;
+  $("statOfficialMvp").innerHTML=`<em>MVP</em> ${officialMvp}`;
   $("statOfficialForm").innerHTML=statFormHtml(official.slice(0,5).map(r=>r.rating));
 
   $("statTrainingMatches").textContent=trMatches;
@@ -894,7 +894,7 @@ async function loadPlayerStatistics(playerId){
   $("statTrainingAvg").textContent=fmtRating(trAvg);
   $("statTrainingBest").textContent=fmtRating(trBest);
   $("statTrainingWorst").textContent=fmtRating(trWorst);
-  $("statTrainingMvp").textContent=trainingMvp;
+  $("statTrainingMvp").innerHTML=`<em>MVP</em> ${trainingMvp}`;
   $("statTrainingForm").innerHTML=statFormHtml(training.slice(0,5).map(r=>r.rating));
 }
 
@@ -3772,6 +3772,29 @@ document.querySelectorAll("[data-general-sort]").forEach(btn=>btn.addEventListen
 }));
 
 
+
+/* Theme */
+const SITE_THEME_KEY="centuria_theme";
+
+function applySiteTheme(theme){
+  const value=theme==="light"?"light":"dark";
+  document.documentElement.dataset.siteTheme=value;
+  try{localStorage.setItem(SITE_THEME_KEY,value)}catch(_e){}
+  document.querySelectorAll("[data-theme-value]").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.themeValue===value);
+  });
+}
+
+function initSiteTheme(){
+  let value="dark";
+  try{value=localStorage.getItem(SITE_THEME_KEY)||"dark"}catch(_e){}
+  applySiteTheme(value);
+}
+
+$("themeDarkBtn")?.addEventListener("click",()=>applySiteTheme("dark"));
+$("themeLightBtn")?.addEventListener("click",()=>applySiteTheme("light"));
+
+
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
@@ -3884,6 +3907,7 @@ if(sb){
 
 (async function(){
   try{
+    initSiteTheme();
     setupFormOptions();
     await openDB();
     await registerPushServiceWorker();

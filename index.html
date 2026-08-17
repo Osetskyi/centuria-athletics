@@ -22,9 +22,10 @@
 
       
       <button id="homeMvpCard" class="home-mvp-card hidden" type="button" data-viewer-allowed="true" aria-label="Останній MVP">
+        <span class="home-mvp-ribbon">MVP</span>
         <span class="home-mvp-photo"><img id="homeMvpPhoto" alt=""></span>
         <span class="home-mvp-copy">
-          <small>🏆 MVP ДНЯ</small>
+          <small>MVP ДНЯ</small>
           <strong id="homeMvpName">—</strong>
           <span id="homeMvpMeta">—</span>
         </span>
@@ -431,7 +432,21 @@
     </div>
 
 
-    <div class="settings-card push-settings-card">
+    
+    <div class="settings-card theme-settings-card">
+      <h2>ТЕМА САЙТУ</h2>
+      <p class="settings-hint">Вибери вигляд інтерфейсу для цього пристрою.</p>
+      <div class="theme-switcher">
+        <button type="button" id="themeDarkBtn" class="theme-choice active" data-theme-value="dark" data-viewer-allowed="true">
+          <span>🌙</span><b>ТЕМНА</b>
+        </button>
+        <button type="button" id="themeLightBtn" class="theme-choice" data-theme-value="light" data-viewer-allowed="true">
+          <span>☀️</span><b>СВІТЛА</b>
+        </button>
+      </div>
+    </div>
+
+<div class="settings-card push-settings-card">
       <h2>СПОВІЩЕННЯ</h2>
       <p class="settings-hint">Push-сповіщення на телефоні. На iPhone сайт має бути доданий на головний екран.</p>
       <button type="button" id="pushToggleBtn" class="push-main-btn" data-viewer-allowed="true">УВІМКНУТИ СПОВІЩЕННЯ</button>
@@ -563,7 +578,7 @@
               <div class="stat-line"><span>Середня оцінка</span><b id="statOfficialAvg">—</b></div>
               <div class="stat-line"><span>Найкраща оцінка</span><b id="statOfficialBest">—</b></div>
               <div class="stat-line"><span>Найгірша оцінка</span><b id="statOfficialWorst">—</b></div>
-              <div class="stat-line"><span>Кількість MVP</span><b id="statOfficialMvp">0</b></div>
+              <div class="stat-line stat-line-mvp"><span>Кількість MVP</span><b id="statOfficialMvp"><em>MVP</em> 0</b></div>
               <div class="stat-form-block">
                 <small>ФОРМА — ОСТАННІ 5</small>
                 <div id="statOfficialForm" class="stat-form-row"></div>
@@ -578,7 +593,7 @@
               <div class="stat-line"><span>Середня оцінка</span><b id="statTrainingAvg">—</b></div>
               <div class="stat-line"><span>Найкраща оцінка</span><b id="statTrainingBest">—</b></div>
               <div class="stat-line"><span>Найгірша оцінка</span><b id="statTrainingWorst">—</b></div>
-              <div class="stat-line"><span>Кількість MVP</span><b id="statTrainingMvp">0</b></div>
+              <div class="stat-line stat-line-mvp"><span>Кількість MVP</span><b id="statTrainingMvp"><em>MVP</em> 0</b></div>
               <div class="stat-form-block">
                 <small>ФОРМА — ОСТАННІ 5</small>
                 <div id="statTrainingForm" class="stat-form-row"></div>

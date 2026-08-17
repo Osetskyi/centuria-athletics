@@ -2631,3 +2631,313 @@ textarea{
   .general-rank-row small{display:none}.general-rank-row img{width:23px;height:29px}.general-rank-row b{font-size:7px}
   .training-player-row.extended{grid-template-columns:1fr 54px 43px 43px!important}
 }
+
+
+/* v5.20 — premium MVP + light theme */
+.home-mvp-card{
+  overflow:visible !important;
+  border:1px solid rgba(239,202,100,.95) !important;
+  background:
+    radial-gradient(circle at 50% 15%,rgba(255,225,120,.18),transparent 48%),
+    linear-gradient(155deg,#17140b,#080808 62%,#141007) !important;
+  box-shadow:
+    0 0 0 1px rgba(255,235,160,.09),
+    0 8px 22px rgba(0,0,0,.5),
+    inset 0 0 20px rgba(226,189,112,.09) !important;
+}
+.home-mvp-card::before,
+.home-mvp-card::after{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+}
+.home-mvp-card::before{
+  inset:3px;
+  border:1px solid rgba(255,230,150,.20);
+  border-radius:10px;
+}
+.home-mvp-card::after{
+  left:11%;
+  right:11%;
+  bottom:5px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,#dcb95f,transparent);
+}
+.home-mvp-ribbon{
+  position:absolute;
+  left:50%;
+  top:-9px;
+  transform:translateX(-50%);
+  min-width:54px;
+  height:19px;
+  padding:0 10px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  border:1px solid #f0d377;
+  background:linear-gradient(#d9b84f,#947329);
+  color:#111;
+  font-size:8px;
+  line-height:1;
+  font-weight:1000;
+  letter-spacing:1px;
+  box-shadow:0 3px 10px rgba(0,0,0,.5);
+}
+.home-mvp-photo{
+  margin-top:5px !important;
+  border:2px solid #d8b650 !important;
+  box-shadow:0 0 0 2px rgba(255,235,155,.08),0 0 14px rgba(217,184,79,.20);
+}
+.home-mvp-copy small{
+  color:#e8c867 !important;
+  letter-spacing:.5px;
+}
+.home-mvp-card>b{
+  color:#f0d276 !important;
+}
+
+.stat-line-mvp{
+  margin-top:2px;
+  padding-left:7px;
+  padding-right:7px;
+  border-radius:8px;
+  background:linear-gradient(90deg,rgba(226,189,112,.07),transparent);
+  border-bottom-color:rgba(226,189,112,.15) !important;
+}
+.stat-line-mvp>span{
+  color:#cdb465 !important;
+}
+.stat-line-mvp>b{
+  color:#edcd6f !important;
+  text-shadow:0 0 9px rgba(226,189,112,.20);
+}
+.stat-line-mvp em{
+  font-style:normal;
+  font-size:8px;
+  padding:2px 4px;
+  margin-right:3px;
+  border-radius:999px;
+  border:1px solid rgba(226,189,112,.5);
+  color:#f1d370;
+  background:rgba(226,189,112,.08);
+}
+
+.theme-switcher{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.theme-choice{
+  min-height:54px;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.10);
+  background:#111;
+  color:#aaa;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-weight:900;
+}
+.theme-choice span{font-size:18px}
+.theme-choice b{font-size:10px;letter-spacing:.4px}
+.theme-choice.active{
+  border-color:#d9b84f;
+  color:#efd16f;
+  background:rgba(217,184,79,.10);
+}
+
+html[data-site-theme="light"] body{
+  background:#ece8de !important;
+  color:#171717 !important;
+}
+html[data-site-theme="light"] .inner-screen{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(216,183,79,.12),transparent 30%),
+    #f2efe8 !important;
+  color:#171717 !important;
+}
+html[data-site-theme="light"] .topbar,
+html[data-site-theme="light"] .settings-card,
+html[data-site-theme="light"] .modal-card,
+html[data-site-theme="light"] .tb-form-card{
+  background:rgba(255,255,255,.94) !important;
+  border-color:rgba(130,104,40,.20) !important;
+  color:#171717 !important;
+}
+html[data-site-theme="light"] .topbar h1,
+html[data-site-theme="light"] .settings-card h2,
+html[data-site-theme="light"] .modal-card h2{
+  color:#2b2414 !important;
+}
+html[data-site-theme="light"] input,
+html[data-site-theme="light"] select,
+html[data-site-theme="light"] textarea{
+  background:#fff !important;
+  color:#171717 !important;
+  border-color:rgba(80,65,30,.22) !important;
+}
+html[data-site-theme="light"] .dark-btn,
+html[data-site-theme="light"] .secondary-btn,
+html[data-site-theme="light"] .theme-choice,
+html[data-site-theme="light"] .tb-tool,
+html[data-site-theme="light"] .calendar-day-match-choice,
+html[data-site-theme="light"] .day-existing-event{
+  background:#ebe7dd !important;
+  color:#302816 !important;
+  border-color:rgba(100,80,35,.18) !important;
+}
+html[data-site-theme="light"] .theme-choice.active{
+  background:#fff7d9 !important;
+  color:#8a6d1d !important;
+  border-color:#c49d39 !important;
+}
+html[data-site-theme="light"] .calendar-day{
+  background:rgba(255,255,255,.72) !important;
+  color:#262626 !important;
+  border-color:rgba(90,75,40,.13) !important;
+}
+html[data-site-theme="light"] .calendar-day.today{
+  border-color:#b9902e !important;
+}
+html[data-site-theme="light"] .player-stats-columns,
+html[data-site-theme="light"] .general-stats-columns,
+html[data-site-theme="light"] .training-rank-row,
+html[data-site-theme="light"] .general-rank-row,
+html[data-site-theme="light"] .official-stat-row,
+html[data-site-theme="light"] .training-player-row{
+  background:#fff !important;
+  color:#1c1c1c !important;
+  border-color:rgba(90,75,40,.13) !important;
+}
+html[data-site-theme="light"] .stat-line span,
+html[data-site-theme="light"] .settings-hint,
+html[data-site-theme="light"] .subline{
+  color:#6e6759 !important;
+}
+html[data-site-theme="light"] .stat-line b{
+  color:#1c1c1c !important;
+}
+html[data-site-theme="light"] .stat-line-mvp>b,
+html[data-site-theme="light"] .stat-line-mvp em{
+  color:#a47d14 !important;
+}
+html[data-site-theme="light"] .bottom-nav{
+  background:rgba(250,248,242,.97) !important;
+  border-top-color:rgba(90,75,40,.15) !important;
+}
+html[data-site-theme="light"] .bottom-nav button{
+  color:#6d6553 !important;
+}
+html[data-site-theme="light"] .bottom-nav button.active{
+  color:#a37d18 !important;
+}
+html[data-site-theme="light"] #screen-home{
+  background:#000 !important;
+}
+
+
+/* v5.21 — light theme also affects the home screen */
+html[data-site-theme="light"] #screen-home{
+  background:#eee8db !important;
+}
+
+/* Lighten the exact home artwork without replacing or regenerating it */
+html[data-site-theme="light"] #screen-home .home-bg{
+  filter:brightness(1.42) saturate(.72) contrast(.90) !important;
+}
+
+/* Add a soft ivory veil over the artwork so the whole home reads as light mode */
+html[data-site-theme="light"] #screen-home::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(250,247,238,.30),rgba(250,247,238,.22)),
+    radial-gradient(circle at 50% 16%,rgba(255,249,225,.24),transparent 35%);
+}
+
+/* Keep all active home controls above the light overlay */
+html[data-site-theme="light"] #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card{
+  z-index:8 !important;
+}
+
+/* Home dynamic cards in light mode */
+html[data-site-theme="light"] .home-next-event{
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.95),rgba(239,234,220,.94)) !important;
+  color:#241f14 !important;
+  border-color:rgba(164,126,34,.62) !important;
+  box-shadow:
+    0 7px 20px rgba(73,57,22,.18),
+    inset 0 0 0 1px rgba(255,255,255,.55) !important;
+}
+html[data-site-theme="light"] .home-next-type{
+  background:rgba(181,139,35,.10) !important;
+  color:#8e6b16 !important;
+  border-color:rgba(181,139,35,.28) !important;
+}
+html[data-site-theme="light"] .home-next-main strong,
+html[data-site-theme="light"] .home-next-team small{
+  color:#241f14 !important;
+}
+html[data-site-theme="light"] .home-next-main span,
+html[data-site-theme="light"] .home-next-vs span{
+  color:#756746 !important;
+}
+html[data-site-theme="light"] .home-next-countdown,
+html[data-site-theme="light"] .home-next-vs strong,
+html[data-site-theme="light"] .home-next-vs b{
+  color:#9a741a !important;
+}
+html[data-site-theme="light"] .home-next-logo{
+  background:#f8f4e8 !important;
+  border-color:rgba(167,130,36,.32) !important;
+}
+html[data-site-theme="light"] .home-next-marquee span{
+  color:#8e701f !important;
+}
+
+/* Premium MVP card becomes ivory + gold */
+html[data-site-theme="light"] .home-mvp-card{
+  background:
+    radial-gradient(circle at 50% 10%,rgba(255,221,113,.25),transparent 45%),
+    linear-gradient(155deg,#fffaf0,#ece4cf 66%,#f8f0da) !important;
+  border-color:#c69c34 !important;
+  color:#211b0e !important;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.7),
+    0 8px 22px rgba(74,56,17,.22),
+    inset 0 0 18px rgba(194,150,43,.11) !important;
+}
+html[data-site-theme="light"] .home-mvp-card::before{
+  border-color:rgba(177,137,38,.28) !important;
+}
+html[data-site-theme="light"] .home-mvp-copy strong{
+  color:#241d0f !important;
+}
+html[data-site-theme="light"] .home-mvp-copy span{
+  color:#7a6b46 !important;
+}
+html[data-site-theme="light"] .home-mvp-photo{
+  background:#fff9e9 !important;
+}
+
+/* Online badge also switches */
+html[data-site-theme="light"] .home-online-badge{
+  background:rgba(255,255,255,.90) !important;
+  color:#2d2617 !important;
+  border-color:rgba(174,137,39,.40) !important;
+  box-shadow:0 4px 12px rgba(70,52,15,.15) !important;
+}
+
+/* Make the calendar/settings hit zones visually fit the lighter home art */
+html[data-site-theme="light"] .hs-calendar,
+html[data-site-theme="light"] .hs-settings{
+  filter:brightness(1.16) saturate(.85);
+}
