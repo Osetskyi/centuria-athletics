@@ -2796,10 +2796,10 @@ async function loadLatestMvp(){
   });
   candidates.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   homeMvpData=candidates[0]||null;
-  renderHomeMvp();
+  renderHomeVip();
 }
 
-function renderHomeMvp(){
+function renderHomeVip(){
   const box=$("homeMvpCard");if(!box)return;
   if(!homeMvpData){box.classList.add("hidden");return;}
   box.classList.remove("hidden");
@@ -4258,34 +4258,88 @@ document.addEventListener("click",e=>{
   applySiteTheme(btn.dataset.themeValue);
 });
 
-/* v5.30 home MVP */
-function renderHomeMvp(){
- const card=document.getElementById("homeMvpCard"); if(!card)return;
- try{
-  const all=[];
-  if(Array.isArray(trainingDays)&&Array.isArray(trainingStats)) trainingDays.forEach(d=>{
-   const r=trainingStats.filter(x=>x.training_day_id===d.id&&Number.isFinite(Number(x.rating)));
-   if(r.length){const mx=Math.max(...r.map(x=>Number(x.rating)));all.push({date:d.training_date||"",rating:mx,row:r.find(x=>Number(x.rating)===mx)});}
-  });
-  if(Array.isArray(calendarMatches)&&Array.isArray(officialMatchStats)) calendarMatches.forEach(m=>{
-   const r=officialMatchStats.filter(x=>x.match_id===m.id&&Number.isFinite(Number(x.rating)));
-   if(r.length){const mx=Math.max(...r.map(x=>Number(x.rating)));all.push({date:m.match_date||"",rating:mx,row:r.find(x=>Number(x.rating)===mx)});}
-  });
-  all.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const best=all[0], p=best&&players.find(x=>x.id===best.row.player_id);
-  if(!best||!p){card.classList.add("hidden");return;}
+
+/* v5.34 — Home VIP is always visible in both themes */
+function renderHomeVip(){
+  const card=document.getElementById("homeMvpCard");
+  if(!card)return;
+
   const img=document.getElementById("homeMvpPhoto");
-  img.src=p.cardImage||p.card_image||(typeof PLAYER_PLACEHOLDER!=="undefined"?PLAYER_PLACEHOLDER:"");
-  document.getElementById("homeMvpName").textContent=p.name||"—";
-  document.getElementById("homeMvpRating").textContent=Number(best.rating).toFixed(1);
+  const name=document.getElementById("homeMvpName");
+  const rating=document.getElementById("homeMvpRating");
+
+  // Default visible state even when there is no statistics yet.
   card.classList.remove("hidden");
- }catch(e){console.warn("MVP",e);card.classList.add("hidden");}
+  if(name) name.textContent="MVP ДНЯ";
+  if(rating) rating.textContent="—";
+  if(img){
+    img.src=(typeof PLAYER_PLACEHOLDER!=="undefined"&&PLAYER_PLACEHOLDER)?PLAYER_PLACEHOLDER:"player-placeholder.png";
+    img.alt="MVP дня";
+  }
+
+  try{
+    const events=[];
+
+    // Training statistics
+    if(Array.isArray(trainingDays)&&Array.isArray(trainingStats)){
+      trainingDays.forEach(day=>{
+        const rows=trainingStats.filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating)));
+        if(!rows.length)return;
+        const max=Math.max(...rows.map(r=>Number(r.rating)));
+        const winner=rows.find(r=>Number(r.rating)===max);
+        if(winner) events.push({
+          date:day.training_date||day.date||"",
+          rating:max,
+          playerId:winner.player_id,
+          type:"training"
+        });
+      });
+    }
+
+    // Official match statistics
+    if(Array.isArray(calendarMatches)&&Array.isArray(officialMatchStats)){
+      calendarMatches.forEach(match=>{
+        const rows=officialMatchStats.filter(r=>r.match_id===match.id && Number.isFinite(Number(r.rating)));
+        if(!rows.length)return;
+        const max=Math.max(...rows.map(r=>Number(r.rating)));
+        const winner=rows.find(r=>Number(r.rating)===max);
+        if(winner) events.push({
+          date:match.match_date||match.date||"",
+          rating:max,
+          playerId:winner.player_id,
+          type:"official"
+        });
+      });
+    }
+
+    events.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+    const latest=events[0];
+    if(!latest)return;
+
+    const player=Array.isArray(players)?players.find(p=>p.id===latest.playerId):null;
+    if(!player)return;
+
+    if(name) name.textContent=player.name||"MVP ДНЯ";
+    if(rating) rating.textContent=Number(latest.rating).toFixed(1);
+    if(img){
+      img.src=player.cardImage||player.card_image||
+        ((typeof PLAYER_PLACEHOLDER!=="undefined"&&PLAYER_PLACEHOLDER)?PLAYER_PLACEHOLDER:"player-placeholder.png");
+      img.alt=player.name||"MVP дня";
+    }
+
+    card.dataset.eventType=latest.type;
+    card.dataset.eventDate=latest.date||"";
+  }catch(err){
+    console.warn("Home VIP render failed",err);
+  }
 }
-document.addEventListener("DOMContentLoaded",()=>setTimeout(renderHomeMvp,120));
-window.addEventListener("load",()=>setTimeout(renderHomeMvp,120));
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)setTimeout(renderHomeMvp,100)});
 
-
+document.addEventListener("DOMContentLoaded",()=>setTimeout(renderHomeVip,160));
+window.addEventListener("load",()=>setTimeout(renderHomeVip,160));
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden)setTimeout(renderHomeVip,100);
+});
+window.addEventListener("centuria-theme-change",()=>setTimeout(renderHomeVip,50));
 /* v5.33 — dedicated home background for light theme */
 function applyHomeBackgroundForTheme(theme){
   const img=document.getElementById("homeBackgroundImage");
