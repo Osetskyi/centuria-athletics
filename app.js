@@ -4363,3 +4363,12 @@ window.addEventListener("load",()=>{
   let theme=document.documentElement.getAttribute("data-site-theme")||"dark";
   applyHomeBackgroundForTheme(theme);
 });
+
+/* v5.36 — refresh MVP when home becomes visible */
+document.addEventListener("click",e=>{
+  const homeTarget=e.target.closest?.(".hs-home,[data-go-home],#homeBtn,[data-view='home']");
+  if(homeTarget) setTimeout(()=>{ try{renderHomeVip()}catch(_e){} },120);
+});
+window.addEventListener("centuria-theme-change",()=>{
+  setTimeout(()=>{ try{renderHomeVip()}catch(_e){} },80);
+});

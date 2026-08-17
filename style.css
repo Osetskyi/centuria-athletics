@@ -4468,3 +4468,211 @@ html.light-theme .home-mvp-label,
 html.light-theme .home-mvp-rating{
   color:#987019!important;
 }
+
+
+/* ==========================================================
+   v5.36 — HOME interaction/layout fixes
+   1) MVP always above background
+   2) Next event no longer overlaps buttons
+   3) Dedicated clickable zones for light home background
+   ========================================================== */
+
+/* Keep background at the very bottom */
+#screen-home .home-bg,
+#homeBackgroundImage{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  z-index:0!important;
+  pointer-events:none!important;
+}
+
+/* Any decorative overlay stays below controls */
+#screen-home::before,
+#screen-home::after{
+  z-index:1!important;
+  pointer-events:none!important;
+}
+
+/* Dynamic top cards must always be visible above the background */
+.home-event-mvp-row{
+  position:absolute!important;
+  top:24.5%!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:86%!important;
+  max-width:760px!important;
+  z-index:30!important;
+  pointer-events:none!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1.58fr) minmax(104px,.58fr)!important;
+  gap:8px!important;
+  align-items:stretch!important;
+}
+
+.home-event-mvp-row > *{
+  pointer-events:auto!important;
+}
+
+/* Make the next-event block more compact and keep it above the menu */
+.home-event-mvp-row > :not(.home-mvp-card){
+  min-height:104px!important;
+  max-height:116px!important;
+  overflow:hidden!important;
+  z-index:31!important;
+}
+
+/* MVP / player of the day */
+.home-mvp-card{
+  position:relative!important;
+  z-index:32!important;
+  min-height:104px!important;
+  max-height:116px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  pointer-events:auto!important;
+}
+.home-mvp-card.hidden{
+  display:flex!important;
+}
+.home-mvp-photo{
+  position:relative!important;
+  z-index:2!important;
+}
+.home-mvp-label,
+.home-mvp-name,
+.home-mvp-rating{
+  position:relative!important;
+  z-index:3!important;
+}
+
+/* All home buttons/hotspots are above everything else */
+#screen-home .hotspot,
+#screen-home [class*="hs-"],
+#screen-home button[data-view],
+#screen-home button[data-target]{
+  position:absolute!important;
+  z-index:40!important;
+  pointer-events:auto!important;
+  cursor:pointer!important;
+  touch-action:manipulation!important;
+}
+
+/* ----------------------------------------------------------
+   Dedicated clickable geometry for the LIGHT background.
+   These zones match the latest white home-screen image.
+   ---------------------------------------------------------- */
+html[data-site-theme="light"] #screen-home .hs-players,
+html.light-theme #screen-home .hs-players{
+  left:22%!important;
+  top:52.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-tactics,
+html.light-theme #screen-home .hs-tactics{
+  left:51%!important;
+  top:52.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-squads,
+html.light-theme #screen-home .hs-squads{
+  left:22%!important;
+  top:64.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-chat,
+html.light-theme #screen-home .hs-chat{
+  left:51%!important;
+  top:64.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-gatherings,
+html.light-theme #screen-home .hs-gatherings{
+  left:22%!important;
+  top:76.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-settings,
+html.light-theme #screen-home .hs-settings{
+  left:51%!important;
+  top:76.5%!important;
+  width:26%!important;
+  height:11%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-calendar,
+html.light-theme #screen-home .hs-calendar{
+  left:41%!important;
+  top:87.8%!important;
+  width:18%!important;
+  height:9%!important;
+}
+
+/* Prevent the event/MVP block from stealing taps from menu zones */
+html[data-site-theme="light"] .home-event-mvp-row,
+html.light-theme .home-event-mvp-row{
+  top:23.2%!important;
+}
+
+/* Dark theme keeps the same safe vertical spacing but old hotspot geometry */
+html[data-site-theme="dark"] .home-event-mvp-row,
+html.dark-theme .home-event-mvp-row{
+  top:23.5%!important;
+}
+
+/* Mobile fine tuning */
+@media(max-width:520px){
+  .home-event-mvp-row{
+    top:23.5%!important;
+    width:84%!important;
+    grid-template-columns:minmax(0,1.55fr) minmax(96px,.58fr)!important;
+    gap:6px!important;
+  }
+  .home-event-mvp-row > :not(.home-mvp-card),
+  .home-mvp-card{
+    min-height:96px!important;
+    max-height:106px!important;
+  }
+
+  html[data-site-theme="light"] #screen-home .hs-players,
+  html.light-theme #screen-home .hs-players{
+    left:20.5%!important;top:52.7%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-tactics,
+  html.light-theme #screen-home .hs-tactics{
+    left:51.5%!important;top:52.7%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-squads,
+  html.light-theme #screen-home .hs-squads{
+    left:20.5%!important;top:64.6%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-chat,
+  html.light-theme #screen-home .hs-chat{
+    left:51.5%!important;top:64.6%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-gatherings,
+  html.light-theme #screen-home .hs-gatherings{
+    left:20.5%!important;top:76.4%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-settings,
+  html.light-theme #screen-home .hs-settings{
+    left:51.5%!important;top:76.4%!important;width:28%!important;height:10.8%!important;
+  }
+  html[data-site-theme="light"] #screen-home .hs-calendar,
+  html.light-theme #screen-home .hs-calendar{
+    left:39%!important;top:88%!important;width:22%!important;height:8.5%!important;
+  }
+}
+
+/* Debug safety: invisible hotspots remain clickable */
+#screen-home .hotspot,
+#screen-home [class*="hs-"]{
+  background:transparent!important;
+  border:0!important;
+}
