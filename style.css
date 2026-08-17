@@ -3582,3 +3582,259 @@ html[data-site-theme="light"] .general-stats-dots i.active{background:#a98027}
   .general-stat-sort-4 .general-sort-btn{font-size:6px;padding:7px 2px}
   .general-records-grid{grid-template-columns:1fr 1fr}
 }
+
+
+/* ==========================================================
+   v5.27 — LIGHT THEME for new General Statistics sections
+   Uses the same approved ivory / white / graphite / muted gold
+   ========================================================== */
+
+html[data-site-theme="light"] .advanced-general-stats{
+  background:var(--L-card,#fffdf9)!important;
+  color:var(--L-text,#24211c)!important;
+  border-color:var(--L-line,#ddd5c7)!important;
+  box-shadow:0 14px 40px rgba(57,45,22,.14)!important;
+}
+
+html[data-site-theme="light"] .general-stats-head{
+  background:transparent!important;
+}
+html[data-site-theme="light"] .general-stats-head h2{
+  color:var(--L-text,#24211c)!important;
+}
+html[data-site-theme="light"] .general-stats-head .eyebrow{
+  color:var(--L-gold,#a98027)!important;
+}
+
+/* Dots */
+html[data-site-theme="light"] .general-stats-dots i{
+  background:#d8d1c5!important;
+}
+html[data-site-theme="light"] .general-stats-dots i.active{
+  background:var(--L-gold,#a98027)!important;
+}
+
+/* Official / Training switch */
+html[data-site-theme="light"] .general-mode-btn{
+  background:#f7f3ea!important;
+  color:#6d665b!important;
+  border-color:#ddd5c7!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .general-mode-btn.active{
+  background:#fff0c9!important;
+  color:#886316!important;
+  border-color:#cba84d!important;
+}
+
+/* Slide 1 — team players */
+html[data-site-theme="light"] .general-slide-summary,
+html[data-site-theme="light"] .general-section-label{
+  color:#776f62!important;
+}
+
+html[data-site-theme="light"] .general-stat-sort .general-sort-btn{
+  background:#f7f3ea!important;
+  color:#746d61!important;
+  border-color:#e0d9cc!important;
+}
+html[data-site-theme="light"] .general-stat-sort .general-sort-btn.active{
+  background:#f8edcf!important;
+  color:#8f6917!important;
+  border-color:#cfb15f!important;
+}
+
+html[data-site-theme="light"] .general-player-full-row{
+  background:#fff!important;
+  color:#24211c!important;
+  border-color:#e4ddd1!important;
+  box-shadow:0 4px 12px rgba(57,45,22,.035)!important;
+}
+html[data-site-theme="light"] .general-player-full-row:hover{
+  background:#fffdf8!important;
+}
+html[data-site-theme="light"] .general-player-info strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-player-info small{
+  color:#7b7468!important;
+}
+html[data-site-theme="light"] .general-player-full-row>b{
+  color:#9b7319!important;
+}
+html[data-site-theme="light"] .general-place{
+  color:#8f8779!important;
+}
+html[data-site-theme="light"] .general-place.top-1{color:#ad8120!important}
+html[data-site-theme="light"] .general-place.top-2{color:#8d9298!important}
+html[data-site-theme="light"] .general-place.top-3{color:#9f6d41!important}
+
+/* Slide 2 — streaks */
+html[data-site-theme="light"] .general-streak-card{
+  background:#fff!important;
+  color:#24211c!important;
+  border-color:#e4ddd1!important;
+  box-shadow:0 4px 12px rgba(57,45,22,.035)!important;
+}
+html[data-site-theme="light"] .general-streak-card.best{
+  background:linear-gradient(145deg,#fffdf7,#fbf3df)!important;
+  border-color:#cba84d!important;
+}
+html[data-site-theme="light"] .general-best-streak{
+  color:#8f6917!important;
+}
+html[data-site-theme="light"] .general-streak-player strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-streak-line{
+  border-top-color:#eee7dc!important;
+}
+html[data-site-theme="light"] .general-streak-line span{
+  color:#6f685c!important;
+}
+html[data-site-theme="light"] .general-streak-line b{
+  color:#9a7219!important;
+}
+html[data-site-theme="light"] .general-streak-line small{
+  color:#9a9285!important;
+}
+
+/* Slide 3 — records */
+html[data-site-theme="light"] .general-record-card{
+  background:#fff!important;
+  color:#24211c!important;
+  border-color:#e4ddd1!important;
+  box-shadow:0 4px 12px rgba(57,45,22,.035)!important;
+}
+html[data-site-theme="light"] .general-record-card>small{
+  color:#8f6b1c!important;
+}
+html[data-site-theme="light"] .general-record-winner strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-record-winner b{
+  color:#9b7319!important;
+}
+html[data-site-theme="light"] .general-record-winner em{
+  color:#8e867a!important;
+}
+
+/* Slide 4 — monthly awards */
+html[data-site-theme="light"] .general-awards-month button{
+  background:#f7f3ea!important;
+  color:#8b6718!important;
+  border-color:#ddd5c7!important;
+}
+html[data-site-theme="light"] .general-awards-month button:disabled{
+  opacity:.35!important;
+}
+html[data-site-theme="light"] .general-awards-month strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-awards-state{
+  color:#9a7420!important;
+}
+
+html[data-site-theme="light"] .general-award-card{
+  background:#fff!important;
+  color:#24211c!important;
+  border-color:#e4ddd1!important;
+  box-shadow:0 4px 12px rgba(57,45,22,.035)!important;
+}
+html[data-site-theme="light"] .general-award-card.main{
+  background:
+    radial-gradient(circle at 50% 0%,rgba(210,173,85,.15),transparent 46%),
+    linear-gradient(145deg,#fffdf7,#f7efd9)!important;
+  border-color:#cba84d!important;
+}
+html[data-site-theme="light"] .general-award-card small{
+  color:#8f6b1c!important;
+}
+html[data-site-theme="light"] .general-award-card strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-award-card b{
+  color:#9b7319!important;
+}
+
+/* Slide 5 — comparison */
+html[data-site-theme="light"] .general-compare-pickers select{
+  background:#fff!important;
+  color:#24211c!important;
+  border-color:#d8d0c2!important;
+}
+html[data-site-theme="light"] .general-compare-pickers>b{
+  color:#a17a22!important;
+}
+
+html[data-site-theme="light"] .general-compare-hero strong{
+  color:#24211c!important;
+}
+html[data-site-theme="light"] .general-compare-hero>b{
+  color:#a17a22!important;
+}
+
+html[data-site-theme="light"] .general-compare-table{
+  background:#fff!important;
+  border-color:#e1dacf!important;
+}
+html[data-site-theme="light"] .general-compare-row{
+  border-bottom-color:#ece5d9!important;
+}
+html[data-site-theme="light"] .general-compare-row span{
+  color:#777064!important;
+}
+html[data-site-theme="light"] .general-compare-row b{
+  color:#2b2721!important;
+}
+html[data-site-theme="light"] .general-compare-row b.win{
+  color:#997019!important;
+}
+
+html[data-site-theme="light"] .general-compare-form{
+  color:#514c43!important;
+}
+html[data-site-theme="light"] .general-compare-form small{
+  color:#8a8377!important;
+}
+
+html[data-site-theme="light"] .general-compare-score{
+  background:#fff4d8!important;
+  border-color:#d5b660!important;
+}
+html[data-site-theme="light"] .general-compare-score small{
+  color:#8d7027!important;
+}
+html[data-site-theme="light"] .general-compare-score strong{
+  color:#8e6817!important;
+}
+
+/* Empty states inside all 5 slides */
+html[data-site-theme="light"] .advanced-general-stats .empty-state,
+html[data-site-theme="light"] .advanced-general-stats .empty-state strong,
+html[data-site-theme="light"] .advanced-general-stats .empty-state span{
+  color:#776f62!important;
+}
+
+/* Swipe helper */
+html[data-site-theme="light"] .general-stats-swipe-hint{
+  color:#9b9387!important;
+}
+
+/* Scrollbars (where supported) */
+html[data-site-theme="light"] .general-stats-slide{
+  scrollbar-color:#d2c7b3 transparent;
+}
+
+/* Mobile polish */
+@media(max-width:520px){
+  html[data-site-theme="light"] .advanced-general-stats{
+    background:#fffdf9!important;
+  }
+  html[data-site-theme="light"] .general-player-full-row,
+  html[data-site-theme="light"] .general-streak-card,
+  html[data-site-theme="light"] .general-record-card,
+  html[data-site-theme="light"] .general-award-card{
+    box-shadow:none!important;
+  }
+}
