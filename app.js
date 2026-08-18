@@ -4477,3 +4477,25 @@ function fixGatheringsLightDom(){
 }
 document.addEventListener("DOMContentLoaded",()=>setTimeout(fixGatheringsLightDom,150));
 document.addEventListener("click",()=>setTimeout(fixGatheringsLightDom,100));
+
+/* v5.43 — exact cleanup after gatherings render */
+function gatheringV543Cleanup(){
+  try{
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+    root.querySelectorAll(".gathering-vote-names,.gathering-voters,.gathering-voter-group,.gathering-voter-title")
+      .forEach(el=>{
+        el.classList.remove("g541-light-control","g541-light-counter","g542-light-counter","g542-light-chip");
+      });
+    root.querySelectorAll(".gathering-voter-group").forEach(group=>{
+      [...group.querySelectorAll("span,div")].forEach(el=>{
+        const t=(el.textContent||"").trim();
+        if(t && el.children.length===0 && !/^(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ|—)$/i.test(t)){
+          if(t.length<50) el.classList.add("g543-voter-nick");
+        }
+      });
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(gatheringV543Cleanup,180));
+document.addEventListener("click",()=>setTimeout(gatheringV543Cleanup,120));

@@ -5254,3 +5254,66 @@ html.light-theme #screen-gatherings .g541-light-counter:not(.g542-light-counter)
   background:transparent!important;
   box-shadow:none!important;
 }
+
+/* v5.43 — exact remaining Gatherings fixes */
+
+/* Закрити + X */
+html[data-site-theme="light"] #screen-gatherings .gathering-close-btn,
+html.light-theme #screen-gatherings .gathering-close-btn,
+html[data-site-theme="light"] #screen-gatherings .gathering-delete-btn,
+html.light-theme #screen-gatherings .gathering-delete-btn{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #ddcba8!important;
+  box-shadow:none!important;
+}
+
+/* Bottom voter area: no rectangular frames around columns/titles */
+html[data-site-theme="light"] #screen-gatherings .gathering-vote-names,
+html.light-theme #screen-gatherings .gathering-vote-names,
+html[data-site-theme="light"] #screen-gatherings .gathering-voters,
+html.light-theme #screen-gatherings .gathering-voters,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-group,
+html.light-theme #screen-gatherings .gathering-voter-group,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-title,
+html.light-theme #screen-gatherings .gathering-voter-title{
+  background:transparent!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+
+/* Nicknames in bottom lists: clean light pill, never black */
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-group .member-nick,
+html.light-theme #screen-gatherings .gathering-voter-group .member-nick,
+html[data-site-theme="light"] #screen-gatherings .gathering-voters .member-nick,
+html.light-theme #screen-gatherings .gathering-voters .member-nick{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #ddcba8!important;
+  box-shadow:none!important;
+}
+
+/* Undo v5.41 dynamic helper styling on structural bottom-list elements */
+html[data-site-theme="light"] #screen-gatherings .gathering-vote-names.g541-light-control,
+html.light-theme #screen-gatherings .gathering-vote-names.g541-light-control,
+html[data-site-theme="light"] #screen-gatherings .gathering-voters.g541-light-control,
+html.light-theme #screen-gatherings .gathering-voters.g541-light-control,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-group.g541-light-control,
+html.light-theme #screen-gatherings .gathering-voter-group.g541-light-control,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-title.g541-light-control,
+html.light-theme #screen-gatherings .gathering-voter-title.g541-light-control{
+  background:transparent!important;
+  border:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+
+html[data-site-theme="light"] #screen-gatherings .g543-voter-nick,
+html.light-theme #screen-gatherings .g543-voter-nick{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #ddcba8!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+}
