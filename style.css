@@ -5154,3 +5154,103 @@ html[data-site-theme="light"] #screen-gatherings .g541-light-counter *,
 html.light-theme #screen-gatherings .g541-light-counter *{
   color:#29261f!important;
 }
+
+
+/* ==========================================================
+   v5.42 — precise Gatherings light-theme cleanup
+   ========================================================== */
+
+/* Main gathering card action buttons */
+html[data-site-theme="light"] #screen-gatherings .gathering-card .dark-btn,
+html.light-theme #screen-gatherings .gathering-card .dark-btn,
+html[data-site-theme="light"] #screen-gatherings .gathering-card .danger-btn,
+html.light-theme #screen-gatherings .gathering-card .danger-btn{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #dbc9a5!important;
+  box-shadow:none!important;
+}
+
+/* The three big status counters directly below title */
+html[data-site-theme="light"] #screen-gatherings .gathering-card .gathering-stats > *,
+html.light-theme #screen-gatherings .gathering-card .gathering-stats > *,
+html[data-site-theme="light"] #screen-gatherings .gathering-card .attendance-counts > *,
+html.light-theme #screen-gatherings .gathering-card .attendance-counts > *,
+html[data-site-theme="light"] #screen-gatherings .gathering-card .vote-counts > *,
+html.light-theme #screen-gatherings .gathering-card .vote-counts > *{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #dfd1b7!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-gatherings .gathering-card .gathering-stats > * *,
+html.light-theme #screen-gatherings .gathering-card .gathering-stats > * *,
+html[data-site-theme="light"] #screen-gatherings .gathering-card .attendance-counts > * *,
+html.light-theme #screen-gatherings .gathering-card .attendance-counts > * *,
+html[data-site-theme="light"] #screen-gatherings .gathering-card .vote-counts > * *,
+html.light-theme #screen-gatherings .gathering-card .vote-counts > * *{
+  color:#2b2721!important;
+}
+
+/* Voter chips only */
+html[data-site-theme="light"] #screen-gatherings .member-chip,
+html.light-theme #screen-gatherings .member-chip,
+html[data-site-theme="light"] #screen-gatherings .voter-chip,
+html.light-theme #screen-gatherings .voter-chip,
+html[data-site-theme="light"] #screen-gatherings .attendance-chip,
+html.light-theme #screen-gatherings .attendance-chip{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #dfd1b7!important;
+  box-shadow:none!important;
+}
+
+/* Restore lower participant lists to clean open layout — no boxy grid/card borders */
+html[data-site-theme="light"] #screen-gatherings .gathering-voters,
+html.light-theme #screen-gatherings .gathering-voters,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-groups,
+html.light-theme #screen-gatherings .gathering-voter-groups,
+html[data-site-theme="light"] #screen-gatherings .attendance-lists,
+html.light-theme #screen-gatherings .attendance-lists{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-gatherings .gathering-voters > *,
+html.light-theme #screen-gatherings .gathering-voters > *,
+html[data-site-theme="light"] #screen-gatherings .gathering-voter-groups > *,
+html.light-theme #screen-gatherings .gathering-voter-groups > *,
+html[data-site-theme="light"] #screen-gatherings .attendance-lists > *,
+html.light-theme #screen-gatherings .attendance-lists > *{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+/* Keep three voting buttons already correct from v5.40 */
+
+html[data-site-theme="light"] #screen-gatherings .g542-light-action,
+html.light-theme #screen-gatherings .g542-light-action,
+html[data-site-theme="light"] #screen-gatherings .g542-light-counter,
+html.light-theme #screen-gatherings .g542-light-counter,
+html[data-site-theme="light"] #screen-gatherings .g542-light-chip,
+html.light-theme #screen-gatherings .g542-light-chip{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #dfd1b7!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-gatherings .g542-light-counter *,
+html.light-theme #screen-gatherings .g542-light-counter *{
+  color:#2b2721!important;
+}
+
+/* Remove accidental borders from lower text-only columns introduced previously */
+html[data-site-theme="light"] #screen-gatherings .g541-light-control:not(button),
+html.light-theme #screen-gatherings .g541-light-control:not(button),
+html[data-site-theme="light"] #screen-gatherings .g541-light-counter:not(.g542-light-counter),
+html.light-theme #screen-gatherings .g541-light-counter:not(.g542-light-counter){
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}

@@ -4437,3 +4437,43 @@ function markGatheringLightTargets(){
 }
 document.addEventListener("click",()=>setTimeout(markGatheringLightTargets,80));
 document.addEventListener("DOMContentLoaded",()=>setTimeout(markGatheringLightTargets,150));
+
+/* v5.42 — exact dynamic targeting for remaining gathering controls */
+function fixGatheringsLightDom(){
+  try{
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+
+    const all=[...root.querySelectorAll("button,div,span")];
+
+    // close / x
+    all.forEach(el=>{
+      const t=(el.textContent||"").trim().replace(/\s+/g," ");
+      if((t==="ЗАКРИТИ"||t==="×") && (el.tagName==="BUTTON" || el.children.length===0)){
+        el.classList.add("g542-light-action");
+      }
+    });
+
+    // Find compact boxes that consist of number + one attendance label.
+    all.forEach(el=>{
+      const t=(el.textContent||"").trim().replace(/\s+/g," ").toUpperCase();
+      if(/^\d+\s*(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ)$/.test(t) && el.children.length<=3){
+        el.classList.add("g542-light-counter");
+      }
+    });
+
+    // Nickname chips in the three bottom voter columns.
+    root.querySelectorAll("span,div").forEach(el=>{
+      const t=(el.textContent||"").trim();
+      if(!t || el.children.length>0)return;
+      const parentText=(el.parentElement?.parentElement?.textContent||"").toUpperCase();
+      if(parentText.includes("БУДУ")||parentText.includes("ПІД ПИТАННЯМ")||parentText.includes("НЕ БУДУ")){
+        if(!/^(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ|—)$/i.test(t) && t.length<40){
+          el.classList.add("g542-light-chip");
+        }
+      }
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(fixGatheringsLightDom,150));
+document.addEventListener("click",()=>setTimeout(fixGatheringsLightDom,100));
