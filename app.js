@@ -4817,3 +4817,26 @@ document.addEventListener("DOMContentLoaded",()=>{
   const el=document.querySelector(".settings-version strong");
   if(el)el.textContent="v5.67";
 });
+
+/* v5.68 — mark gathering answer buttons by their visible labels */
+function markGatheringAnswerColors(){
+  try{
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+    root.querySelectorAll("button,div").forEach(el=>{
+      const t=(el.textContent||"").trim().replace(/\s+/g," ").toLowerCase();
+      if(el.children.length>5)return;
+      if(t==="✓ буду" || t==="буду") el.classList.add("v568-vote-yes");
+      if(t==="? під питанням" || t==="під питанням") el.classList.add("v568-vote-maybe");
+      if(t==="× не буду" || t==="не буду") el.classList.add("v568-vote-no");
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(markGatheringAnswerColors,180));
+document.addEventListener("click",()=>setTimeout(markGatheringAnswerColors,100));
+
+/* v5.68 — current settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  const el=document.querySelector(".settings-version strong");
+  if(el)el.textContent="v5.68";
+});

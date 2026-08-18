@@ -6255,3 +6255,111 @@ body.light-theme #screen-squads .squad-row .more-btn{
   border-color:#cfa64a!important;
   box-shadow:none!important;
 }
+
+/* ==========================================================
+   v5.68 — Gatherings attendance buttons in LIGHT theme
+   Add soft semantic colors similar to dark theme.
+   ========================================================== */
+
+/* Generic option/button base in light theme */
+html[data-site-theme="light"] #screen-gatherings .gathering-vote-btn,
+html.light-theme #screen-gatherings .gathering-vote-btn,
+body[data-site-theme="light"] #screen-gatherings .gathering-vote-btn,
+body.light-theme #screen-gatherings .gathering-vote-btn,
+html[data-site-theme="light"] #screen-gatherings .attendance-option,
+html.light-theme #screen-gatherings .attendance-option,
+html[data-site-theme="light"] #screen-gatherings .vote-option,
+html.light-theme #screen-gatherings .vote-option{
+  color:#28241e!important;
+  box-shadow:none!important;
+}
+
+/* "Буду" — green */
+html[data-site-theme="light"] #screen-gatherings [data-vote="yes"],
+html.light-theme #screen-gatherings [data-vote="yes"],
+html[data-site-theme="light"] #screen-gatherings [data-answer="yes"],
+html.light-theme #screen-gatherings [data-answer="yes"],
+html[data-site-theme="light"] #screen-gatherings .vote-yes,
+html.light-theme #screen-gatherings .vote-yes,
+html[data-site-theme="light"] #screen-gatherings .attendance-yes,
+html.light-theme #screen-gatherings .attendance-yes{
+  background:#eef8ef!important;
+  border-color:#8fbe95!important;
+  color:#2f6e3d!important;
+  -webkit-text-fill-color:#2f6e3d!important;
+}
+
+/* "Під питанням" — yellow/gold */
+html[data-site-theme="light"] #screen-gatherings [data-vote="maybe"],
+html.light-theme #screen-gatherings [data-vote="maybe"],
+html[data-site-theme="light"] #screen-gatherings [data-answer="maybe"],
+html.light-theme #screen-gatherings [data-answer="maybe"],
+html[data-site-theme="light"] #screen-gatherings .vote-maybe,
+html.light-theme #screen-gatherings .vote-maybe,
+html[data-site-theme="light"] #screen-gatherings .attendance-maybe,
+html.light-theme #screen-gatherings .attendance-maybe{
+  background:#fff7df!important;
+  border-color:#d6b358!important;
+  color:#8b6817!important;
+  -webkit-text-fill-color:#8b6817!important;
+}
+
+/* "Не буду" — red */
+html[data-site-theme="light"] #screen-gatherings [data-vote="no"],
+html.light-theme #screen-gatherings [data-vote="no"],
+html[data-site-theme="light"] #screen-gatherings [data-answer="no"],
+html.light-theme #screen-gatherings [data-answer="no"],
+html[data-site-theme="light"] #screen-gatherings .vote-no,
+html.light-theme #screen-gatherings .vote-no,
+html[data-site-theme="light"] #screen-gatherings .attendance-no,
+html.light-theme #screen-gatherings .attendance-no{
+  background:#fff0ee!important;
+  border-color:#d69a94!important;
+  color:#a54842!important;
+  -webkit-text-fill-color:#a54842!important;
+}
+
+/* Count cards above the answer buttons: soft matching accents */
+html[data-site-theme="light"] #screen-gatherings .gathering-count.yes,
+html.light-theme #screen-gatherings .gathering-count.yes,
+html[data-site-theme="light"] #screen-gatherings .vote-count.yes,
+html.light-theme #screen-gatherings .vote-count.yes{
+  background:#f4fbf4!important;
+  border-color:#a7cba9!important;
+}
+html[data-site-theme="light"] #screen-gatherings .gathering-count.maybe,
+html.light-theme #screen-gatherings .gathering-count.maybe,
+html[data-site-theme="light"] #screen-gatherings .vote-count.maybe,
+html.light-theme #screen-gatherings .vote-count.maybe{
+  background:#fff9e9!important;
+  border-color:#ddc27a!important;
+}
+html[data-site-theme="light"] #screen-gatherings .gathering-count.no,
+html.light-theme #screen-gatherings .gathering-count.no,
+html[data-site-theme="light"] #screen-gatherings .vote-count.no,
+html.light-theme #screen-gatherings .vote-count.no{
+  background:#fff4f2!important;
+  border-color:#dfaaa5!important;
+}
+
+html[data-site-theme="light"] #screen-gatherings .v568-vote-yes,
+html.light-theme #screen-gatherings .v568-vote-yes{
+  background:#eef8ef!important;
+  border-color:#8fbe95!important;
+  color:#2f6e3d!important;
+  -webkit-text-fill-color:#2f6e3d!important;
+}
+html[data-site-theme="light"] #screen-gatherings .v568-vote-maybe,
+html.light-theme #screen-gatherings .v568-vote-maybe{
+  background:#fff7df!important;
+  border-color:#d6b358!important;
+  color:#8b6817!important;
+  -webkit-text-fill-color:#8b6817!important;
+}
+html[data-site-theme="light"] #screen-gatherings .v568-vote-no,
+html.light-theme #screen-gatherings .v568-vote-no{
+  background:#fff0ee!important;
+  border-color:#d69a94!important;
+  color:#a54842!important;
+  -webkit-text-fill-color:#a54842!important;
+}
