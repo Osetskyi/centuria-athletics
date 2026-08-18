@@ -3892,18 +3892,38 @@ function renderGeneralRecords(){
   players.forEach(player=>generalPlayerRows(player.id).forEach(row=>single.push({player,row})));
 
   const specs=[
-    ["⭐","НАЙВИЩА ОЦІНКА",single,x=>Number(x.row.rating)||0,x=>(Number(x.row.rating)||0).toFixed(1)],
-    ["⚽","НАЙБІЛЬШЕ ГОЛІВ ЗА ГРУ",single,x=>Number(x.row.goals)||0,x=>`${Number(x.row.goals)||0}`],
-    
+    [
+      "⭐",
+      generalStatsMode==="training"?"НАЙВИЩА ОЦІНКА ЗА ЗБІР":"НАЙВИЩА ОЦІНКА",
+      single,
+      x=>Number(x.row.rating)||0,
+      x=>(Number(x.row.rating)||0).toFixed(1)
+    ]
+  ];
+
+  /* "Найбільше голів за гру" is valid only when one row = one match.
+     Official stats have that granularity. Training stats currently store
+     one aggregated row per gathering, so using row.goals there would falsely
+     show total goals for the whole gathering as a one-game record. */
+  if(generalStatsMode==="official"){
+    specs.push([
+      "⚽","НАЙБІЛЬШЕ ГОЛІВ ЗА ГРУ",
+      single,
+      x=>Number(x.row.goals)||0,
+      x=>`${Number(x.row.goals)||0}`
+    ]);
+  }
+
+  specs.push(
     ["🔥","НАЙДОВША ГОЛЬОВА СЕРІЯ",perPlayer,x=>x.streaks.goal.best,x=>`${x.streaks.goal.best}`],
     ["🎯","НАЙДОВША СЕРІЯ АСИСТІВ",perPlayer,x=>x.streaks.assist.best,x=>`${x.streaks.assist.best}`],
     ["🤝","НАЙДОВША РЕЗУЛЬТАТИВНА СЕРІЯ",perPlayer,x=>x.streaks.contribution.best,x=>`${x.streaks.contribution.best}`],
     ["⭐","НАЙДОВША СЕРІЯ 8.0+",perPlayer,x=>x.streaks.eight.best,x=>`${x.streaks.eight.best}`],
     ["🏆","НАЙБІЛЬШЕ MVP",perPlayer,x=>x.stats.mvp,x=>`${x.stats.mvp}`],
-    ["⚽","НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
+    ["⚽",generalStatsMode==="training"?"НАЙБІЛЬШЕ ГОЛІВ ЗА ЗБІР":"НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
     ["🎯","НАЙБІЛЬШЕ АСИСТІВ",perPlayer,x=>x.stats.assists,x=>`${x.stats.assists}`],
     ["👑","НАЙВИЩА СЕРЕДНЯ",perPlayer.filter(x=>x.stats.eventCount>=10),x=>x.stats.average,x=>x.stats.average.toFixed(2)]
-  ];
+  );
 
   const cards=[];
   specs.forEach(([icon,title,items,val,fmt])=>{
@@ -4004,9 +4024,9 @@ function renderGeneralCompare(){
     ["МАТЧІ",A.matches,B.matches,false],
     ["ГОЛИ",A.goals,B.goals,false],
     ["АСИСТИ",A.assists,B.assists,false],
-    ["СЕРЕДНЯ ОЦІНКА",A.average,B.average,true],
-    ["НАЙКРАЩА ОЦІНКА",A.best,B.best,true],
-    ["НАЙГІРША ОЦІНКА",A.worst,B.worst,true],
+    [generalStatsMode==="training"?"СЕРЕДНЯ ОЦІНКА ЗА ЗБІР":"СЕРЕДНЯ ОЦІНКА",A.average,B.average,true],
+    [generalStatsMode==="training"?"НАЙКРАЩА ОЦІНКА ЗА ЗБІР":"НАЙКРАЩА ОЦІНКА",A.best,B.best,true],
+    [generalStatsMode==="training"?"НАЙГІРША ОЦІНКА ЗА ЗБІР":"НАЙГІРША ОЦІНКА",A.worst,B.worst,true],
     ["MVP",A.mvp,B.mvp,false]
   ];
 
@@ -4022,7 +4042,7 @@ function renderGeneralCompare(){
     <div class="general-compare-table">${rows.map(r=>generalCompareRow(...r)).join("")}</div>
     <div class="general-compare-form">
       <span>${A.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span>
-      <small>ФОРМА ОСТАННІХ 5</small>
+      <small>${generalStatsMode==="training"?"ФОРМА ОСТАННІХ 5 ЗБОРІВ":"ФОРМА ОСТАННІХ 5 МАТЧІВ"}</small>
       <span>${B.form.map(x=>x.toFixed(1)).join(" • ")||"—"}</span>
     </div>
     <div class="general-compare-score"><small>ПЕРЕВАГА ЗА ПОКАЗНИКАМИ</small><strong>${esc(aPlayer.name)} ${aWins} : ${bWins} ${esc(bPlayer.name)}</strong></div>`;
@@ -4784,4 +4804,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   const el=document.querySelector(".settings-version strong");
   if(el)el.textContent="v5.65";
+});
+
+/* v5.66 — current settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  const el=document.querySelector(".settings-version strong");
+  if(el)el.textContent="v5.66";
 });
