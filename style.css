@@ -5921,3 +5921,31 @@ html[data-site-theme="light"] #screen-players .player-card .img-wrap img,
 html.light-theme #screen-players .player-card .img-wrap img{
   background:transparent!important;
 }
+
+/* v5.61 — yellow/milky nickname chip above chat in LIGHT theme */
+html[data-site-theme="light"] .chat-me,
+html.light-theme .chat-me,
+body[data-site-theme="light"] .chat-me,
+body.light-theme .chat-me,
+html[data-site-theme="light"] .chat-user-chip,
+html.light-theme .chat-user-chip,
+html[data-site-theme="light"] .chat-current-user,
+html.light-theme .chat-current-user,
+html[data-site-theme="light"] .chat-presence-chip,
+html.light-theme .chat-presence-chip{
+  background:#f8e7b3!important;
+  background-color:#f8e7b3!important;
+  border-color:#cfa63e!important;
+  color:#28241e!important;
+}
+html[data-site-theme="light"] .chat-me *,
+html.light-theme .chat-me *,
+html[data-site-theme="light"] .chat-user-chip *,
+html.light-theme .chat-user-chip *,
+html[data-site-theme="light"] .chat-current-user *,
+html.light-theme .chat-current-user *,
+html[data-site-theme="light"] .chat-presence-chip *,
+html.light-theme .chat-presence-chip *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
