@@ -5035,3 +5035,122 @@ html.light-theme #screen-gatherings [style*="background: #1"]{
   background:#fffdf8!important;
   color:#29261f!important;
 }
+
+/* v5.41 — finish ALL remaining dark controls on Gatherings in LIGHT theme */
+
+/* Tabs: Active / History */
+html[data-site-theme="light"] #screen-gatherings .segmented,
+html.light-theme #screen-gatherings .segmented,
+html[data-site-theme="light"] #screen-gatherings .tabs,
+html.light-theme #screen-gatherings .tabs,
+html[data-site-theme="light"] #screen-gatherings .gather-tabs,
+html.light-theme #screen-gatherings .gather-tabs{
+  background:#f7f2e8!important;
+  border:1px solid #ded2bd!important;
+}
+html[data-site-theme="light"] #screen-gatherings .segmented button,
+html.light-theme #screen-gatherings .segmented button,
+html[data-site-theme="light"] #screen-gatherings .tabs button,
+html.light-theme #screen-gatherings .tabs button,
+html[data-site-theme="light"] #screen-gatherings .gather-tab,
+html.light-theme #screen-gatherings .gather-tab{
+  background:#fffdf8!important;
+  color:#5d574d!important;
+  border-color:#ded2bd!important;
+}
+html[data-site-theme="light"] #screen-gatherings .segmented button.active,
+html.light-theme #screen-gatherings .segmented button.active,
+html[data-site-theme="light"] #screen-gatherings .tabs button.active,
+html.light-theme #screen-gatherings .tabs button.active,
+html[data-site-theme="light"] #screen-gatherings .gather-tab.active,
+html.light-theme #screen-gatherings .gather-tab.active{
+  background:#f5e5b7!important;
+  color:#815e14!important;
+  border-color:#c99d3d!important;
+}
+
+/* Close / delete controls inside gathering card */
+html[data-site-theme="light"] #screen-gatherings button[title*="Закр"],
+html.light-theme #screen-gatherings button[title*="Закр"],
+html[data-site-theme="light"] #screen-gatherings .close-poll,
+html.light-theme #screen-gatherings .close-poll,
+html[data-site-theme="light"] #screen-gatherings .delete-poll,
+html.light-theme #screen-gatherings .delete-poll,
+html[data-site-theme="light"] #screen-gatherings .poll-actions button,
+html.light-theme #screen-gatherings .poll-actions button,
+html[data-site-theme="light"] #screen-gatherings .gather-actions button,
+html.light-theme #screen-gatherings .gather-actions button{
+  background:#fffdf8!important;
+  color:#332f28!important;
+  border:1px solid #d9c9a9!important;
+  box-shadow:none!important;
+}
+
+/* Three big counters */
+html[data-site-theme="light"] #screen-gatherings .poll-stats > *,
+html.light-theme #screen-gatherings .poll-stats > *,
+html[data-site-theme="light"] #screen-gatherings .vote-stats > *,
+html.light-theme #screen-gatherings .vote-stats > *,
+html[data-site-theme="light"] #screen-gatherings .attendance-stats > *,
+html.light-theme #screen-gatherings .attendance-stats > *,
+html[data-site-theme="light"] #screen-gatherings .gather-counts > *,
+html.light-theme #screen-gatherings .gather-counts > *,
+html[data-site-theme="light"] #screen-gatherings [class*="count-box"],
+html.light-theme #screen-gatherings [class*="count-box"],
+html[data-site-theme="light"] #screen-gatherings [class*="stat-box"],
+html.light-theme #screen-gatherings [class*="stat-box"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border:1px solid #dfd1b7!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-gatherings .poll-stats > * *,
+html.light-theme #screen-gatherings .poll-stats > * *,
+html[data-site-theme="light"] #screen-gatherings .vote-stats > * *,
+html.light-theme #screen-gatherings .vote-stats > * *,
+html[data-site-theme="light"] #screen-gatherings .attendance-stats > * *,
+html.light-theme #screen-gatherings .attendance-stats > * *,
+html[data-site-theme="light"] #screen-gatherings .gather-counts > * *,
+html.light-theme #screen-gatherings .gather-counts > * *{
+  color:#29261f!important;
+}
+
+/* Voter nickname pills, e.g. volkovson */
+html[data-site-theme="light"] #screen-gatherings .voter,
+html.light-theme #screen-gatherings .voter,
+html[data-site-theme="light"] #screen-gatherings .voter-pill,
+html.light-theme #screen-gatherings .voter-pill,
+html[data-site-theme="light"] #screen-gatherings .member-pill,
+html.light-theme #screen-gatherings .member-pill,
+html[data-site-theme="light"] #screen-gatherings .vote-user,
+html.light-theme #screen-gatherings .vote-user,
+html[data-site-theme="light"] #screen-gatherings [class*="voter"],
+html.light-theme #screen-gatherings [class*="voter"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border:1px solid #dfd1b7!important;
+  box-shadow:none!important;
+}
+
+/* Last-resort screen-scoped correction for common dark UI backgrounds.
+   Does not touch the dark theme and does not alter the page/card background. */
+html[data-site-theme="light"] #screen-gatherings button:not(.primary):not(.danger):not(.create-btn),
+html.light-theme #screen-gatherings button:not(.primary):not(.danger):not(.create-btn){
+  --gather-light-bg:#fffdf8;
+}
+
+html[data-site-theme="light"] #screen-gatherings .g541-light-control,
+html.light-theme #screen-gatherings .g541-light-control,
+html[data-site-theme="light"] #screen-gatherings .g541-light-counter,
+html.light-theme #screen-gatherings .g541-light-counter,
+html[data-site-theme="light"] #screen-gatherings .g541-light-pill,
+html.light-theme #screen-gatherings .g541-light-pill{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border-color:#ddcba8!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-gatherings .g541-light-counter *,
+html.light-theme #screen-gatherings .g541-light-counter *{
+  color:#29261f!important;
+}

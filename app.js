@@ -4417,3 +4417,23 @@ document.addEventListener("click",e=>{
     setTimeout(fixPlayerProfileRatingLabels,120);
   }
 });
+
+/* v5.41 — tag remaining dynamically rendered gathering controls */
+function markGatheringLightTargets(){
+  try{
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+    const els=[...root.querySelectorAll("button,div,span")];
+    els.forEach(el=>{
+      const t=(el.textContent||"").trim().replace(/\s+/g," ");
+      if(!t)return;
+      if(/^(АКТИВНІ|ІСТОРІЯ)$/i.test(t)) el.classList.add("g541-light-control");
+      if(/^(ЗАКРИТИ|×)$/i.test(t)) el.classList.add("g541-light-control");
+      if(/^\d+\s*(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ)$/i.test(t) && el.children.length<=2)
+        el.classList.add("g541-light-counter");
+      if(/^volkovson$/i.test(t)) el.classList.add("g541-light-pill");
+    });
+  }catch(e){}
+}
+document.addEventListener("click",()=>setTimeout(markGatheringLightTargets,80));
+document.addEventListener("DOMContentLoaded",()=>setTimeout(markGatheringLightTargets,150));
