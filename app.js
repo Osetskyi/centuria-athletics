@@ -4689,18 +4689,4 @@ function markChatParticipantsCount(){
 document.addEventListener("DOMContentLoaded",()=>setTimeout(markChatParticipantsCount,160));
 document.addEventListener("click",()=>setTimeout(markChatParticipantsCount,80));
 
-/* v5.55 — tag Date / Matches played / MVP day boxes after dynamic render */
-function markTrainingSummaryLightBoxes(){
-  try{
-    const labels=["ДАТА","ЗІГРАНО МАТЧІВ","MVP ДНЯ","МВП ДНЯ"];
-    document.querySelectorAll("div,section").forEach(el=>{
-      const text=(el.textContent||"").trim().replace(/\s+/g," ").toUpperCase();
-      if(!text || text.length>200)return;
-      if(labels.some(l=>text.startsWith(l))){
-        el.classList.add("v555-training-light-box");
-      }
-    });
-  }catch(e){}
-}
-document.addEventListener("DOMContentLoaded",()=>setTimeout(markTrainingSummaryLightBoxes,180));
-document.addEventListener("click",()=>setTimeout(markTrainingSummaryLightBoxes,120));
+

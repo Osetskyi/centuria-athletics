@@ -5772,171 +5772,13 @@ body.light-theme #screen-chat .v554-members-count{
   box-shadow:none!important;
 }
 
-/* v5.55 — Calendar training details: make the three top summary fields light */
-html[data-site-theme="light"] .training-summary,
-html.light-theme .training-summary,
-body[data-site-theme="light"] .training-summary,
-body.light-theme .training-summary{
-  background:transparent!important;
-  color:#28241e!important;
-}
 
-html[data-site-theme="light"] .training-summary > *,
-html.light-theme .training-summary > *,
-body[data-site-theme="light"] .training-summary > *,
-body.light-theme .training-summary > *,
-html[data-site-theme="light"] .training-stat-card,
-html.light-theme .training-stat-card,
-body[data-site-theme="light"] .training-stat-card,
-body.light-theme .training-stat-card{
-  background:#fffdf8!important;
-  color:#28241e!important;
-  border:1px solid #e0d2b8!important;
-  box-shadow:none!important;
-}
+/* ==========================================================
+   v5.58 — Calendar > Training day modal
+   LIGHT theme uses the EXACT SAME geometry as DARK theme.
+   ONLY colors are changed here.
+   ========================================================== */
 
-html[data-site-theme="light"] .training-summary > * *,
-html.light-theme .training-summary > * *,
-body[data-site-theme="light"] .training-summary > * *,
-body.light-theme .training-summary > * *,
-html[data-site-theme="light"] .training-stat-card *,
-html.light-theme .training-stat-card *,
-body[data-site-theme="light"] .training-stat-card *,
-body.light-theme .training-stat-card *{
-  color:#28241e!important;
-  -webkit-text-fill-color:#28241e!important;
-  text-shadow:none!important;
-}
-
-/* Keep MVP rating as a gold accent when present */
-html[data-site-theme="light"] .training-summary .mvp-rating,
-html.light-theme .training-summary .mvp-rating,
-html[data-site-theme="light"] .training-stat-card .mvp-rating,
-html.light-theme .training-stat-card .mvp-rating{
-  color:#9a7119!important;
-  -webkit-text-fill-color:#9a7119!important;
-}
-
-html[data-site-theme="light"] .v555-training-light-box,
-html.light-theme .v555-training-light-box,
-body[data-site-theme="light"] .v555-training-light-box,
-body.light-theme .v555-training-light-box{
-  background:#fffdf8!important;
-  color:#28241e!important;
-  border:1px solid #e0d2b8!important;
-  box-shadow:none!important;
-}
-html[data-site-theme="light"] .v555-training-light-box *,
-html.light-theme .v555-training-light-box *,
-body[data-site-theme="light"] .v555-training-light-box *,
-body.light-theme .v555-training-light-box *{
-  color:#28241e!important;
-  -webkit-text-fill-color:#28241e!important;
-  text-shadow:none!important;
-}
-
-/* Top summary grid */
-html[data-site-theme="light"] .training-day-summary,
-html.light-theme .training-day-summary,
-body[data-site-theme="light"] .training-day-summary,
-body.light-theme .training-day-summary{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
-  gap:12px!important;
-  margin:0 0 12px!important;
-  padding:0!important;
-}
-
-/* Date + matches cards */
-html[data-site-theme="light"] .training-day-summary > *,
-html.light-theme .training-day-summary > *,
-body[data-site-theme="light"] .training-day-summary > *,
-body.light-theme .training-day-summary > *{
-  min-width:0!important;
-  margin:0!important;
-  box-sizing:border-box!important;
-}
-
-/* MVP card gets its own row with breathing room */
-html[data-site-theme="light"] .training-mvp-summary,
-html.light-theme .training-mvp-summary,
-body[data-site-theme="light"] .training-mvp-summary,
-body.light-theme .training-mvp-summary{
-  margin:0 0 12px!important;
-  padding:12px 14px!important;
-  box-sizing:border-box!important;
-}
-
-/* Team average card */
-html[data-site-theme="light"] .training-team-average,
-html.light-theme .training-team-average,
-body[data-site-theme="light"] .training-team-average,
-body.light-theme .training-team-average{
-  margin:0 0 14px!important;
-  padding:12px 14px!important;
-  box-sizing:border-box!important;
-}
-
-/* Ranking rows: keep them slightly inset so borders never touch modal edges */
-html[data-site-theme="light"] .training-ranking,
-html.light-theme .training-ranking,
-body[data-site-theme="light"] .training-ranking,
-body.light-theme .training-ranking{
-  padding:0!important;
-  margin:0!important;
-}
-
-html[data-site-theme="light"] .training-rank-row,
-html.light-theme .training-rank-row,
-body[data-site-theme="light"] .training-rank-row,
-body.light-theme .training-rank-row{
-  margin:0 0 9px!important;
-  box-sizing:border-box!important;
-}
-
-/* Bottom action buttons no longer touch each other or modal edges */
-html[data-site-theme="light"] .training-view-actions,
-html.light-theme .training-view-actions,
-body[data-site-theme="light"] .training-view-actions,
-body.light-theme .training-view-actions{
-  display:grid!important;
-  grid-template-columns:1fr 1fr!important;
-  gap:12px!important;
-  margin-top:14px!important;
-  padding:0!important;
-}
-
-/* Mobile fine tuning */
-@media(max-width:520px){
-  html[data-site-theme="light"] .training-day-modal-card,
-  html.light-theme .training-day-modal-card{
-    padding-left:16px!important;
-    padding-right:16px!important;
-  }
-
-  html[data-site-theme="light"] .training-day-summary,
-  html.light-theme .training-day-summary{
-    gap:10px!important;
-    margin-bottom:10px!important;
-  }
-
-  html[data-site-theme="light"] .training-mvp-summary,
-  html.light-theme .training-mvp-summary,
-  html[data-site-theme="light"] .training-team-average,
-  html.light-theme .training-team-average{
-    margin-bottom:10px!important;
-  }
-
-  html[data-site-theme="light"] .training-view-actions,
-  html.light-theme .training-view-actions{
-    gap:10px!important;
-  }
-}
-
-/* v5.57 — Light training modal uses EXACTLY the same layout as dark theme.
-   Only colors are overridden below. */
-
-/* Modal shell */
 html[data-site-theme="light"] .training-day-modal-card,
 html.light-theme .training-day-modal-card,
 body[data-site-theme="light"] .training-day-modal-card,
@@ -5946,44 +5788,86 @@ body.light-theme .training-day-modal-card{
   border-color:#ddcba8!important;
 }
 
-/* Date / matches / MVP / average cards:
-   no width, gap, margin, padding or grid overrides here — layout comes from base/dark CSS */
+/* Date and matches cards */
 html[data-site-theme="light"] .training-day-summary > *,
 html.light-theme .training-day-summary > *,
+body[data-site-theme="light"] .training-day-summary > *,
+body.light-theme .training-day-summary > *{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e0d2b8!important;
+  box-shadow:none!important;
+}
+
+/* MVP day */
 html[data-site-theme="light"] .training-mvp-summary,
 html.light-theme .training-mvp-summary,
+body[data-site-theme="light"] .training-mvp-summary,
+body.light-theme .training-mvp-summary{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e0d2b8!important;
+  box-shadow:none!important;
+}
+
+/* Team average */
 html[data-site-theme="light"] .training-team-average,
-html.light-theme .training-team-average{
+html.light-theme .training-team-average,
+body[data-site-theme="light"] .training-team-average,
+body.light-theme .training-team-average{
   background:#fffdf8!important;
   color:#28241e!important;
   border-color:#e0d2b8!important;
   box-shadow:none!important;
 }
 
-html[data-site-theme="light"] .training-day-summary > * *,
-html.light-theme .training-day-summary > * *,
-html[data-site-theme="light"] .training-mvp-summary *,
-html.light-theme .training-mvp-summary *,
-html[data-site-theme="light"] .training-team-average *,
-html.light-theme .training-team-average *{
-  color:#28241e!important;
-  -webkit-text-fill-color:#28241e!important;
-  text-shadow:none!important;
-}
-
-/* Ranking rows keep the dark-theme geometry, only recolor */
+/* Ranking rows */
 html[data-site-theme="light"] .training-rank-row,
-html.light-theme .training-rank-row{
+html.light-theme .training-rank-row,
+body[data-site-theme="light"] .training-rank-row,
+body.light-theme .training-rank-row{
   background:#fffdf8!important;
   color:#28241e!important;
   border-color:#e0d2b8!important;
   box-shadow:none!important;
 }
 
-/* Bottom buttons: same dark-theme placement, light colors only */
+/* Text colors only */
+html[data-site-theme="light"] .training-day-modal-card *,
+html.light-theme .training-day-modal-card *,
+body[data-site-theme="light"] .training-day-modal-card *,
+body.light-theme .training-day-modal-card *{
+  color:#28241e;
+}
+
+/* Preserve special accents */
+html[data-site-theme="light"] .training-team-average strong,
+html.light-theme .training-team-average strong{
+  color:#6bd58a!important;
+}
+html[data-site-theme="light"] .training-mvp-summary strong:last-child,
+html.light-theme .training-mvp-summary strong:last-child{
+  color:#9a7119!important;
+}
+html[data-site-theme="light"] .training-rank-row .mvp-badge,
+html.light-theme .training-rank-row .mvp-badge{
+  color:#b28322!important;
+}
+
+/* Bottom actions: colors only, base/dark geometry remains untouched */
 html[data-site-theme="light"] .training-view-actions button,
-html.light-theme .training-view-actions button{
+html.light-theme .training-view-actions button,
+body[data-site-theme="light"] .training-view-actions button,
+body.light-theme .training-view-actions button{
   background:#fffdf8!important;
   color:#28241e!important;
   border-color:#ddcba8!important;
+}
+html[data-site-theme="light"] .training-view-actions .danger,
+html.light-theme .training-view-actions .danger,
+html[data-site-theme="light"] .training-view-actions [class*="danger"],
+html.light-theme .training-view-actions [class*="danger"]{
+  color:#a9453f!important;
+  border-color:#e6b6b1!important;
+  background:#fff7f6!important;
 }
