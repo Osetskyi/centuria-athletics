@@ -4764,3 +4764,157 @@ html.light-theme #screen-home .home-mvp-card > b{
     width:26.0%!important;
   }
 }
+
+/* v5.38 — targeted light-theme fixes */
+
+/* Calendar training details */
+html[data-site-theme="light"] .training-gathering-info,
+html.light-theme .training-gathering-info,
+html[data-site-theme="light"] .training-day-summary,
+html.light-theme .training-day-summary,
+html[data-site-theme="light"] .training-summary,
+html.light-theme .training-summary,
+html[data-site-theme="light"] .training-meta,
+html.light-theme .training-meta{
+  background:#fffefa!important;
+  color:#2c2922!important;
+  border-color:#e1d8c8!important;
+}
+html[data-site-theme="light"] .training-gathering-info *,
+html.light-theme .training-gathering-info *,
+html[data-site-theme="light"] .training-day-summary *,
+html.light-theme .training-day-summary *{
+  color:#2c2922!important;
+}
+
+/* Settings language buttons */
+html[data-site-theme="light"] .language-btn,
+html.light-theme .language-btn,
+html[data-site-theme="light"] [data-language],
+html.light-theme [data-language]{
+  background:#fffefa!important;
+  color:#2c2922!important;
+  border-color:#ddd5c7!important;
+}
+html[data-site-theme="light"] .language-btn.active,
+html.light-theme .language-btn.active,
+html[data-site-theme="light"] [data-language].active,
+html.light-theme [data-language].active{
+  background:#fff1ca!important;
+  color:#886315!important;
+  border-color:#caa74e!important;
+}
+
+/* Tactics */
+html[data-site-theme="light"] .pitch [class*="nick"],
+html.light-theme .pitch [class*="nick"],
+html[data-site-theme="light"] .pitch .player-name,
+html.light-theme .pitch .player-name{
+  color:#2c2922!important;
+  text-shadow:0 1px 1px rgba(255,255,255,.7)!important;
+}
+html[data-site-theme="light"] .tactical-board-launch,
+html.light-theme .tactical-board-launch{
+  background:#fffefa!important;
+  color:#2c2922!important;
+  border-color:#ddd5c7!important;
+}
+html[data-site-theme="light"] .tactical-board-launch strong,
+html.light-theme .tactical-board-launch strong{color:#2c2922!important}
+html[data-site-theme="light"] .tactical-board-launch small,
+html.light-theme .tactical-board-launch small{color:#766f63!important}
+html[data-site-theme="light"] .tactical-board-launch-icon,
+html.light-theme .tactical-board-launch-icon,
+html[data-site-theme="light"] .tactical-board-launch>b,
+html.light-theme .tactical-board-launch>b{color:#9a7119!important}
+
+/* Players page + profile */
+html[data-site-theme="light"] .players-grid,
+html.light-theme .players-grid{
+  background:#fbfaf6!important;
+}
+html[data-site-theme="light"] .player-card,
+html.light-theme .player-card,
+html[data-site-theme="light"] .player-card-shell,
+html.light-theme .player-card-shell,
+html[data-site-theme="light"] .player-card-wrap,
+html.light-theme .player-card-wrap{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  color:#2c2922!important;
+}
+html[data-site-theme="light"] #profileModal .modal-card,
+html.light-theme #profileModal .modal-card,
+html[data-site-theme="light"] #playerModal .modal-card,
+html.light-theme #playerModal .modal-card,
+html[data-site-theme="light"] #playerViewMode,
+html.light-theme #playerViewMode,
+html[data-site-theme="light"] .player-view-slide,
+html.light-theme .player-view-slide{
+  background:#fffefa!important;
+  color:#2c2922!important;
+  border-color:#ded5c4!important;
+}
+html[data-site-theme="light"] .player-view-tab,
+html.light-theme .player-view-tab{
+  background:#f7f3ea!important;
+  color:#6d665b!important;
+  border-color:#ddd5c7!important;
+}
+html[data-site-theme="light"] .player-view-tab.active,
+html.light-theme .player-view-tab.active{
+  background:#fff0c9!important;
+  color:#886316!important;
+  border-color:#cba84d!important;
+}
+
+/* Polls / gatherings */
+html[data-site-theme="light"] .gathering-card,
+html.light-theme .gathering-card,
+html[data-site-theme="light"] .gathering-votes,
+html.light-theme .gathering-votes,
+html[data-site-theme="light"] .gathering-results,
+html.light-theme .gathering-results,
+html[data-site-theme="light"] .vote-card,
+html.light-theme .vote-card,
+html[data-site-theme="light"] .poll-card,
+html.light-theme .poll-card,
+html[data-site-theme="light"] .poll-option,
+html.light-theme .poll-option{
+  background:#fff!important;
+  color:#2c2922!important;
+  border-color:#e2dacd!important;
+}
+html[data-site-theme="light"] .gathering-card *,
+html.light-theme .gathering-card *,
+html[data-site-theme="light"] .poll-card *,
+html.light-theme .poll-card *{
+  color:#2c2922!important;
+}
+
+/* Chat */
+html[data-site-theme="light"] .chat-messages,
+html.light-theme .chat-messages{
+  background:#f7f3ea!important;
+}
+html[data-site-theme="light"] .chat-message,
+html.light-theme .chat-message,
+html[data-site-theme="light"] .message-bubble,
+html.light-theme .message-bubble,
+html[data-site-theme="light"] .chat-message-main,
+html.light-theme .chat-message-main{
+  background:transparent!important;
+  color:#2c2922!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .chat-message.mine,
+html.light-theme .chat-message.mine,
+html[data-site-theme="light"] .message-bubble.mine,
+html.light-theme .message-bubble.mine{
+  background:#fff3d7!important;
+  border:1px solid #dfc785!important;
+  color:#2c2922!important;
+  border-radius:12px!important;
+}

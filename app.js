@@ -3879,7 +3879,7 @@ function renderGeneralRecords(){
   const specs=[
     ["⭐","НАЙВИЩА ОЦІНКА",single,x=>Number(x.row.rating)||0,x=>(Number(x.row.rating)||0).toFixed(1)],
     ["⚽","НАЙБІЛЬШЕ ГОЛІВ ЗА ГРУ",single,x=>Number(x.row.goals)||0,x=>`${Number(x.row.goals)||0}`],
-    ["🎯","НАЙБІЛЬШЕ АСИСТІВ ЗА ГРУ",single,x=>Number(x.row.assists)||0,x=>`${Number(x.row.assists)||0}`],
+    
     ["🔥","НАЙДОВША ГОЛЬОВА СЕРІЯ",perPlayer,x=>x.streaks.goal.best,x=>`${x.streaks.goal.best}`],
     ["🎯","НАЙДОВША СЕРІЯ АСИСТІВ",perPlayer,x=>x.streaks.assist.best,x=>`${x.streaks.assist.best}`],
     ["🤝","НАЙДОВША РЕЗУЛЬТАТИВНА СЕРІЯ",perPlayer,x=>x.streaks.contribution.best,x=>`${x.streaks.contribution.best}`],
@@ -4369,4 +4369,51 @@ window.addEventListener("centuria-theme-change",()=>{
   setTimeout(()=>{
     try{ if(typeof renderHomeVip==="function") renderHomeVip(); }catch(_e){}
   },60);
+});
+
+/* v5.38 — fix player profile average / best / worst ratings */
+function fixPlayerProfileRatingLabels(){
+  try{
+    const modal=document.getElementById("profileModal")||document.getElementById("playerModal");
+    if(!modal || modal.classList.contains("hidden"))return;
+
+    const pid=modal.dataset.playerId ||
+      (typeof selectedPlayerId!=="undefined"?selectedPlayerId:null) ||
+      (typeof activePlayerId!=="undefined"?activePlayerId:null);
+    if(!pid)return;
+
+    function calc(rows){
+      const vals=rows.map(r=>Number(r.rating)).filter(Number.isFinite);
+      return {
+        average:vals.length?vals.reduce((a,b)=>a+b,0)/vals.length:null,
+        best:vals.length?Math.max(...vals):null,
+        worst:vals.length?Math.min(...vals):null
+      };
+    }
+
+    const official=calc(Array.isArray(officialMatchStats)?officialMatchStats.filter(r=>r.player_id===pid):[]);
+    const training=calc(Array.isArray(trainingStats)?trainingStats.filter(r=>r.player_id===pid):[]);
+
+    const sections=[...modal.querySelectorAll(".player-stats-column, .player-stats-columns section")];
+    function setStat(section,label,value){
+      if(!section)return;
+      const line=[...section.querySelectorAll(".stat-line")].find(el=>(el.textContent||"").toUpperCase().includes(label));
+      const b=line?.querySelector("b");
+      if(b)b.textContent=value==null?"—":value.toFixed(1);
+    }
+
+    if(sections.length>=2){
+      setStat(sections[0],"СЕРЕДНЯ",official.average);
+      setStat(sections[0],"НАЙКРАЩА",official.best);
+      setStat(sections[0],"НАЙГІРША",official.worst);
+      setStat(sections[1],"СЕРЕДНЯ",training.average);
+      setStat(sections[1],"НАЙКРАЩА",training.best);
+      setStat(sections[1],"НАЙГІРША",training.worst);
+    }
+  }catch(e){console.warn("Profile rating fix",e);}
+}
+document.addEventListener("click",e=>{
+  if(e.target.closest?.(".player-card,.player-view-tab,[data-player-id]")){
+    setTimeout(fixPlayerProfileRatingLabels,120);
+  }
 });
