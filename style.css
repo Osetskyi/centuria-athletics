@@ -4918,3 +4918,23 @@ html.light-theme .message-bubble.mine{
   color:#2c2922!important;
   border-radius:12px!important;
 }
+
+/* v5.39 — Settings language buttons, actual .lang markup */
+html[data-site-theme="light"] #screen-settings .language-row .lang,
+html.light-theme #screen-settings .language-row .lang,
+body[data-site-theme="light"] #screen-settings .language-row .lang,
+body.light-theme #screen-settings .language-row .lang{
+  background:linear-gradient(180deg,#fffefa 0%,#f8f3e9 100%)!important;
+  color:#2d2922!important;
+  border:1px solid #ddd3c1!important;
+  box-shadow:0 2px 7px rgba(88,65,24,.04)!important;
+}
+html[data-site-theme="light"] #screen-settings .language-row .lang.active,
+html.light-theme #screen-settings .language-row .lang.active,
+body[data-site-theme="light"] #screen-settings .language-row .lang.active,
+body.light-theme #screen-settings .language-row .lang.active{
+  background:linear-gradient(180deg,#fff4d5 0%,#f7e7b7 100%)!important;
+  color:#7e5d16!important;
+  border-color:#c89e3e!important;
+  box-shadow:0 2px 8px rgba(175,132,35,.10)!important;
+}
