@@ -5712,3 +5712,62 @@ body.light-theme #screen-chat .chat-message .chat-text{
   -webkit-text-fill-color:#28241e!important;
   text-shadow:none!important;
 }
+
+/* ==========================================================
+   v5.54 — FINAL light chat bubble consistency
+   ========================================================== */
+
+/* Force SAME cream/gold bubble on both own and other users.
+   Specificity intentionally beats old :not(.own) rules. */
+html[data-site-theme="light"] #screen-chat .chat-message:not(.own) .chat-bubble,
+html.light-theme #screen-chat .chat-message:not(.own) .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message:not(.own) .chat-bubble,
+body.light-theme #screen-chat .chat-message:not(.own) .chat-bubble,
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+html.light-theme #screen-chat .chat-message.own .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+body.light-theme #screen-chat .chat-message.own .chat-bubble{
+  background:#f8e8b9!important;
+  border:2px solid #caa447!important;
+  border-radius:22px!important;
+  box-shadow:none!important;
+  color:#28241e!important;
+  padding:12px 18px!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message:not(.own) .chat-text,
+html.light-theme #screen-chat .chat-message:not(.own) .chat-text,
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-text,
+html.light-theme #screen-chat .chat-message.own .chat-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Participants count badge next to "УЧАСНИКИ" */
+html[data-site-theme="light"] #screen-chat .chat-tab-count,
+html.light-theme #screen-chat .chat-tab-count,
+html[data-site-theme="light"] #screen-chat .members-count,
+html.light-theme #screen-chat .members-count,
+html[data-site-theme="light"] #screen-chat .chat-tab .count,
+html.light-theme #screen-chat .chat-tab .count,
+html[data-site-theme="light"] #screen-chat .chat-tab [class*="badge"],
+html.light-theme #screen-chat .chat-tab [class*="badge"]{
+  background:#f6e5b6!important;
+  color:#2a261f!important;
+  -webkit-text-fill-color:#2a261f!important;
+  border:1px solid #caa447!important;
+  box-shadow:none!important;
+}
+
+html[data-site-theme="light"] #screen-chat .v554-members-count,
+html.light-theme #screen-chat .v554-members-count,
+body[data-site-theme="light"] #screen-chat .v554-members-count,
+body.light-theme #screen-chat .v554-members-count{
+  background:#f6e5b6!important;
+  color:#2a261f!important;
+  -webkit-text-fill-color:#2a261f!important;
+  border:1px solid #caa447!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+}

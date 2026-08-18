@@ -4669,3 +4669,22 @@ document.addEventListener("click",()=>setTimeout(gatheringV544NickPills,140));
   document.addEventListener("click",()=>setTimeout(applyLightChatBubbles,100));
   window.addEventListener("centuria-theme-change",()=>setTimeout(applyLightChatBubbles,80));
 })();
+
+/* v5.54 — mark participants count badge in light theme */
+function markChatParticipantsCount(){
+  try{
+    const root=document.getElementById("screen-chat");
+    if(!root)return;
+    const tabs=[...root.querySelectorAll(".chat-tab")];
+    const participants=tabs.find(el=>(el.textContent||"").toUpperCase().includes("УЧАСНИКИ"));
+    if(!participants)return;
+    [...participants.querySelectorAll("span,b,strong,div")].forEach(el=>{
+      const t=(el.textContent||"").trim();
+      if(/^\d+$/.test(t) && el.children.length===0){
+        el.classList.add("v554-members-count");
+      }
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(markChatParticipantsCount,160));
+document.addEventListener("click",()=>setTimeout(markChatParticipantsCount,80));
