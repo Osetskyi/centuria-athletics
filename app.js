@@ -4364,11 +4364,9 @@ window.addEventListener("load",()=>{
   applyHomeBackgroundForTheme(theme);
 });
 
-/* v5.36 — refresh MVP when home becomes visible */
-document.addEventListener("click",e=>{
-  const homeTarget=e.target.closest?.(".hs-home,[data-go-home],#homeBtn,[data-view='home']");
-  if(homeTarget) setTimeout(()=>{ try{renderHomeVip()}catch(_e){} },120);
-});
+/* v5.37 — safe home refresh without changing page geometry */
 window.addEventListener("centuria-theme-change",()=>{
-  setTimeout(()=>{ try{renderHomeVip()}catch(_e){} },80);
+  setTimeout(()=>{
+    try{ if(typeof renderHomeVip==="function") renderHomeVip(); }catch(_e){}
+  },60);
 });

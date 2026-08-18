@@ -4471,208 +4471,296 @@ html.light-theme .home-mvp-rating{
 
 
 /* ==========================================================
-   v5.36 — HOME interaction/layout fixes
-   1) MVP always above background
-   2) Next event no longer overlaps buttons
-   3) Dedicated clickable zones for light home background
+   v5.37 — STABLE HOME SCREEN
+   No absolute positioning of the whole page/container.
+   Background keeps natural aspect ratio and full page height.
+   Event + MVP are independent overlays INSIDE .home-art-wrap.
    ========================================================== */
 
-/* Keep background at the very bottom */
-#screen-home .home-bg,
-#homeBackgroundImage{
-  position:absolute!important;
-  inset:0!important;
+#screen-home{
+  position:relative!important;
+  min-height:0!important;
+  overflow-x:hidden!important;
+  background:#020303!important;
+}
+
+#screen-home .home-art-wrap{
+  position:relative!important;
   width:100%!important;
-  height:100%!important;
-  object-fit:cover!important;
+  max-width:852px!important;
+  margin:0 auto!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+}
+
+#screen-home .home-art,
+#homeBackgroundImage{
+  position:relative!important;
   z-index:0!important;
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  max-width:100%!important;
+  object-fit:contain!important;
   pointer-events:none!important;
 }
 
-/* Any decorative overlay stays below controls */
-#screen-home::before,
-#screen-home::after{
-  z-index:1!important;
-  pointer-events:none!important;
-}
-
-/* Dynamic top cards must always be visible above the background */
-.home-event-mvp-row{
+/* Keep all real menu tap zones above artwork and dynamic cards. */
+#screen-home .hotspot{
   position:absolute!important;
-  top:24.5%!important;
-  left:50%!important;
-  transform:translateX(-50%)!important;
-  width:86%!important;
-  max-width:760px!important;
   z-index:30!important;
-  pointer-events:none!important;
-  display:grid!important;
-  grid-template-columns:minmax(0,1.58fr) minmax(104px,.58fr)!important;
-  gap:8px!important;
-  align-items:stretch!important;
-}
-
-.home-event-mvp-row > *{
   pointer-events:auto!important;
-}
-
-/* Make the next-event block more compact and keep it above the menu */
-.home-event-mvp-row > :not(.home-mvp-card){
-  min-height:104px!important;
-  max-height:116px!important;
-  overflow:hidden!important;
-  z-index:31!important;
-}
-
-/* MVP / player of the day */
-.home-mvp-card{
-  position:relative!important;
-  z-index:32!important;
-  min-height:104px!important;
-  max-height:116px!important;
-  overflow:hidden!important;
-  display:flex!important;
-  pointer-events:auto!important;
-}
-.home-mvp-card.hidden{
-  display:flex!important;
-}
-.home-mvp-photo{
-  position:relative!important;
-  z-index:2!important;
-}
-.home-mvp-label,
-.home-mvp-name,
-.home-mvp-rating{
-  position:relative!important;
-  z-index:3!important;
-}
-
-/* All home buttons/hotspots are above everything else */
-#screen-home .hotspot,
-#screen-home [class*="hs-"],
-#screen-home button[data-view],
-#screen-home button[data-target]{
-  position:absolute!important;
-  z-index:40!important;
-  pointer-events:auto!important;
-  cursor:pointer!important;
   touch-action:manipulation!important;
-}
-
-/* ----------------------------------------------------------
-   Dedicated clickable geometry for the LIGHT background.
-   These zones match the latest white home-screen image.
-   ---------------------------------------------------------- */
-html[data-site-theme="light"] #screen-home .hs-players,
-html.light-theme #screen-home .hs-players{
-  left:22%!important;
-  top:52.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-tactics,
-html.light-theme #screen-home .hs-tactics{
-  left:51%!important;
-  top:52.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-squads,
-html.light-theme #screen-home .hs-squads{
-  left:22%!important;
-  top:64.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-chat,
-html.light-theme #screen-home .hs-chat{
-  left:51%!important;
-  top:64.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-gatherings,
-html.light-theme #screen-home .hs-gatherings{
-  left:22%!important;
-  top:76.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-settings,
-html.light-theme #screen-home .hs-settings{
-  left:51%!important;
-  top:76.5%!important;
-  width:26%!important;
-  height:11%!important;
-}
-html[data-site-theme="light"] #screen-home .hs-calendar,
-html.light-theme #screen-home .hs-calendar{
-  left:41%!important;
-  top:87.8%!important;
-  width:18%!important;
-  height:9%!important;
-}
-
-/* Prevent the event/MVP block from stealing taps from menu zones */
-html[data-site-theme="light"] .home-event-mvp-row,
-html.light-theme .home-event-mvp-row{
-  top:23.2%!important;
-}
-
-/* Dark theme keeps the same safe vertical spacing but old hotspot geometry */
-html[data-site-theme="dark"] .home-event-mvp-row,
-html.dark-theme .home-event-mvp-row{
-  top:23.5%!important;
-}
-
-/* Mobile fine tuning */
-@media(max-width:520px){
-  .home-event-mvp-row{
-    top:23.5%!important;
-    width:84%!important;
-    grid-template-columns:minmax(0,1.55fr) minmax(96px,.58fr)!important;
-    gap:6px!important;
-  }
-  .home-event-mvp-row > :not(.home-mvp-card),
-  .home-mvp-card{
-    min-height:96px!important;
-    max-height:106px!important;
-  }
-
-  html[data-site-theme="light"] #screen-home .hs-players,
-  html.light-theme #screen-home .hs-players{
-    left:20.5%!important;top:52.7%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-tactics,
-  html.light-theme #screen-home .hs-tactics{
-    left:51.5%!important;top:52.7%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-squads,
-  html.light-theme #screen-home .hs-squads{
-    left:20.5%!important;top:64.6%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-chat,
-  html.light-theme #screen-home .hs-chat{
-    left:51.5%!important;top:64.6%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-gatherings,
-  html.light-theme #screen-home .hs-gatherings{
-    left:20.5%!important;top:76.4%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-settings,
-  html.light-theme #screen-home .hs-settings{
-    left:51.5%!important;top:76.4%!important;width:28%!important;height:10.8%!important;
-  }
-  html[data-site-theme="light"] #screen-home .hs-calendar,
-  html.light-theme #screen-home .hs-calendar{
-    left:39%!important;top:88%!important;width:22%!important;height:8.5%!important;
-  }
-}
-
-/* Debug safety: invisible hotspots remain clickable */
-#screen-home .hotspot,
-#screen-home [class*="hs-"]{
+  cursor:pointer!important;
   background:transparent!important;
   border:0!important;
+}
+
+/* Exact zones for both current dark and current light artwork.
+   The two approved images use practically the same button geometry. */
+#screen-home .hs-chat{
+  left:13.2%!important; top:41.2%!important; width:34.0%!important; height:6.7%!important;
+}
+#screen-home .hs-gatherings{
+  left:48.9%!important; top:41.2%!important; width:37.8%!important; height:6.7%!important;
+}
+#screen-home .hs-players{
+  left:13.1%!important; top:48.8%!important; width:73.7%!important; height:9.0%!important;
+}
+#screen-home .hs-tactics{
+  left:13.1%!important; top:58.9%!important; width:73.7%!important; height:9.0%!important;
+}
+#screen-home .hs-squads{
+  left:13.1%!important; top:69.1%!important; width:73.7%!important; height:9.3%!important;
+}
+#screen-home .hs-calendar{
+  left:5.6%!important; top:89.4%!important; width:16.3%!important; height:7.8%!important;
+  border-radius:50%!important;
+}
+#screen-home .hs-settings{
+  right:4.9%!important; top:89.2%!important; width:16.5%!important; height:8.0%!important;
+  border-radius:50%!important;
+}
+
+/* Online counter sits above Chat, but cannot steal taps. */
+#screen-home .home-online-badge{
+  z-index:35!important;
+  pointer-events:none!important;
+}
+
+/* ----- NEXT EVENT: left card ----- */
+#screen-home .home-next-event{
+  position:absolute!important;
+  left:8.7%!important;
+  top:28.9%!important;
+  width:55.0%!important;
+  height:10.0%!important;
+  min-height:0!important;
+  max-height:none!important;
+  z-index:20!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  pointer-events:auto!important;
+}
+
+/* Slightly tighten event internals for the narrower card. */
+#screen-home .home-next-gathering{
+  grid-template-columns:38px minmax(0,1fr) auto!important;
+  gap:6px!important;
+  padding:16px 8px 6px!important;
+}
+#screen-home .home-next-gathering-icon{
+  width:32px!important;
+  height:32px!important;
+  font-size:18px!important;
+}
+#screen-home .home-next-main strong{
+  font-size:9px!important;
+}
+#screen-home .home-next-main span{
+  font-size:7px!important;
+}
+#screen-home .home-next-countdown{
+  max-width:72px!important;
+  font-size:6.5px!important;
+}
+#screen-home .home-next-type{
+  top:6px!important;
+  left:8px!important;
+  font-size:6px!important;
+}
+#screen-home .home-next-match{
+  grid-template-columns:1fr 58px 1fr!important;
+  gap:3px!important;
+  padding:15px 5px 5px!important;
+}
+#screen-home .home-next-logo{
+  width:31px!important;
+  height:31px!important;
+}
+#screen-home .home-next-team small{
+  font-size:6px!important;
+}
+#screen-home .home-next-vs strong{
+  font-size:10px!important;
+}
+#screen-home .home-next-vs span,
+#screen-home .home-next-vs b{
+  font-size:5.5px!important;
+}
+
+/* ----- MVP: right card ----- */
+#screen-home .home-mvp-card,
+#screen-home .home-mvp-card.hidden{
+  position:absolute!important;
+  left:65.2%!important;
+  top:28.9%!important;
+  width:25.8%!important;
+  height:10.0%!important;
+  min-height:0!important;
+  max-height:none!important;
+  z-index:22!important;
+  margin:0!important;
+  padding:17px 5px 5px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:1px!important;
+  border-radius:13px!important;
+  overflow:hidden!important;
+  pointer-events:auto!important;
+}
+
+/* This is the ACTUAL markup in the site: ribbon + span.photo > img + copy + rating. */
+#screen-home .home-mvp-ribbon{
+  position:absolute!important;
+  top:4px!important;
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  z-index:2!important;
+  min-width:44px!important;
+  padding:2px 7px!important;
+  border-radius:999px!important;
+  text-align:center!important;
+  font-size:6px!important;
+  font-weight:1000!important;
+  letter-spacing:1px!important;
+  color:#20190b!important;
+  background:linear-gradient(180deg,#f3d679,#c99d3e)!important;
+  border:1px solid rgba(255,229,145,.75)!important;
+}
+
+#screen-home .home-mvp-photo{
+  width:45px!important;
+  height:47px!important;
+  min-height:0!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  background:transparent!important;
+  border:0!important;
+  flex:0 0 auto!important;
+}
+#screen-home .home-mvp-photo img{
+  display:block!important;
+  max-width:45px!important;
+  max-height:47px!important;
+  width:auto!important;
+  height:auto!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.28))!important;
+}
+#screen-home .home-mvp-copy{
+  width:100%!important;
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  gap:0!important;
+  line-height:1.05!important;
+}
+#screen-home .home-mvp-copy strong{
+  width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  font-size:6.6px!important;
+  color:#fff!important;
+}
+#screen-home .home-mvp-copy span{
+  width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  text-align:center!important;
+  font-size:4.7px!important;
+  opacity:.6!important;
+}
+#screen-home .home-mvp-card > b{
+  font-size:11px!important;
+  line-height:1!important;
+  color:#e7c765!important;
+  text-align:center!important;
+}
+
+/* Dark card */
+html[data-site-theme="dark"] #screen-home .home-mvp-card,
+html.dark-theme #screen-home .home-mvp-card,
+body[data-site-theme="dark"] #screen-home .home-mvp-card,
+body.dark-theme #screen-home .home-mvp-card{
+  background:
+    radial-gradient(circle at 50% 8%,rgba(218,180,76,.15),transparent 44%),
+    linear-gradient(160deg,rgba(24,20,13,.98),rgba(7,7,7,.98))!important;
+  border:1px solid #c9a044!important;
+  color:#fff!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.32)!important;
+}
+
+/* Light card */
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-mvp-card,
+body[data-site-theme="light"] #screen-home .home-mvp-card,
+body.light-theme #screen-home .home-mvp-card{
+  background:
+    radial-gradient(circle at 50% 8%,rgba(220,180,78,.18),transparent 44%),
+    linear-gradient(155deg,rgba(255,254,250,.98),rgba(246,238,217,.98))!important;
+  border:1px solid #c9a044!important;
+  color:#2b261d!important;
+  box-shadow:0 6px 18px rgba(95,70,20,.12)!important;
+}
+html[data-site-theme="light"] #screen-home .home-mvp-copy strong,
+html.light-theme #screen-home .home-mvp-copy strong{
+  color:#2b261d!important;
+}
+html[data-site-theme="light"] #screen-home .home-mvp-copy span,
+html.light-theme #screen-home .home-mvp-copy span{
+  color:#776e60!important;
+  opacity:1!important;
+}
+html[data-site-theme="light"] #screen-home .home-mvp-card > b,
+html.light-theme #screen-home .home-mvp-card > b{
+  color:#947019!important;
+}
+
+/* No overlays may intercept taps on the artwork. */
+#screen-home::before,
+#screen-home::after{
+  pointer-events:none!important;
+}
+
+/* Phone tuning — percentages stay tied to artwork, no page reflow. */
+@media(max-width:520px){
+  #screen-home .home-next-event{
+    left:8.8%!important;
+    width:54.8%!important;
+  }
+  #screen-home .home-mvp-card,
+  #screen-home .home-mvp-card.hidden{
+    left:65.1%!important;
+    width:26.0%!important;
+  }
 }
