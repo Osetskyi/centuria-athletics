@@ -5771,3 +5771,66 @@ body.light-theme #screen-chat .v554-members-count{
   border-radius:999px!important;
   box-shadow:none!important;
 }
+
+/* v5.55 — Calendar training details: make the three top summary fields light */
+html[data-site-theme="light"] .training-summary,
+html.light-theme .training-summary,
+body[data-site-theme="light"] .training-summary,
+body.light-theme .training-summary{
+  background:transparent!important;
+  color:#28241e!important;
+}
+
+html[data-site-theme="light"] .training-summary > *,
+html.light-theme .training-summary > *,
+body[data-site-theme="light"] .training-summary > *,
+body.light-theme .training-summary > *,
+html[data-site-theme="light"] .training-stat-card,
+html.light-theme .training-stat-card,
+body[data-site-theme="light"] .training-stat-card,
+body.light-theme .training-stat-card{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border:1px solid #e0d2b8!important;
+  box-shadow:none!important;
+}
+
+html[data-site-theme="light"] .training-summary > * *,
+html.light-theme .training-summary > * *,
+body[data-site-theme="light"] .training-summary > * *,
+body.light-theme .training-summary > * *,
+html[data-site-theme="light"] .training-stat-card *,
+html.light-theme .training-stat-card *,
+body[data-site-theme="light"] .training-stat-card *,
+body.light-theme .training-stat-card *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Keep MVP rating as a gold accent when present */
+html[data-site-theme="light"] .training-summary .mvp-rating,
+html.light-theme .training-summary .mvp-rating,
+html[data-site-theme="light"] .training-stat-card .mvp-rating,
+html.light-theme .training-stat-card .mvp-rating{
+  color:#9a7119!important;
+  -webkit-text-fill-color:#9a7119!important;
+}
+
+html[data-site-theme="light"] .v555-training-light-box,
+html.light-theme .v555-training-light-box,
+body[data-site-theme="light"] .v555-training-light-box,
+body.light-theme .v555-training-light-box{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border:1px solid #e0d2b8!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .v555-training-light-box *,
+html.light-theme .v555-training-light-box *,
+body[data-site-theme="light"] .v555-training-light-box *,
+body.light-theme .v555-training-light-box *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
