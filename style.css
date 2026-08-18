@@ -5328,3 +5328,16 @@ html.light-theme #screen-gatherings .v544-voter-nick{
   box-shadow:none!important;
   text-shadow:none!important;
 }
+
+/* v5.45 — persistent voter nickname pills after JS rerender */
+html[data-site-theme="light"] #screen-gatherings .v545-voter-pill,
+html.light-theme #screen-gatherings .v545-voter-pill,
+body[data-site-theme="light"] #screen-gatherings .v545-voter-pill,
+body.light-theme #screen-gatherings .v545-voter-pill{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #ddcba8!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}

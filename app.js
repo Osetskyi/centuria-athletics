@@ -4521,3 +4521,67 @@ function gatheringV544NickPills(){
 }
 document.addEventListener("DOMContentLoaded",()=>setTimeout(gatheringV544NickPills,220));
 document.addEventListener("click",()=>setTimeout(gatheringV544NickPills,140));
+
+/* v5.45 — persist light voter pills after every gathering rerender */
+(function(){
+  function applyGatheringVoterPills(){
+    try{
+      const root=document.getElementById("screen-gatherings");
+      if(!root)return;
+
+      const isLight=
+        document.documentElement.dataset.siteTheme==="light" ||
+        document.documentElement.classList.contains("light-theme") ||
+        document.body?.dataset.siteTheme==="light" ||
+        document.body?.classList.contains("light-theme");
+
+      if(!isLight)return;
+
+      const ignore=/^(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ|—)$/i;
+
+      root.querySelectorAll(".gathering-voter-group").forEach(group=>{
+        group.querySelectorAll("span,div").forEach(el=>{
+          const text=(el.textContent||"").trim();
+          if(!text || el.children.length!==0 || ignore.test(text) || text.length>=50)return;
+
+          const cs=getComputedStyle(el);
+          const nums=(cs.backgroundColor||"").match(/\d+/g);
+          const darkBg=nums && nums.length>=3 && (+nums[0]<80 && +nums[1]<80 && +nums[2]<80);
+          const pillLike=parseFloat(cs.borderRadius)>5 || cs.display==="inline-flex" || cs.display==="inline-block";
+
+          if(darkBg || pillLike){
+            el.classList.add("v545-voter-pill");
+          }
+        });
+      });
+    }catch(e){}
+  }
+
+  window.applyGatheringVoterPills=applyGatheringVoterPills;
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    setTimeout(applyGatheringVoterPills,200);
+
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+
+    const observer=new MutationObserver(()=>{
+      requestAnimationFrame(()=>applyGatheringVoterPills());
+    });
+
+    observer.observe(root,{
+      childList:true,
+      subtree:true,
+      characterData:true
+    });
+  });
+
+  document.addEventListener("click",()=>{
+    setTimeout(applyGatheringVoterPills,80);
+    setTimeout(applyGatheringVoterPills,250);
+  });
+
+  window.addEventListener("centuria-theme-change",()=>{
+    setTimeout(applyGatheringVoterPills,80);
+  });
+})();
