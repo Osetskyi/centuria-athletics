@@ -5512,3 +5512,55 @@ html.light-theme #screen-chat .v548-light-bubble *{
   -webkit-text-fill-color:#28241e!important;
   text-shadow:none!important;
 }
+
+/* v5.49 — exact chat markup fix for LIGHT theme
+   Actual structure: .chat-message[.own] > .chat-message-main > .chat-bubble > .chat-text */
+
+html[data-site-theme="light"] #screen-chat .chat-bubble,
+html.light-theme #screen-chat .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-bubble,
+body.light-theme #screen-chat .chat-bubble{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border:1px solid #e1d4bb!important;
+  box-shadow:none!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+html.light-theme #screen-chat .chat-message.own .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+body.light-theme #screen-chat .chat-message.own .chat-bubble{
+  background:#f7e8bd!important;
+  color:#28241e!important;
+  border-color:#cfa64a!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-text,
+html.light-theme #screen-chat .chat-text,
+body[data-site-theme="light"] #screen-chat .chat-text,
+body.light-theme #screen-chat .chat-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message-meta strong,
+html.light-theme #screen-chat .chat-message-meta strong{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message-meta span,
+html.light-theme #screen-chat .chat-message-meta span,
+html[data-site-theme="light"] #screen-chat .chat-delete,
+html.light-theme #screen-chat .chat-delete{
+  color:#756d61!important;
+  -webkit-text-fill-color:#756d61!important;
+}
+
+/* Neutralize old dark bubble colors even after rerender */
+html[data-site-theme="light"] #screen-chat .chat-message-main,
+html.light-theme #screen-chat .chat-message-main{
+  background:transparent!important;
+  color:#28241e!important;
+}
