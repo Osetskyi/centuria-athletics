@@ -5659,3 +5659,34 @@ html.light-theme #screen-chat .chat-bubble{
   border:0!important;
   box-shadow:none!important;
 }
+
+/* v5.52 — own messages in LIGHT chat: cream bubble with thin gold outline */
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+html.light-theme #screen-chat .chat-message.own .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+body.light-theme #screen-chat .chat-message.own .chat-bubble{
+  background:#f8e8b9!important;
+  border:2px solid #caa447!important;
+  border-radius:22px!important;
+  box-shadow:none!important;
+  color:#28241e!important;
+  padding:12px 18px!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-text,
+html.light-theme #screen-chat .chat-message.own .chat-text,
+body[data-site-theme="light"] #screen-chat .chat-message.own .chat-text,
+body.light-theme #screen-chat .chat-message.own .chat-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Other users remain without individual message frames */
+html[data-site-theme="light"] #screen-chat .chat-message:not(.own) .chat-bubble,
+html.light-theme #screen-chat .chat-message:not(.own) .chat-bubble{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
