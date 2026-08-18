@@ -5317,3 +5317,14 @@ html.light-theme #screen-gatherings .g543-voter-nick{
   border-radius:999px!important;
   box-shadow:none!important;
 }
+
+/* v5.44 — only voter nickname pills on Gatherings / light theme */
+html[data-site-theme="light"] #screen-gatherings .v544-voter-nick,
+html.light-theme #screen-gatherings .v544-voter-nick{
+  background:#fffdf8!important;
+  color:#2b2721!important;
+  border:1px solid #ddcba8!important;
+  border-radius:999px!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}

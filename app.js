@@ -4499,3 +4499,25 @@ function gatheringV543Cleanup(){
 }
 document.addEventListener("DOMContentLoaded",()=>setTimeout(gatheringV543Cleanup,180));
 document.addEventListener("click",()=>setTimeout(gatheringV543Cleanup,120));
+
+/* v5.44 — identify only dark nickname pills in the lower voter lists */
+function gatheringV544NickPills(){
+  try{
+    const root=document.getElementById("screen-gatherings");
+    if(!root)return;
+    const ignore=/^(БУДУ|ПІД ПИТАННЯМ|НЕ БУДУ|—)$/i;
+    root.querySelectorAll(".gathering-card span,.gathering-card div").forEach(el=>{
+      const text=(el.textContent||"").trim();
+      if(!text || el.children.length!==0 || ignore.test(text) || text.length>=50)return;
+      const cs=getComputedStyle(el);
+      const nums=(cs.backgroundColor||"").match(/\d+/g);
+      if(!nums || nums.length<3)return;
+      const r=+nums[0],g=+nums[1],b=+nums[2];
+      if(r<65 && g<65 && b<65 && parseFloat(cs.borderRadius)>5){
+        el.classList.add("v544-voter-nick");
+      }
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(gatheringV544NickPills,220));
+document.addEventListener("click",()=>setTimeout(gatheringV544NickPills,140));
