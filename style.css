@@ -5454,3 +5454,61 @@ html.light-theme #screen-chat .v547-chat-dark-text{
   -webkit-text-fill-color:#28241e!important;
   text-shadow:none!important;
 }
+
+/* v5.48 — Chat bubbles in LIGHT theme */
+html[data-site-theme="light"] #screen-chat .chat-message,
+html.light-theme #screen-chat .chat-message,
+html[data-site-theme="light"] #screen-chat .message-bubble,
+html.light-theme #screen-chat .message-bubble{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border:1px solid #e1d4bb!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-message.mine,
+html.light-theme #screen-chat .chat-message.mine,
+html[data-site-theme="light"] #screen-chat .message-bubble.mine,
+html.light-theme #screen-chat .message-bubble.mine{
+  background:#f7e8bd!important;
+  color:#28241e!important;
+  border:1px solid #cfa64a!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-message *,
+html.light-theme #screen-chat .chat-message *,
+html[data-site-theme="light"] #screen-chat .message-bubble *,
+html.light-theme #screen-chat .message-bubble *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-time,
+html.light-theme #screen-chat .chat-time,
+html[data-site-theme="light"] #screen-chat .chat-delete,
+html.light-theme #screen-chat .chat-delete{
+  color:#776f63!important;
+  -webkit-text-fill-color:#776f63!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-author,
+html.light-theme #screen-chat .chat-author{
+  color:#2c2922!important;
+  -webkit-text-fill-color:#2c2922!important;
+}
+
+html[data-site-theme="light"] #screen-chat .v548-light-bubble,
+html.light-theme #screen-chat .v548-light-bubble{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border:1px solid #e1d4bb!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-chat .v548-light-bubble.mine,
+html.light-theme #screen-chat .v548-light-bubble.mine{
+  background:#f7e8bd!important;
+  border-color:#cfa64a!important;
+}
+html[data-site-theme="light"] #screen-chat .v548-light-bubble *,
+html.light-theme #screen-chat .v548-light-bubble *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}

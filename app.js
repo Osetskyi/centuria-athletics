@@ -4637,3 +4637,35 @@ document.addEventListener("click",()=>setTimeout(gatheringV544NickPills,140));
     setTimeout(paintChatParticipantsLight,250);
   });
 })();
+
+/* v5.48 — keep light chat bubbles after dynamic rerenders */
+(function(){
+  function applyLightChatBubbles(){
+    try{
+      const root=document.getElementById("screen-chat");
+      if(!root)return;
+      const isLight=
+        document.documentElement.dataset.siteTheme==="light" ||
+        document.documentElement.classList.contains("light-theme") ||
+        document.body?.dataset.siteTheme==="light" ||
+        document.body?.classList.contains("light-theme");
+      if(!isLight)return;
+
+      root.querySelectorAll(".chat-message,.message-bubble").forEach(el=>{
+        el.classList.add("v548-light-bubble");
+      });
+    }catch(e){}
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    setTimeout(applyLightChatBubbles,180);
+    const root=document.getElementById("screen-chat");
+    if(root){
+      new MutationObserver(()=>requestAnimationFrame(applyLightChatBubbles))
+        .observe(root,{childList:true,subtree:true});
+    }
+  });
+
+  document.addEventListener("click",()=>setTimeout(applyLightChatBubbles,100));
+  window.addEventListener("centuria-theme-change",()=>setTimeout(applyLightChatBubbles,80));
+})();
