@@ -5871,3 +5871,28 @@ html.light-theme .training-view-actions [class*="danger"]{
   border-color:#e6b6b1!important;
   background:#fff7f6!important;
 }
+
+/* v5.59 — Players: light theme background behind cards */
+html[data-site-theme="light"] .player-card,
+html.light-theme .player-card,
+body[data-site-theme="light"] .player-card,
+body.light-theme .player-card,
+html[data-site-theme="light"] .player-card-wrap,
+html.light-theme .player-card-wrap,
+html[data-site-theme="light"] .player-image-wrap,
+html.light-theme .player-image-wrap,
+html[data-site-theme="light"] .player-photo-wrap,
+html.light-theme .player-photo-wrap,
+html[data-site-theme="light"] .player-tile,
+html.light-theme .player-tile,
+html[data-site-theme="light"] .roster-card,
+html.light-theme .roster-card{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+}
+html[data-site-theme="light"] .players-grid,
+html.light-theme .players-grid,
+html[data-site-theme="light"] .players-list,
+html.light-theme .players-list{
+  background:transparent!important;
+}
