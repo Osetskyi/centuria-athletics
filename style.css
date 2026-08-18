@@ -4938,3 +4938,100 @@ body.light-theme #screen-settings .language-row .lang.active{
   border-color:#c89e3e!important;
   box-shadow:0 2px 8px rgba(175,132,35,.10)!important;
 }
+
+/* ==========================================================
+   v5.40 — screenshot-targeted LIGHT theme fixes
+   ========================================================== */
+
+/* Calendar / training modal: DATE, MATCHES PLAYED, MVP DAY */
+html[data-site-theme="light"] .training-modal .training-summary > *,
+html.light-theme .training-modal .training-summary > *,
+html[data-site-theme="light"] .training-modal .training-day-meta > *,
+html.light-theme .training-modal .training-day-meta > *,
+html[data-site-theme="light"] .training-modal [class*="summary-card"],
+html.light-theme .training-modal [class*="summary-card"],
+html[data-site-theme="light"] .training-modal [class*="meta-card"],
+html.light-theme .training-modal [class*="meta-card"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border-color:#e3d8c4!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .training-modal .training-summary > * *,
+html.light-theme .training-modal .training-summary > * *,
+html[data-site-theme="light"] .training-modal .training-day-meta > * *,
+html.light-theme .training-modal .training-day-meta > * *{
+  color:#29261f!important;
+}
+
+/* Tactics: nickname plates directly under cards + empty slot names */
+html[data-site-theme="light"] #screen-tactics .slot-name,
+html.light-theme #screen-tactics .slot-name,
+html[data-site-theme="light"] #screen-tactics .player-name,
+html.light-theme #screen-tactics .player-name,
+html[data-site-theme="light"] #screen-tactics .player-nick,
+html.light-theme #screen-tactics .player-nick,
+html[data-site-theme="light"] #screen-tactics [class*="slot-nick"],
+html.light-theme #screen-tactics [class*="slot-nick"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border:1px solid rgba(205,174,104,.75)!important;
+  box-shadow:0 2px 6px rgba(40,30,12,.08)!important;
+  text-shadow:none!important;
+}
+
+/* Gatherings: ALL formerly dark interactive fields */
+html[data-site-theme="light"] #screen-gatherings .gather-tabs,
+html.light-theme #screen-gatherings .gather-tabs,
+html[data-site-theme="light"] #screen-gatherings .gather-tab,
+html.light-theme #screen-gatherings .gather-tab,
+html[data-site-theme="light"] #screen-gatherings .gather-count,
+html.light-theme #screen-gatherings .gather-count,
+html[data-site-theme="light"] #screen-gatherings .gather-vote,
+html.light-theme #screen-gatherings .gather-vote,
+html[data-site-theme="light"] #screen-gatherings .gather-close,
+html.light-theme #screen-gatherings .gather-close,
+html[data-site-theme="light"] #screen-gatherings .gather-delete,
+html.light-theme #screen-gatherings .gather-delete,
+html[data-site-theme="light"] #screen-gatherings .gather-member,
+html.light-theme #screen-gatherings .gather-member,
+html[data-site-theme="light"] #screen-gatherings .vote-btn,
+html.light-theme #screen-gatherings .vote-btn,
+html[data-site-theme="light"] #screen-gatherings .poll-tab,
+html.light-theme #screen-gatherings .poll-tab,
+html[data-site-theme="light"] #screen-gatherings button[class*="vote"],
+html.light-theme #screen-gatherings button[class*="vote"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+  border-color:#ddcfb5!important;
+  box-shadow:none!important;
+}
+
+/* Active tab remains visibly active but light */
+html[data-site-theme="light"] #screen-gatherings .gather-tab.active,
+html.light-theme #screen-gatherings .gather-tab.active,
+html[data-site-theme="light"] #screen-gatherings .poll-tab.active,
+html.light-theme #screen-gatherings .poll-tab.active{
+  background:#f7e8bd!important;
+  color:#7c5912!important;
+  border-color:#c89b37!important;
+}
+
+/* Preserve semantic colors on vote labels */
+html[data-site-theme="light"] #screen-gatherings .yes,
+html.light-theme #screen-gatherings .yes{color:#278650!important}
+html[data-site-theme="light"] #screen-gatherings .maybe,
+html.light-theme #screen-gatherings .maybe{color:#8b6c24!important}
+html[data-site-theme="light"] #screen-gatherings .no,
+html.light-theme #screen-gatherings .no{color:#b64b43!important}
+
+/* Generic fallback limited ONLY to gatherings for dark inline blocks */
+html[data-site-theme="light"] #screen-gatherings [style*="background: rgb(1"],
+html[data-site-theme="light"] #screen-gatherings [style*="background:#1"],
+html[data-site-theme="light"] #screen-gatherings [style*="background: #1"],
+html.light-theme #screen-gatherings [style*="background: rgb(1"],
+html.light-theme #screen-gatherings [style*="background:#1"],
+html.light-theme #screen-gatherings [style*="background: #1"]{
+  background:#fffdf8!important;
+  color:#29261f!important;
+}
