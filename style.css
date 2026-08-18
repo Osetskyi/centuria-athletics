@@ -5636,3 +5636,26 @@ html.light-theme #screen-chat .chat-message{
   border:0!important;
   box-shadow:none!important;
 }
+
+/* v5.51 — restore ONLY the avatar frame in LIGHT chat */
+html[data-site-theme="light"] #screen-chat .chat-avatar,
+html.light-theme #screen-chat .chat-avatar,
+body[data-site-theme="light"] #screen-chat .chat-avatar,
+body.light-theme #screen-chat .chat-avatar,
+html[data-site-theme="light"] #screen-chat .chat-avatar-fallback,
+html.light-theme #screen-chat .chat-avatar-fallback,
+body[data-site-theme="light"] #screen-chat .chat-avatar-fallback,
+body.light-theme #screen-chat .chat-avatar-fallback{
+  border:2px solid #cda447!important;
+  box-shadow:0 2px 7px rgba(111,82,25,.16)!important;
+  background:#fffaf0!important;
+}
+
+/* Keep the message itself unframed */
+html[data-site-theme="light"] #screen-chat .chat-message,
+html.light-theme #screen-chat .chat-message,
+html[data-site-theme="light"] #screen-chat .chat-bubble,
+html.light-theme #screen-chat .chat-bubble{
+  border:0!important;
+  box-shadow:none!important;
+}
