@@ -5967,3 +5967,125 @@ body.light-theme #screen-chat .online-person > span:last-child{
   color:#28241e!important;
   -webkit-text-fill-color:#28241e!important;
 }
+
+/* ==========================================================
+   v5.63 — Saved squads, LIGHT theme only
+   ========================================================== */
+
+/* Saved squad card in the list */
+html[data-site-theme="light"] .saved-squad-card,
+html.light-theme .saved-squad-card,
+body[data-site-theme="light"] .saved-squad-card,
+body.light-theme .saved-squad-card,
+html[data-site-theme="light"] .saved-lineup-card,
+html.light-theme .saved-lineup-card,
+html[data-site-theme="light"] .squad-saved-card,
+html.light-theme .squad-saved-card{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+
+/* Text inside saved squad cards */
+html[data-site-theme="light"] .saved-squad-card *,
+html.light-theme .saved-squad-card *,
+html[data-site-theme="light"] .saved-lineup-card *,
+html.light-theme .saved-lineup-card *,
+html[data-site-theme="light"] .squad-saved-card *,
+html.light-theme .squad-saved-card *{
+  color:#28241e;
+}
+
+/* Saved squad preview modal shell */
+html[data-site-theme="light"] .saved-squad-modal-card,
+html.light-theme .saved-squad-modal-card,
+body[data-site-theme="light"] .saved-squad-modal-card,
+body.light-theme .saved-squad-modal-card,
+html[data-site-theme="light"] .saved-lineup-modal-card,
+html.light-theme .saved-lineup-modal-card{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+
+/* Inner preview area around the pitch */
+html[data-site-theme="light"] .saved-squad-preview,
+html.light-theme .saved-squad-preview,
+body[data-site-theme="light"] .saved-squad-preview,
+body.light-theme .saved-squad-preview,
+html[data-site-theme="light"] .saved-lineup-preview,
+html.light-theme .saved-lineup-preview{
+  background:#fffaf1!important;
+  color:#28241e!important;
+  border-color:#e2d5bc!important;
+}
+
+/* Header block in preview */
+html[data-site-theme="light"] .saved-squad-header,
+html.light-theme .saved-squad-header,
+html[data-site-theme="light"] .saved-lineup-header,
+html.light-theme .saved-lineup-header{
+  background:#fffaf1!important;
+  color:#28241e!important;
+  border-color:#e2d5bc!important;
+}
+
+html[data-site-theme="light"] .saved-squad-header *,
+html.light-theme .saved-squad-header *,
+html[data-site-theme="light"] .saved-lineup-header *,
+html.light-theme .saved-lineup-header *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Nickname labels under players inside saved preview */
+html[data-site-theme="light"] .saved-squad-preview .slot-name,
+html.light-theme .saved-squad-preview .slot-name,
+html[data-site-theme="light"] .saved-lineup-preview .slot-name,
+html.light-theme .saved-lineup-preview .slot-name,
+html[data-site-theme="light"] .saved-squad-preview [class*="nick"],
+html.light-theme .saved-squad-preview [class*="nick"]{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  text-shadow:none!important;
+}
+
+/* Keep pitch geometry/colors untouched */
+html[data-site-theme="light"] .saved-squad-preview .pitch,
+html.light-theme .saved-squad-preview .pitch,
+html[data-site-theme="light"] .saved-lineup-preview .pitch,
+html.light-theme .saved-lineup-preview .pitch{
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 12.5%,rgba(0,0,0,.02) 12.5% 25%),
+    linear-gradient(180deg,#267949,#165b38)!important;
+}
+
+/* Menu button on saved card can stay gold/dark but readable */
+html[data-site-theme="light"] .saved-squad-card button,
+html.light-theme .saved-squad-card button,
+html[data-site-theme="light"] .saved-lineup-card button,
+html.light-theme .saved-lineup-card button{
+  color:#8a6414!important;
+}
+
+html[data-site-theme="light"] .v563-saved-light,
+html.light-theme .v563-saved-light{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .v563-saved-light *,
+html.light-theme .v563-saved-light *{
+  color:#28241e;
+}
+html[data-site-theme="light"] .v563-saved-modal-light,
+html.light-theme .v563-saved-modal-light{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}

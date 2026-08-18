@@ -4690,3 +4690,30 @@ document.addEventListener("DOMContentLoaded",()=>setTimeout(markChatParticipants
 document.addEventListener("click",()=>setTimeout(markChatParticipantsCount,80));
 
 
+
+/* v5.63 — mark dynamically rendered saved-squad UI in light theme */
+function markSavedSquadLightUI(){
+  try{
+    const isLight =
+      document.documentElement.dataset.siteTheme==="light" ||
+      document.documentElement.classList.contains("light-theme") ||
+      document.body?.dataset.siteTheme==="light" ||
+      document.body?.classList.contains("light-theme");
+    if(!isLight)return;
+
+    document.querySelectorAll("article,section,div").forEach(el=>{
+      const t=(el.textContent||"").trim().replace(/\s+/g," ");
+      if(!t || t.length>1200)return;
+
+      if(t.includes("СХЕМА:") && t.includes("СТВОРЕНО:") && !el.closest(".pitch")){
+        el.classList.add("v563-saved-light");
+      }
+
+      if(t.includes("ЗБЕРЕГТИ PNG") && t.includes("НАЗАД") && !el.closest(".pitch")){
+        el.classList.add("v563-saved-modal-light");
+      }
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(markSavedSquadLightUI,180));
+document.addEventListener("click",()=>setTimeout(markSavedSquadLightUI,120));
