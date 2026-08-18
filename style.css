@@ -5341,3 +5341,25 @@ body.light-theme #screen-gatherings .v545-voter-pill{
   box-shadow:none!important;
   text-shadow:none!important;
 }
+
+/* v5.46 — Gatherings light theme: voter nickname text must stay dark */
+html[data-site-theme="light"] #screen-gatherings .v545-voter-pill,
+html[data-site-theme="light"] #screen-gatherings .v545-voter-pill *,
+html.light-theme #screen-gatherings .v545-voter-pill,
+html.light-theme #screen-gatherings .v545-voter-pill *,
+body[data-site-theme="light"] #screen-gatherings .v545-voter-pill,
+body[data-site-theme="light"] #screen-gatherings .v545-voter-pill *,
+body.light-theme #screen-gatherings .v545-voter-pill,
+body.light-theme #screen-gatherings .v545-voter-pill *,
+html[data-site-theme="light"] #screen-gatherings .v544-voter-nick,
+html[data-site-theme="light"] #screen-gatherings .v544-voter-nick *,
+html.light-theme #screen-gatherings .v544-voter-nick,
+html.light-theme #screen-gatherings .v544-voter-nick *,
+html[data-site-theme="light"] #screen-gatherings .g543-voter-nick,
+html[data-site-theme="light"] #screen-gatherings .g543-voter-nick *,
+html.light-theme #screen-gatherings .g543-voter-nick,
+html.light-theme #screen-gatherings .g543-voter-nick *{
+  color:#24211c!important;
+  -webkit-text-fill-color:#24211c!important;
+  text-shadow:none!important;
+}
