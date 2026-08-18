@@ -5363,3 +5363,94 @@ html.light-theme #screen-gatherings .g543-voter-nick *{
   -webkit-text-fill-color:#24211c!important;
   text-shadow:none!important;
 }
+
+/* v5.47 — Chat > Participants, LIGHT theme */
+
+/* Main participants/list containers */
+html[data-site-theme="light"] #screen-chat .chat-participants,
+html[data-site-theme="light"] #screen-chat .participants-panel,
+html[data-site-theme="light"] #screen-chat .members-panel,
+html[data-site-theme="light"] #screen-chat .chat-members,
+html[data-site-theme="light"] #screen-chat .participants-list,
+html[data-site-theme="light"] #screen-chat .members-list,
+html.light-theme #screen-chat .chat-participants,
+html.light-theme #screen-chat .participants-panel,
+html.light-theme #screen-chat .members-panel,
+html.light-theme #screen-chat .chat-members,
+html.light-theme #screen-chat .participants-list,
+html.light-theme #screen-chat .members-list{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#ddcba8!important;
+  box-shadow:none!important;
+}
+
+/* Individual participant rows */
+html[data-site-theme="light"] #screen-chat .participant-item,
+html[data-site-theme="light"] #screen-chat .member-item,
+html[data-site-theme="light"] #screen-chat .chat-member,
+html[data-site-theme="light"] #screen-chat .participant-row,
+html.light-theme #screen-chat .participant-item,
+html.light-theme #screen-chat .member-item,
+html.light-theme #screen-chat .chat-member,
+html.light-theme #screen-chat .participant-row{
+  background:transparent!important;
+  color:#28241e!important;
+  border-color:#e7dcc6!important;
+  box-shadow:none!important;
+}
+
+/* Names and ordinary text dark */
+html[data-site-theme="light"] #screen-chat .participant-name,
+html[data-site-theme="light"] #screen-chat .member-name,
+html[data-site-theme="light"] #screen-chat .chat-member-name,
+html.light-theme #screen-chat .participant-name,
+html.light-theme #screen-chat .member-name,
+html.light-theme #screen-chat .chat-member-name{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Keep status / role accents; make neutral offline copy readable */
+html[data-site-theme="light"] #screen-chat .offline,
+html[data-site-theme="light"] #screen-chat .member-offline,
+html.light-theme #screen-chat .offline,
+html.light-theme #screen-chat .member-offline{
+  color:#8c8374!important;
+  -webkit-text-fill-color:#8c8374!important;
+}
+
+/* Chat / Participants switch itself light; active state gold */
+html[data-site-theme="light"] #screen-chat .chat-tabs,
+html[data-site-theme="light"] #screen-chat .chat-tabs-wrap,
+html.light-theme #screen-chat .chat-tabs,
+html.light-theme #screen-chat .chat-tabs-wrap{
+  background:#fffdf8!important;
+  border-color:#ddcba8!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-tab,
+html.light-theme #screen-chat .chat-tab{
+  background:#fffdf8!important;
+  color:#28241e!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-tab.active,
+html.light-theme #screen-chat .chat-tab.active{
+  background:#f4e3b7!important;
+  color:#8a6414!important;
+  border-color:#c89b35!important;
+}
+
+html[data-site-theme="light"] #screen-chat .v547-chat-light-panel,
+html.light-theme #screen-chat .v547-chat-light-panel{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#ddcba8!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #screen-chat .v547-chat-dark-text,
+html.light-theme #screen-chat .v547-chat-dark-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}

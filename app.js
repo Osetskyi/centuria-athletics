@@ -4585,3 +4585,55 @@ document.addEventListener("click",()=>setTimeout(gatheringV544NickPills,140));
     setTimeout(applyGatheringVoterPills,80);
   });
 })();
+
+/* v5.47 — persistent light styling for dynamically rendered Chat participants */
+(function(){
+  function paintChatParticipantsLight(){
+    try{
+      const root=document.getElementById("screen-chat");
+      if(!root)return;
+      const isLight=
+        document.documentElement.dataset.siteTheme==="light" ||
+        document.documentElement.classList.contains("light-theme") ||
+        document.body?.dataset.siteTheme==="light" ||
+        document.body?.classList.contains("light-theme");
+      if(!isLight)return;
+
+      const textHints=["УЧАСНИКИ КОМАНДИ","Зареєстровано:"];
+      root.querySelectorAll("section,div").forEach(el=>{
+        const t=(el.textContent||"").trim();
+        if(!t || t.length>2500)return;
+        if(textHints.some(h=>t.includes(h))){
+          const cs=getComputedStyle(el);
+          const nums=(cs.backgroundColor||"").match(/\d+/g);
+          if(nums && nums.length>=3 && +nums[0]<140 && +nums[1]<140 && +nums[2]<140){
+            el.classList.add("v547-chat-light-panel");
+          }
+        }
+      });
+
+      root.querySelectorAll(".v547-chat-light-panel").forEach(panel=>{
+        panel.querySelectorAll("div,span,strong,b").forEach(el=>{
+          const t=(el.textContent||"").trim();
+          if(!t || el.children.length!==0)return;
+          if(/^(ОНЛАЙН|ОФЛАЙН|ADMIN|EDITOR)$/i.test(t))return;
+          el.classList.add("v547-chat-dark-text");
+        });
+      });
+    }catch(e){}
+  }
+
+  window.paintChatParticipantsLight=paintChatParticipantsLight;
+  document.addEventListener("DOMContentLoaded",()=>{
+    setTimeout(paintChatParticipantsLight,220);
+    const root=document.getElementById("screen-chat");
+    if(root){
+      new MutationObserver(()=>requestAnimationFrame(paintChatParticipantsLight))
+        .observe(root,{childList:true,subtree:true,characterData:true});
+    }
+  });
+  document.addEventListener("click",()=>{
+    setTimeout(paintChatParticipantsLight,80);
+    setTimeout(paintChatParticipantsLight,250);
+  });
+})();
