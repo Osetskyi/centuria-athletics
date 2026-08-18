@@ -5835,17 +5835,6 @@ body.light-theme .v555-training-light-box *{
   text-shadow:none!important;
 }
 
-/* v5.56 — Training modal spacing cleanup
-   Keep styles/colors; only reduce card sizes slightly and add gaps. */
-
-html[data-site-theme="light"] .training-day-modal-card,
-html.light-theme .training-day-modal-card,
-body[data-site-theme="light"] .training-day-modal-card,
-body.light-theme .training-day-modal-card{
-  padding-left:18px!important;
-  padding-right:18px!important;
-}
-
 /* Top summary grid */
 html[data-site-theme="light"] .training-day-summary,
 html.light-theme .training-day-summary,
@@ -5942,4 +5931,59 @@ body.light-theme .training-view-actions{
   html.light-theme .training-view-actions{
     gap:10px!important;
   }
+}
+
+/* v5.57 — Light training modal uses EXACTLY the same layout as dark theme.
+   Only colors are overridden below. */
+
+/* Modal shell */
+html[data-site-theme="light"] .training-day-modal-card,
+html.light-theme .training-day-modal-card,
+body[data-site-theme="light"] .training-day-modal-card,
+body.light-theme .training-day-modal-card{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#ddcba8!important;
+}
+
+/* Date / matches / MVP / average cards:
+   no width, gap, margin, padding or grid overrides here — layout comes from base/dark CSS */
+html[data-site-theme="light"] .training-day-summary > *,
+html.light-theme .training-day-summary > *,
+html[data-site-theme="light"] .training-mvp-summary,
+html.light-theme .training-mvp-summary,
+html[data-site-theme="light"] .training-team-average,
+html.light-theme .training-team-average{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e0d2b8!important;
+  box-shadow:none!important;
+}
+
+html[data-site-theme="light"] .training-day-summary > * *,
+html.light-theme .training-day-summary > * *,
+html[data-site-theme="light"] .training-mvp-summary *,
+html.light-theme .training-mvp-summary *,
+html[data-site-theme="light"] .training-team-average *,
+html.light-theme .training-team-average *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Ranking rows keep the dark-theme geometry, only recolor */
+html[data-site-theme="light"] .training-rank-row,
+html.light-theme .training-rank-row{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e0d2b8!important;
+  box-shadow:none!important;
+}
+
+/* Bottom buttons: same dark-theme placement, light colors only */
+html[data-site-theme="light"] .training-view-actions button,
+html.light-theme .training-view-actions button{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#ddcba8!important;
 }
