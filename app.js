@@ -3920,7 +3920,7 @@ function renderGeneralRecords(){
     ["🤝","НАЙДОВША РЕЗУЛЬТАТИВНА СЕРІЯ",perPlayer,x=>x.streaks.contribution.best,x=>`${x.streaks.contribution.best}`],
     ["⭐","НАЙДОВША СЕРІЯ 8.0+",perPlayer,x=>x.streaks.eight.best,x=>`${x.streaks.eight.best}`],
     ["🏆","НАЙБІЛЬШЕ MVP",perPlayer,x=>x.stats.mvp,x=>`${x.stats.mvp}`],
-    ["⚽",generalStatsMode==="training"?"НАЙБІЛЬШЕ ГОЛІВ ЗА ЗБІР":"НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
+    ["⚽","НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
     ["🎯","НАЙБІЛЬШЕ АСИСТІВ",perPlayer,x=>x.stats.assists,x=>`${x.stats.assists}`],
     ["👑","НАЙВИЩА СЕРЕДНЯ",perPlayer.filter(x=>x.stats.eventCount>=10),x=>x.stats.average,x=>x.stats.average.toFixed(2)]
   );
@@ -4810,4 +4810,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   const el=document.querySelector(".settings-version strong");
   if(el)el.textContent="v5.66";
+});
+
+/* v5.67 — current settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  const el=document.querySelector(".settings-version strong");
+  if(el)el.textContent="v5.67";
 });
