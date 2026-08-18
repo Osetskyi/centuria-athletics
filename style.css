@@ -5690,3 +5690,25 @@ html.light-theme #screen-chat .chat-message:not(.own) .chat-bubble{
   border-radius:0!important;
   box-shadow:none!important;
 }
+
+/* v5.53 — same cream/gold bubble for ALL messages in LIGHT chat */
+html[data-site-theme="light"] #screen-chat .chat-message .chat-bubble,
+html.light-theme #screen-chat .chat-message .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message .chat-bubble,
+body.light-theme #screen-chat .chat-message .chat-bubble{
+  background:#f8e8b9!important;
+  border:2px solid #caa447!important;
+  border-radius:22px!important;
+  box-shadow:none!important;
+  color:#28241e!important;
+  padding:12px 18px!important;
+}
+
+html[data-site-theme="light"] #screen-chat .chat-message .chat-text,
+html.light-theme #screen-chat .chat-message .chat-text,
+body[data-site-theme="light"] #screen-chat .chat-message .chat-text,
+body.light-theme #screen-chat .chat-message .chat-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
