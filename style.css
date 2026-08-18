@@ -5896,3 +5896,28 @@ html[data-site-theme="light"] .players-list,
 html.light-theme .players-list{
   background:transparent!important;
 }
+
+/* v5.60 — exact Players light-theme fix
+   Actual black background comes from .player-card .img-wrap */
+html[data-site-theme="light"] #screen-players .player-card,
+html.light-theme #screen-players .player-card,
+body[data-site-theme="light"] #screen-players .player-card,
+body.light-theme #screen-players .player-card{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  border-color:rgba(198,164,88,.28)!important;
+}
+
+html[data-site-theme="light"] #screen-players .player-card .img-wrap,
+html.light-theme #screen-players .player-card .img-wrap,
+body[data-site-theme="light"] #screen-players .player-card .img-wrap,
+body.light-theme #screen-players .player-card .img-wrap{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+}
+
+/* Keep artwork unchanged; transparency will now reveal the light background */
+html[data-site-theme="light"] #screen-players .player-card .img-wrap img,
+html.light-theme #screen-players .player-card .img-wrap img{
+  background:transparent!important;
+}
