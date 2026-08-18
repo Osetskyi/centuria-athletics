@@ -6089,3 +6089,169 @@ html.light-theme .v563-saved-modal-light{
   border-color:#d9c79f!important;
   box-shadow:none!important;
 }
+
+/* ==========================================================
+   v5.64 — Saved squads LIGHT theme exact fixes
+   ========================================================== */
+
+/* Card in saved squads list */
+html[data-site-theme="light"] #screen-squads .squad-info,
+html.light-theme #screen-squads .squad-info,
+body[data-site-theme="light"] #screen-squads .squad-info,
+body.light-theme #screen-squads .squad-info{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+}
+
+html[data-site-theme="light"] #screen-squads .squad-info *,
+html.light-theme #screen-squads .squad-info *{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Three-dot menu button on saved squad card */
+html[data-site-theme="light"] #screen-squads .squad-menu,
+html.light-theme #screen-squads .squad-menu,
+body[data-site-theme="light"] #screen-squads .squad-menu,
+body.light-theme #screen-squads .squad-menu{
+  background:#fffdf8!important;
+  color:#8a6414!important;
+  -webkit-text-fill-color:#8a6414!important;
+  border-color:#cfa64a!important;
+  box-shadow:none!important;
+}
+
+/* Saved lineup preview/modal: all black area AROUND the pitch becomes light.
+   The green pitch itself stays unchanged. */
+html[data-site-theme="light"] .tb-saved-copy,
+html.light-theme .tb-saved-copy,
+body[data-site-theme="light"] .tb-saved-copy,
+body.light-theme .tb-saved-copy,
+html[data-site-theme="light"] .tb-saved-category,
+html.light-theme .tb-saved-category,
+html[data-site-theme="light"] .tb-saved-head,
+html.light-theme .tb-saved-head{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Dynamic saved preview wrapper classes */
+html[data-site-theme="light"] .saved-squad-preview,
+html.light-theme .saved-squad-preview,
+html[data-site-theme="light"] .saved-lineup-preview,
+html.light-theme .saved-lineup-preview,
+html[data-site-theme="light"] .v563-saved-modal-light,
+html.light-theme .v563-saved-modal-light{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+
+/* Black inner canvas around the green football pitch */
+html[data-site-theme="light"] .saved-squad-preview .pitch-shell,
+html.light-theme .saved-squad-preview .pitch-shell,
+html[data-site-theme="light"] .saved-lineup-preview .pitch-shell,
+html.light-theme .saved-lineup-preview .pitch-shell,
+html[data-site-theme="light"] .v563-saved-modal-light .pitch-shell,
+html.light-theme .v563-saved-modal-light .pitch-shell{
+  background:#fffaf1!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+}
+
+/* Header/title/author/footer text inside preview */
+html[data-site-theme="light"] .saved-squad-preview h1,
+html[data-site-theme="light"] .saved-squad-preview h2,
+html[data-site-theme="light"] .saved-squad-preview h3,
+html[data-site-theme="light"] .saved-squad-preview p,
+html[data-site-theme="light"] .saved-squad-preview small,
+html[data-site-theme="light"] .saved-lineup-preview h1,
+html[data-site-theme="light"] .saved-lineup-preview h2,
+html[data-site-theme="light"] .saved-lineup-preview h3,
+html[data-site-theme="light"] .saved-lineup-preview p,
+html[data-site-theme="light"] .saved-lineup-preview small,
+html[data-site-theme="light"] .v563-saved-modal-light h1,
+html[data-site-theme="light"] .v563-saved-modal-light h2,
+html[data-site-theme="light"] .v563-saved-modal-light h3,
+html[data-site-theme="light"] .v563-saved-modal-light p,
+html[data-site-theme="light"] .v563-saved-modal-light small,
+html.light-theme .saved-squad-preview h1,
+html.light-theme .saved-squad-preview h2,
+html.light-theme .saved-squad-preview h3,
+html.light-theme .saved-squad-preview p,
+html.light-theme .saved-squad-preview small,
+html.light-theme .v563-saved-modal-light h1,
+html.light-theme .v563-saved-modal-light h2,
+html.light-theme .v563-saved-modal-light h3,
+html.light-theme .v563-saved-modal-light p,
+html.light-theme .v563-saved-modal-light small{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Nickname plates under players in saved preview */
+html[data-site-theme="light"] .saved-squad-preview .slot-name,
+html.light-theme .saved-squad-preview .slot-name,
+html[data-site-theme="light"] .saved-lineup-preview .slot-name,
+html.light-theme .saved-lineup-preview .slot-name,
+html[data-site-theme="light"] .v563-saved-modal-light .slot-name,
+html.light-theme .v563-saved-modal-light .slot-name{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  border-color:#d9c79f!important;
+}
+
+/* Keep the football pitch green */
+html[data-site-theme="light"] .saved-squad-preview .pitch,
+html.light-theme .saved-squad-preview .pitch,
+html[data-site-theme="light"] .saved-lineup-preview .pitch,
+html.light-theme .saved-lineup-preview .pitch,
+html[data-site-theme="light"] .v563-saved-modal-light .pitch,
+html.light-theme .v563-saved-modal-light .pitch{
+  background:
+    repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 12.5%,rgba(0,0,0,.02) 12.5% 25%),
+    linear-gradient(180deg,#267949,#165b38)!important;
+}
+
+html[data-site-theme="light"] .v564-squad-card-light,
+html.light-theme .v564-squad-card-light,
+html[data-site-theme="light"] .v564-light-dark-panel,
+html.light-theme .v564-light-dark-panel{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] .v564-light-dark-panel *,
+html.light-theme .v564-light-dark-panel *{
+  color:#28241e;
+}
+html[data-site-theme="light"] .v564-squad-menu-light,
+html.light-theme .v564-squad-menu-light{
+  background:#fffdf8!important;
+  color:#8a6414!important;
+  -webkit-text-fill-color:#8a6414!important;
+  border-color:#cfa64a!important;
+}
+html[data-site-theme="light"] .v564-saved-preview-shell,
+html.light-theme .v564-saved-preview-shell{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+}
+
+/* v5.65 — exact saved squad list ellipsis button, light theme */
+html[data-site-theme="light"] #screen-squads .squad-row .more-btn,
+html.light-theme #screen-squads .squad-row .more-btn,
+body[data-site-theme="light"] #screen-squads .squad-row .more-btn,
+body.light-theme #screen-squads .squad-row .more-btn{
+  background:#fffdf8!important;
+  color:#8a6414!important;
+  -webkit-text-fill-color:#8a6414!important;
+  border-color:#cfa64a!important;
+  box-shadow:none!important;
+}

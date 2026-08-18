@@ -1117,7 +1117,7 @@ $("saveLineupBtn").addEventListener("click",async()=>{
 
   try{
     const image=await renderLineupImage(name.trim()||"Склад");
-    const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image};
+    const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image,theme:(document.documentElement.dataset.siteTheme||"dark")};
 
     const saved=await put("squads",obj);
 
@@ -1152,10 +1152,25 @@ async function renderLineupImage(name){
   ctx.scale(SCALE,SCALE);
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality="high";
-  ctx.fillStyle="#08090b";ctx.fillRect(0,0,W,H);
-  const grad=ctx.createLinearGradient(0,0,W,H);grad.addColorStop(0,"#180b0b");grad.addColorStop(.5,"#090a0b");grad.addColorStop(1,"#15100b");ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle="#e2bd70";ctx.font="bold 16px Arial";ctx.fillText("CENTURIA ATHLETICS",38,42);
-  ctx.fillStyle="#f3e6cd";ctx.font="bold 30px Arial";ctx.fillText(name.toUpperCase(),38,82);
+  const lightSaved =
+    document.documentElement.dataset.siteTheme==="light" ||
+    document.documentElement.classList.contains("light-theme") ||
+    document.body?.dataset.siteTheme==="light" ||
+    document.body?.classList.contains("light-theme");
+
+  if(lightSaved){
+    ctx.fillStyle="#fffdf8";ctx.fillRect(0,0,W,H);
+    const grad=ctx.createLinearGradient(0,0,W,H);
+    grad.addColorStop(0,"#fffaf0");grad.addColorStop(.5,"#fffdf8");grad.addColorStop(1,"#f7eedc");
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  }else{
+    ctx.fillStyle="#08090b";ctx.fillRect(0,0,W,H);
+    const grad=ctx.createLinearGradient(0,0,W,H);
+    grad.addColorStop(0,"#180b0b");grad.addColorStop(.5,"#090a0b");grad.addColorStop(1,"#15100b");
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+  }
+  ctx.fillStyle=lightSaved?"#a97b1f":"#e2bd70";ctx.font="bold 16px Arial";ctx.fillText("CENTURIA ATHLETICS",38,42);
+  ctx.fillStyle=lightSaved?"#28241e":"#f3e6cd";ctx.font="bold 30px Arial";ctx.fillText(name.toUpperCase(),38,82);
   ctx.fillStyle="#b9a98e";ctx.font="bold 14px Arial";ctx.fillText(`СХЕМА: ${formationName(currentFormation)}   •   ${new Date().toLocaleString("uk-UA")}`,38,108);
 
   const px=56,py=135,pw=608,ph=850;
@@ -4717,3 +4732,56 @@ function markSavedSquadLightUI(){
 }
 document.addEventListener("DOMContentLoaded",()=>setTimeout(markSavedSquadLightUI,180));
 document.addEventListener("click",()=>setTimeout(markSavedSquadLightUI,120));
+
+/* v5.64 — exact light styling tags for saved squad preview */
+function markSavedSquadV564(){
+  try{
+    const isLight =
+      document.documentElement.dataset.siteTheme==="light" ||
+      document.documentElement.classList.contains("light-theme") ||
+      document.body?.dataset.siteTheme==="light" ||
+      document.body?.classList.contains("light-theme");
+    if(!isLight)return;
+
+    // Saved list card
+    document.querySelectorAll(".squad-info").forEach(el=>el.classList.add("v564-squad-card-light"));
+    document.querySelectorAll(".squad-menu").forEach(el=>el.classList.add("v564-squad-menu-light"));
+
+    // Open preview: identify by buttons and scheme/title text
+    [...document.querySelectorAll("div,section,article")].forEach(el=>{
+      const t=(el.textContent||"").replace(/\s+/g," ").trim();
+      if(!t || t.length>3000)return;
+      if(t.includes("ЗБЕРЕГТИ PNG") && t.includes("НАЗАД") && t.includes("СХЕМА:")){
+        el.classList.add("v564-saved-preview-shell");
+        // Tag dark descendants around pitch but do not tag .pitch
+        el.querySelectorAll("div,section,article").forEach(ch=>{
+          if(ch.classList.contains("pitch") || ch.closest(".pitch"))return;
+          const cs=getComputedStyle(ch);
+          const nums=(cs.backgroundColor||"").match(/\d+/g);
+          if(nums && nums.length>=3 && +nums[0]<45 && +nums[1]<45 && +nums[2]<45){
+            ch.classList.add("v564-light-dark-panel");
+          }
+        });
+      }
+    });
+  }catch(e){}
+}
+document.addEventListener("DOMContentLoaded",()=>setTimeout(markSavedSquadV564,220));
+document.addEventListener("click",()=>setTimeout(markSavedSquadV564,140));
+
+/* v5.64 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  ["siteVersion","appVersion","versionText"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.textContent="5.64";
+  });
+  document.querySelectorAll(".site-version,.app-version,.version-value").forEach(el=>{
+    el.textContent="5.64";
+  });
+});
+
+/* v5.65 — always show current site version in Settings */
+document.addEventListener("DOMContentLoaded",()=>{
+  const el=document.querySelector(".settings-version strong");
+  if(el)el.textContent="v5.65";
+});
