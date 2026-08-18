@@ -5564,3 +5564,75 @@ html.light-theme #screen-chat .chat-message-main{
   background:transparent!important;
   color:#28241e!important;
 }
+
+/* v5.50 — LIGHT chat: one shared milk-colored conversation area,
+   no separate framed bubble for every message */
+
+html[data-site-theme="light"] #screen-chat .chat-messages,
+html.light-theme #screen-chat .chat-messages,
+body[data-site-theme="light"] #screen-chat .chat-messages,
+body.light-theme #screen-chat .chat-messages{
+  background:#f8f3e8!important;
+  border:1px solid #e0d3ba!important;
+  border-radius:16px!important;
+  box-shadow:none!important;
+}
+
+/* Individual messages sit directly on the shared chat background */
+html[data-site-theme="light"] #screen-chat .chat-bubble,
+html.light-theme #screen-chat .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-bubble,
+body.light-theme #screen-chat .chat-bubble,
+html[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+html.light-theme #screen-chat .chat-message.own .chat-bubble,
+body[data-site-theme="light"] #screen-chat .chat-message.own .chat-bubble,
+body.light-theme #screen-chat .chat-message.own .chat-bubble{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  outline:0!important;
+  color:#28241e!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+
+/* Remove any old v5.48/v5.49 per-message card treatment */
+html[data-site-theme="light"] #screen-chat .v548-light-bubble,
+html.light-theme #screen-chat .v548-light-bubble{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+/* Text stays dark/readable */
+html[data-site-theme="light"] #screen-chat .chat-text,
+html.light-theme #screen-chat .chat-text,
+body[data-site-theme="light"] #screen-chat .chat-text,
+body.light-theme #screen-chat .chat-text{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+  text-shadow:none!important;
+}
+
+/* Author + time */
+html[data-site-theme="light"] #screen-chat .chat-message-meta strong,
+html.light-theme #screen-chat .chat-message-meta strong{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+html[data-site-theme="light"] #screen-chat .chat-message-meta span,
+html.light-theme #screen-chat .chat-message-meta span,
+html[data-site-theme="light"] #screen-chat .chat-delete,
+html.light-theme #screen-chat .chat-delete{
+  color:#777064!important;
+  -webkit-text-fill-color:#777064!important;
+}
+
+/* No card around the whole individual message either */
+html[data-site-theme="light"] #screen-chat .chat-message,
+html.light-theme #screen-chat .chat-message{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
