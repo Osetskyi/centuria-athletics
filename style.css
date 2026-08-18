@@ -5949,3 +5949,21 @@ html.light-theme .chat-presence-chip *{
   color:#28241e!important;
   -webkit-text-fill-color:#28241e!important;
 }
+
+/* v5.62 — exact online nickname pills above chat, LIGHT theme only */
+html[data-site-theme="light"] #screen-chat .online-person,
+html.light-theme #screen-chat .online-person,
+body[data-site-theme="light"] #screen-chat .online-person,
+body.light-theme #screen-chat .online-person{
+  background:#f8e7b3!important;
+  background-color:#f8e7b3!important;
+  border:1px solid #cfa63e!important;
+  color:#28241e!important;
+}
+html[data-site-theme="light"] #screen-chat .online-person > span:last-child,
+html.light-theme #screen-chat .online-person > span:last-child,
+body[data-site-theme="light"] #screen-chat .online-person > span:last-child,
+body.light-theme #screen-chat .online-person > span:last-child{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
