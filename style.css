@@ -6685,3 +6685,57 @@ html.light-theme #playerDialog #playerEditMode .player-card-preview img {
     box-sizing:border-box;
   }
 }
+
+/* ==========================================================
+   v5.74 — exact edit-card container + fixed modal geometry
+   ========================================================== */
+
+/* ACTUAL element around the card in edit/create mode */
+html[data-site-theme="light"] #playerDialog #cardPreview.card-preview,
+html.light-theme #playerDialog #cardPreview.card-preview,
+body[data-site-theme="light"] #playerDialog #cardPreview.card-preview,
+body.light-theme #playerDialog #cardPreview.card-preview{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  border:1px solid #d8c59c!important;
+  box-shadow:none!important;
+  color:#8a6414!important;
+}
+
+/* Card image stays untouched; only its surrounding plate is light */
+html[data-site-theme="light"] #playerDialog #cardPreview.card-preview img,
+html.light-theme #playerDialog #cardPreview.card-preview img{
+  background:transparent!important;
+}
+
+/* Keep one constant modal scale/width while editing.
+   Override the v5.73 responsive width rules that could cause reflow. */
+#playerDialog{
+  width:min(620px,calc(100% - 20px))!important;
+  max-width:620px!important;
+  min-width:0!important;
+  transform:none!important;
+  zoom:1!important;
+  -webkit-text-size-adjust:100%!important;
+  text-size-adjust:100%!important;
+}
+#playerDialog .modal{
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  margin:0!important;
+  transform:none!important;
+  zoom:1!important;
+}
+#playerDialog #playerEditMode{
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  transform:none!important;
+  zoom:1!important;
+}
+#playerDialog input,
+#playerDialog select,
+#playerDialog textarea{
+  font-size:16px!important;
+}
