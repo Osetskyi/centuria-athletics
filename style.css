@@ -6914,3 +6914,74 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
   cursor:pointer!important;
   touch-action:manipulation;
 }
+
+/* ==========================================================
+   v5.78 — LIGHT HOME restored to full original v5.74 artwork
+   Keep dark theme and all v5.77 functionality unchanged.
+   ========================================================== */
+
+html[data-site-theme="light"] #screen-home .hs-chat,
+html.light-theme #screen-home .hs-chat{
+  left:13.2%!important; top:41.2%!important; width:34.0%!important; height:6.7%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-gatherings,
+html.light-theme #screen-home .hs-gatherings{
+  left:48.9%!important; top:41.2%!important; width:37.8%!important; height:6.7%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-players,
+html.light-theme #screen-home .hs-players{
+  left:13.1%!important; top:48.8%!important; width:73.7%!important; height:9.0%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-tactics,
+html.light-theme #screen-home .hs-tactics{
+  left:13.1%!important; top:58.9%!important; width:73.7%!important; height:9.0%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-squads,
+html.light-theme #screen-home .hs-squads{
+  left:13.1%!important; top:69.1%!important; width:73.7%!important; height:9.3%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-calendar,
+html.light-theme #screen-home .hs-calendar{
+  left:5.6%!important; top:89.4%!important; width:16.3%!important; height:7.8%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-settings,
+html.light-theme #screen-home .hs-settings{
+  right:4.9%!important; top:89.2%!important; width:16.5%!important; height:8.0%!important;
+}
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html.light-theme #screen-home .home-online-badge{
+  top:41.25%!important;
+}
+html[data-site-theme="light"] #screen-home .home-next-event,
+html.light-theme #screen-home .home-next-event{
+  left:8.7%!important;
+  top:28.9%!important;
+  width:55.0%!important;
+  height:10.0%!important;
+}
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html[data-site-theme="light"] #screen-home .home-mvp-card.hidden,
+html.light-theme #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-mvp-card.hidden{
+  left:65.2%!important;
+  top:28.9%!important;
+  width:25.8%!important;
+  height:10.0%!important;
+}
+
+/* Preserve the full artwork: no cropping on either side or top/bottom. */
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap{
+  width:100%!important;
+  max-width:852px!important;
+  height:auto!important;
+  overflow:visible!important;
+}
+html[data-site-theme="light"] #homeBackgroundImage,
+html.light-theme #homeBackgroundImage{
+  width:100%!important;
+  height:auto!important;
+  object-fit:contain!important;
+  object-position:center top!important;
+  max-width:100%!important;
+}
