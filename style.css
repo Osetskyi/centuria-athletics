@@ -8385,3 +8385,67 @@ html.light-theme #screen-tactics #pitch{
     clip-path:polygon(3% 0%,97% 0%,100% 100%,0% 100%)!important;
   }
 }
+
+/* ==========================================================
+   v6.15 — animate every real player card
+   ========================================================== */
+
+/* Stop container animation from older versions to avoid conflicts */
+#screen-tactics #pitch .slot-card.filled{
+  animation:none!important;
+}
+
+/* Animate the actual card image in every filled slot */
+#screen-tactics #pitch .slot-card.filled img{
+  animation:centuriaEveryCardFloat 4.2s ease-in-out infinite!important;
+  will-change:transform;
+  transform-origin:50% 78%;
+}
+
+/* Different phases so the whole squad doesn't move together */
+#screen-tactics #pitch .slot:nth-child(2n) .slot-card.filled img{
+  animation-delay:-.9s!important;
+}
+#screen-tactics #pitch .slot:nth-child(3n) .slot-card.filled img{
+  animation-delay:-1.7s!important;
+}
+#screen-tactics #pitch .slot:nth-child(4n) .slot-card.filled img{
+  animation-delay:-2.5s!important;
+}
+#screen-tactics #pitch .slot:nth-child(5n) .slot-card.filled img{
+  animation-delay:-3.1s!important;
+}
+
+@keyframes centuriaEveryCardFloat{
+  0%,100%{
+    transform:translateY(0) rotateZ(-.25deg) scale(1);
+  }
+  50%{
+    transform:translateY(-4px) rotateZ(.35deg) scale(1.01);
+  }
+}
+
+#screen-tactics #pitch .slot-card.filled:active img{
+  transform:translateY(-6px) scale(1.035)!important;
+  transition:transform .12s ease!important;
+}
+
+/* Gathering live lineup: every real card image moves too */
+.gathering-lineup-card.filled{
+  animation:none!important;
+}
+.gathering-lineup-card.filled img{
+  animation:centuriaEveryCardFloat 4.4s ease-in-out infinite!important;
+  will-change:transform;
+  transform-origin:50% 78%;
+}
+.gathering-lineup-slot:nth-child(2n) .gathering-lineup-card.filled img{animation-delay:-1.1s!important}
+.gathering-lineup-slot:nth-child(3n) .gathering-lineup-card.filled img{animation-delay:-2.0s!important}
+.gathering-lineup-slot:nth-child(4n) .gathering-lineup-card.filled img{animation-delay:-2.8s!important}
+
+@media (prefers-reduced-motion: reduce){
+  #screen-tactics #pitch .slot-card.filled img,
+  .gathering-lineup-card.filled img{
+    animation:none!important;
+  }
+}
