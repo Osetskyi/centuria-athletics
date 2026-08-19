@@ -7602,3 +7602,44 @@ html[data-site-theme="light"] .player-requests-modal-card,html.light-theme .play
   .account-link-row{grid-template-columns:1fr}.my-player-edit-grid{grid-template-columns:1fr}.my-player-edit-grid .wide{grid-column:auto}
   .player-awards-grid{grid-template-columns:1fr 1fr}.award-admin-grid{grid-template-columns:1fr 1fr}.request-diff{grid-template-columns:1fr}.request-diff b{padding-bottom:3px}
 }
+
+/* ==========================================================
+   v5.90 — player-form account linking
+   ========================================================== */
+.player-account-link-field{
+  display:block;
+  margin-top:12px;
+  padding:11px;
+  border:1px solid rgba(205,169,76,.45);
+  border-radius:12px;
+  background:rgba(205,169,76,.06);
+}
+.player-account-link-field select{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  margin-top:7px;
+  padding:11px;
+  border-radius:10px;
+  border:1px solid #765e2e;
+  background:#111216;
+  color:#fff;
+}
+.player-account-link-field .field-hint{
+  display:block;
+  margin-top:6px;
+  font-size:10px;
+  line-height:1.35;
+  opacity:.62;
+}
+html[data-site-theme="light"] .player-account-link-field,
+html.light-theme .player-account-link-field{
+  background:#fffaf0!important;
+  border-color:#dbc58f!important;
+}
+html[data-site-theme="light"] .player-account-link-field select,
+html.light-theme .player-account-link-field select{
+  background:#fff!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+}

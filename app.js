@@ -685,6 +685,9 @@ function navigate(name){
   if(name==="gatherings") openGatheringsScreen();
   if(name==="calendar") openCalendarScreen();
   if(name==="tactical-board") openTacticalBoardScreen();
+  if(name==="settings"){
+    setTimeout(refreshPlayerLinkSettingsV590,0);
+  }
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
 
@@ -912,6 +915,8 @@ function resetPlayerModal(){
   $("nameInput").value="";$("numberInput").value="";$("ageInput").value="";$("primaryPos").value="GK";
   selectArchetype("");selectStatus("");selectPlatform("");$("noteInput").value="";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=false);
+  if($("playerAccountLinkField"))$("playerAccountLinkField").classList.toggle("hidden",authRole!=="admin");
+  if($("playerAccountSelect"))$("playerAccountSelect").value="";
   $("deletePlayerBtn").classList.add("hidden");
 }
 
@@ -960,6 +965,7 @@ function fillEditMode(p){
   $("noteInput").value=p.note||"";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=(p.extraPositions||[]).includes(x.value));
   $("deletePlayerBtn").classList.remove("hidden");
+  populatePlayerAccountSelectV590(p.id);
 }
 
 function openPlayerModal(id=null){
@@ -975,6 +981,7 @@ function openPlayerModal(id=null){
   }
   $("playerDialog").showModal();
   refreshEditOnlyVisibility();
+  setTimeout(()=>populatePlayerAccountSelectV590(id),0);
 }
 
 $("playerInfoTab")?.addEventListener("click",()=>playerViewSlide(0));
@@ -1035,8 +1042,16 @@ $("savePlayerBtn").addEventListener("click",async()=>{
   };
   try{
     await put("players",obj);
+
+    if(authRole==="admin"){
+      const linkedUser=$("playerAccountSelect")?.value||"";
+      await savePlayerAccountLinkV590(obj.id,linkedUser||null);
+    }
+
     players=await getAll("players");
     $("playerDialog").close();renderPlayers();renderPitch();
+    if(typeof loadTeamProfiles==="function")await loadTeamProfiles();
+    if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
     showToast(editPlayerId?"Гравця оновлено":"Гравця додано");
   }catch(err){
     console.error(err);
@@ -5591,6 +5606,14 @@ function renderPlayerAccountSettingsV589(){
 
 function renderAdminPlayerLinksV589(){
   const box=$("adminPlayerLinksList");if(!box)return;
+  if(authRole==="admin" && !players.length){
+    box.innerHTML='<div class="settings-hint">Завантаження гравців…</div>';
+    getAll("players").then(data=>{
+      players=data||[];
+      renderAdminPlayerLinksV589();
+    });
+    return;
+  }
   if(!accountProfilesV589.length){
     box.innerHTML='<div class="empty-state">Зареєстрованих акаунтів немає.</div>';return;
   }
@@ -5850,4 +5873,74 @@ window.addEventListener("load",()=>setTimeout(loadPlayerAccountSystemV589,700));
 /* v5.89 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.89");
+});
+
+/* ==========================================================
+   v5.90 — account link inside player create/edit
+   ========================================================== */
+async function getAccountProfilesV590(){
+  if(!sb||!authUser)return [];
+  const {data,error}=await sb.from("profiles")
+    .select("user_id,display_name,avatar_url,role,player_id")
+    .order("display_name",{ascending:true});
+  if(error){
+    console.error("v5.90 profiles",error);
+    return [];
+  }
+  if(typeof accountProfilesV589!=="undefined")accountProfilesV589=data||[];
+  if(typeof teamProfiles!=="undefined")teamProfiles=new Map((data||[]).map(p=>[p.user_id,p]));
+  return data||[];
+}
+
+async function populatePlayerAccountSelectV590(playerId=null){
+  const field=$("playerAccountLinkField");
+  const select=$("playerAccountSelect");
+  if(!field||!select)return;
+
+  const isAdmin=authRole==="admin";
+  field.classList.toggle("hidden",!isAdmin);
+  if(!isAdmin)return;
+
+  const profiles=await getAccountProfilesV590();
+  const current=profiles.find(p=>p.player_id===playerId)||null;
+
+  // Accounts already linked to another player are excluded.
+  const available=profiles.filter(p=>!p.player_id || p.player_id===playerId);
+  select.innerHTML='<option value="">— НЕ ПРИВ’ЯЗАНО —</option>'+
+    available.map(p=>`<option value="${p.user_id}">${esc(p.display_name||"Гравець")}${p.role==="admin"?" · ADMIN":p.role==="editor"?" · EDITOR":""}</option>`).join("");
+  select.value=current?.user_id||"";
+}
+
+async function savePlayerAccountLinkV590(playerId,userId){
+  if(authRole!=="admin"||!sb)return;
+
+  // Remove an existing owner of this player card.
+  const {error:e1}=await sb.from("profiles").update({player_id:null}).eq("player_id",playerId);
+  if(e1)throw e1;
+
+  if(userId){
+    // One account can own only one player.
+    const {error:e2}=await sb.from("profiles").update({player_id:null}).eq("user_id",userId);
+    if(e2)throw e2;
+
+    const {error:e3}=await sb.from("profiles").update({player_id:playerId}).eq("user_id",userId);
+    if(e3)throw e3;
+  }
+
+  await getAccountProfilesV590();
+  if(typeof renderAdminPlayerLinksV589==="function")renderAdminPlayerLinksV589();
+  if(typeof renderMembersList==="function")renderMembersList();
+}
+
+async function refreshPlayerLinkSettingsV590(){
+  if(authRole!=="admin")return;
+  // Make sure players exist before building dropdowns.
+  try{ players=await getAll("players"); }catch(_e){}
+  await getAccountProfilesV590();
+  if(typeof renderAdminPlayerLinksV589==="function")renderAdminPlayerLinksV589();
+}
+
+/* v5.90 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.90");
 });
