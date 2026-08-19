@@ -1055,7 +1055,9 @@ $("savePlayerBtn").addEventListener("click",async()=>{
     showToast(editPlayerId?"Гравця оновлено":"Гравця додано");
   }catch(err){
     console.error(err);
-    showToast("Не вдалося зберегти гравця");
+    const msg=err?.message||"Невідома помилка";
+    showToast("Не вдалося зберегти: "+msg);
+    alert("Помилка збереження / прив’язки:\n\n"+msg);
   }
 });
 $("deletePlayerBtn").addEventListener("click",async()=>{
@@ -5636,20 +5638,29 @@ function renderAdminPlayerLinksV589(){
 
 async function saveAccountPlayerLinkV589(userId,playerId){
   if(!isAdminV589())return;
-  // enforce one account ↔ one player in UI
-  if(playerId){
-    const other=accountProfilesV589.find(p=>p.player_id===playerId && p.user_id!==userId);
-    if(other){
-      showToast(`Цей гравець вже прив’язаний до ${other.display_name||"іншого акаунта"}`);
-      renderAdminPlayerLinksV589();return;
+  try{
+    const profile=(accountProfilesV589||[]).find(p=>p.user_id===userId);
+    const oldPlayerId=profile?.player_id||null;
+
+    // If selecting a new player, use the same verified linkage path as player edit form.
+    if(playerId){
+      await savePlayerAccountLinkV590(playerId,userId);
+      // If account was linked to another player, it is already cleared by the helper.
+    }else if(oldPlayerId){
+      await savePlayerAccountLinkV590(oldPlayerId,null);
     }
+
+    showToast(playerId?"Акаунт прив’язано":"Прив’язку видалено");
+    await refreshAuth();
+    await loadPlayerAccountSystemV589();
+    await loadTeamProfiles();
+  }catch(err){
+    console.error("v5.91 settings link",err);
+    const msg=err?.message||"Невідома помилка";
+    showToast("Помилка прив’язки: "+msg);
+    alert("Не вдалося змінити прив’язку.\n\n"+msg);
+    await refreshPlayerLinkSettingsV590?.();
   }
-  const {error}=await sb.from("profiles").update({player_id:playerId}).eq("user_id",userId);
-  if(error){console.error(error);showToast("Не вдалося змінити прив’язку");return;}
-  showToast(playerId?"Акаунт прив’язано":"Прив’язку видалено");
-  await refreshAuth();
-  await loadPlayerAccountSystemV589();
-  await loadTeamProfiles();
 }
 
 function fieldLabelV589(k){
@@ -5912,19 +5923,69 @@ async function populatePlayerAccountSelectV590(playerId=null){
 }
 
 async function savePlayerAccountLinkV590(playerId,userId){
-  if(authRole!=="admin"||!sb)return;
+  if(authRole!=="admin"||!sb){
+    throw new Error("Прив’язку може змінювати тільки адміністратор");
+  }
 
-  // Remove an existing owner of this player card.
-  const {error:e1}=await sb.from("profiles").update({player_id:null}).eq("player_id",playerId);
-  if(e1)throw e1;
+  const profiles=await getAccountProfilesV590();
+
+  // Validate before touching the database.
+  const selectedUser=userId ? profiles.find(p=>p.user_id===userId) : null;
+  if(userId && !selectedUser){
+    throw new Error("Обраний акаунт не знайдено");
+  }
+
+  const otherOwner=profiles.find(p=>p.player_id===playerId && p.user_id!==userId);
+  if(otherOwner){
+    // Explicitly unlink only the previous owner of THIS player.
+    const {data:unlinked,error:unlinkError}=await sb.from("profiles")
+      .update({player_id:null})
+      .eq("user_id",otherOwner.user_id)
+      .select("user_id,player_id")
+      .maybeSingle();
+    if(unlinkError){
+      console.error("v5.91 unlink previous owner",unlinkError);
+      throw new Error(unlinkError.message||"Не вдалося відв’язати попередній акаунт");
+    }
+  }
 
   if(userId){
-    // One account can own only one player.
-    const {error:e2}=await sb.from("profiles").update({player_id:null}).eq("user_id",userId);
-    if(e2)throw e2;
+    // If this account is linked elsewhere, unlink only this specific account first.
+    if(selectedUser?.player_id && selectedUser.player_id!==playerId){
+      const {error:clearError}=await sb.from("profiles")
+        .update({player_id:null})
+        .eq("user_id",userId);
+      if(clearError){
+        console.error("v5.91 clear selected account",clearError);
+        throw new Error(clearError.message||"Не вдалося очистити стару прив’язку");
+      }
+    }
 
-    const {error:e3}=await sb.from("profiles").update({player_id:playerId}).eq("user_id",userId);
-    if(e3)throw e3;
+    const {data:linked,error:linkError}=await sb.from("profiles")
+      .update({player_id:playerId})
+      .eq("user_id",userId)
+      .select("user_id,display_name,role,player_id")
+      .maybeSingle();
+
+    if(linkError){
+      console.error("v5.91 link account",linkError);
+      throw new Error(linkError.message||"Supabase відхилив прив’язку");
+    }
+    if(!linked || linked.player_id!==playerId){
+      throw new Error("База не підтвердила прив’язку акаунта");
+    }
+  }else{
+    // Unlink only the current owner of this player.
+    const currentOwner=profiles.find(p=>p.player_id===playerId);
+    if(currentOwner){
+      const {error:unlinkError}=await sb.from("profiles")
+        .update({player_id:null})
+        .eq("user_id",currentOwner.user_id);
+      if(unlinkError){
+        console.error("v5.91 unlink",unlinkError);
+        throw new Error(unlinkError.message||"Не вдалося прибрати прив’язку");
+      }
+    }
   }
 
   await getAccountProfilesV590();
@@ -5943,4 +6004,9 @@ async function refreshPlayerLinkSettingsV590(){
 /* v5.90 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.90");
+});
+
+/* v5.91 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.91");
 });
