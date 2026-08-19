@@ -7494,3 +7494,67 @@ html.dark-theme .mvp-home *,
 html.dark-theme .mvp-card *{
   visibility:visible;
 }
+
+/* ==========================================================
+   v5.87 — HOME MVP: real data/content in dark theme
+   ========================================================== */
+
+/* Several older light-theme patches used unscoped selectors and left
+   the MVP text dark even on the dark home. Override them explicitly. */
+html[data-site-theme="dark"] #screen-home #homeMvpCard,
+html.dark-theme #screen-home #homeMvpCard{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  background:
+    radial-gradient(circle at 50% 8%,rgba(218,180,76,.15),transparent 44%),
+    linear-gradient(160deg,rgba(24,20,13,.98),rgba(7,7,7,.98))!important;
+  color:#fff!important;
+}
+
+html[data-site-theme="dark"] #screen-home #homeMvpPhoto,
+html.dark-theme #screen-home #homeMvpPhoto{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+html[data-site-theme="dark"] #screen-home .home-mvp-copy strong,
+html.dark-theme #screen-home .home-mvp-copy strong{
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+html[data-site-theme="dark"] #screen-home .home-mvp-copy span,
+html.dark-theme #screen-home .home-mvp-copy span{
+  color:#d8c9aa!important;
+  -webkit-text-fill-color:#d8c9aa!important;
+  opacity:.86!important;
+  visibility:visible!important;
+}
+
+html[data-site-theme="dark"] #screen-home #homeMvpRating,
+html.dark-theme #screen-home #homeMvpRating{
+  color:#f0d276!important;
+  -webkit-text-fill-color:#f0d276!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+html[data-site-theme="dark"] #screen-home .home-mvp-photo,
+html.dark-theme #screen-home .home-mvp-photo{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+html[data-site-theme="dark"] #screen-home .home-mvp-photo img,
+html.dark-theme #screen-home .home-mvp-photo img{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* Light theme keeps its existing appearance. */

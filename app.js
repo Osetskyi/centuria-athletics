@@ -5467,3 +5467,42 @@ document.addEventListener("click",e=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.86");
 });
+
+/* v5.87 — refresh actual MVP DATA in both themes, not only the card shell */
+async function refreshHomeMvpV587(){
+  try{
+    if(typeof loadLatestMvp==="function"){
+      await loadLatestMvp();
+    }else if(typeof renderHomeVip==="function"){
+      renderHomeVip();
+    }
+  }catch(e){
+    console.warn("v5.87 MVP refresh",e);
+    try{ if(typeof renderHomeVip==="function") renderHomeVip(); }catch(_e){}
+  }
+}
+
+window.addEventListener("centuria-theme-change",()=>{
+  setTimeout(refreshHomeMvpV587,80);
+  setTimeout(refreshHomeMvpV587,300);
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  setTimeout(refreshHomeMvpV587,450);
+});
+
+window.addEventListener("load",()=>{
+  setTimeout(refreshHomeMvpV587,250);
+});
+
+/* When HOME becomes active again, refresh from the loaded statistics. */
+document.addEventListener("click",e=>{
+  if(e.target.closest?.("[data-nav='home']")){
+    setTimeout(refreshHomeMvpV587,100);
+  }
+});
+
+/* v5.87 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.87");
+});
