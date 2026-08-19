@@ -7803,3 +7803,127 @@ html.light-theme .player-account-link-field select{
     transition:none!important;
   }
 }
+
+/* ==========================================================
+   v5.99 — live lineup inside Gatherings
+   ========================================================== */
+.gathering-lineup-wrap{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid rgba(196,157,67,.25);
+}
+.gathering-lineup-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:9px;
+}
+.gathering-lineup-head>div{display:flex;flex-direction:column;gap:2px}
+.gathering-lineup-head strong{font-size:12px;color:#d2ac50}
+.gathering-lineup-head span,.gathering-lineup-head small{font-size:9px;opacity:.62}
+.gathering-lineup-pitch{
+  position:relative;
+  width:100%;
+  aspect-ratio:68/94;
+  max-height:560px;
+  overflow:hidden;
+  border-radius:14px;
+  border:2px solid rgba(211,181,109,.72);
+  background:
+    linear-gradient(rgba(255,255,255,.12) 2px,transparent 2px) 0 50%/100% 50% no-repeat,
+    linear-gradient(90deg,transparent 49.7%,rgba(255,255,255,.18) 49.7%,rgba(255,255,255,.18) 50.3%,transparent 50.3%),
+    repeating-linear-gradient(90deg,#1e6b38 0 12.5%,#217540 12.5% 25%);
+  box-shadow:inset 0 0 45px rgba(0,0,0,.22);
+}
+.gathering-lineup-pitch::before{
+  content:"";
+  position:absolute;
+  left:50%;top:50%;
+  width:19%;aspect-ratio:1;
+  border:2px solid rgba(255,255,255,.20);
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+.gathering-lineup-pitch::after{
+  content:"";
+  position:absolute;
+  inset:4.5%;
+  border:2px solid rgba(255,255,255,.18);
+  pointer-events:none;
+}
+.gathering-lineup-slot{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  width:13%;
+  min-width:42px;
+  text-align:center;
+  z-index:2;
+}
+.gathering-lineup-card{
+  width:100%;
+  aspect-ratio:.72;
+  padding:0;
+  border-radius:8px;
+  border:1px solid rgba(220,186,101,.7);
+  background:rgba(14,15,13,.75);
+  color:#d7b968;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  font-size:20px;
+  box-shadow:0 4px 12px rgba(0,0,0,.23);
+}
+.gathering-lineup-card:disabled{opacity:1}
+.gathering-lineup-card img{width:100%;height:100%;object-fit:contain;display:block}
+.gathering-lineup-name{
+  margin-top:2px;
+  font-size:6.5px;
+  font-weight:900;
+  color:#fff;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  text-shadow:0 1px 2px #000;
+}
+.gathering-lineup-pos{
+  display:inline-block;
+  margin-top:1px;
+  padding:1px 4px;
+  border-radius:5px;
+  background:rgba(0,0,0,.65);
+  color:#e3c267;
+  font-size:6px;
+  font-weight:900;
+}
+.gathering-lineup-picker-card{width:min(94vw,560px)!important;max-height:84dvh;overflow:auto}
+.gathering-lineup-picker-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.gathering-picker-player{
+  width:100%;
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  text-align:left;
+  padding:7px 9px;
+  border-radius:11px;
+  border:1px solid rgba(201,160,66,.38);
+  background:#111;
+  color:#fff;
+}
+.gathering-picker-player img{width:42px;height:54px;object-fit:contain}
+.gathering-picker-player div{min-width:0;display:flex;flex-direction:column}
+.gathering-picker-player strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gathering-picker-player small{font-size:9px;opacity:.65}
+.gathering-picker-player.clear{grid-template-columns:1fr;color:#d46f73;text-align:center}
+html[data-site-theme="light"] .gathering-picker-player,
+html.light-theme .gathering-picker-player{background:#fff!important;color:#28241e!important;border-color:#d7c28c!important}
+html[data-site-theme="light"] .gathering-lineup-wrap,
+html.light-theme .gathering-lineup-wrap{border-top-color:#dfd2b3}
+@media(max-width:560px){
+  .gathering-lineup-head{align-items:flex-start;flex-direction:column}
+  .gathering-lineup-pitch{max-height:none}
+  .gathering-lineup-slot{width:12.5%;min-width:38px}
+  .gathering-lineup-name{font-size:6px}
+}

@@ -264,6 +264,8 @@ let voiceStartedAt=0;
 let voiceTimer=null;
 let voiceSeconds=0;
 let gatherings=[];
+let gatheringLineupSlots=[];
+let gatheringLineupPickerState=null;
 let gatheringVotes=[];
 let gatheringsMode="active";
 let gatheringsPollTimer=null;
@@ -1838,17 +1840,19 @@ async function loadGatherings(){
     return;
   }
 
-  const [{data:gData,error:gErr},{data:vData,error:vErr}]=await Promise.all([
+  const [{data:gData,error:gErr},{data:vData,error:vErr},{data:lData,error:lErr}]=await Promise.all([
     sb.from("gatherings")
       .select("id,title,gathering_date,gathering_time,note,is_closed,created_by,created_at")
       .order("gathering_date",{ascending:true})
       .order("gathering_time",{ascending:true}),
     sb.from("gathering_votes")
-      .select("gathering_id,user_id,vote,updated_at")
+      .select("gathering_id,user_id,vote,updated_at"),
+    sb.from("gathering_lineup_slots")
+      .select("gathering_id,slot_key,position,player_id,updated_by,updated_at")
   ]);
 
-  if(gErr || vErr){
-    console.error("Gatherings load error",gErr||vErr);
+  if(gErr || vErr || lErr){
+    console.error("Gatherings load error",gErr||vErr||lErr);
     const list=$("gatheringsList");
     if(list)list.innerHTML=`<div class="gatherings-empty">Не вдалося завантажити збори.</div>`;
     return;
@@ -1856,6 +1860,7 @@ async function loadGatherings(){
 
   gatherings=gData||[];
   gatheringVotes=vData||[];
+  gatheringLineupSlots=lData||[];
   await loadTeamProfiles();
   renderGatherings();
   if($("screen-home")?.classList.contains("active"))loadHomeNextEvent();
@@ -1864,6 +1869,148 @@ async function loadGatherings(){
 function votesForGathering(id){
   return gatheringVotes.filter(v=>v.gathering_id===id);
 }
+
+function lineupForGathering(id){
+  return gatheringLineupSlots.filter(s=>s.gathering_id===id);
+}
+
+function yesLinkedPlayersForGathering(id){
+  const yesUserIds=new Set(
+    votesForGathering(id).filter(v=>v.vote==="yes").map(v=>v.user_id)
+  );
+  const playerIds=new Set();
+  yesUserIds.forEach(uid=>{
+    const prof=teamProfiles.get(uid);
+    if(prof?.player_id)playerIds.add(prof.player_id);
+  });
+  return players.filter(p=>playerIds.has(p.id));
+}
+
+function gatheringLineupSlotHtml(g,slot,index){
+  const key=`451-${index}`;
+  const row=lineupForGathering(g.id).find(s=>s.slot_key===key);
+  const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
+  const editable=canEditSite()&&!gatheringIsPast(g);
+  return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
+    <button type="button" class="gathering-lineup-card ${p?"filled":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
+      ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
+    </button>
+    <div class="gathering-lineup-name">${p?esc(p.name):"Порожньо"}</div>
+    <div class="gathering-lineup-pos">${POS_LABEL[slot[0]]||slot[0]}</div>
+  </div>`;
+}
+
+function gatheringLineupHtml(g){
+  return `<div class="gathering-lineup-wrap">
+    <div class="gathering-lineup-head">
+      <div><strong>⚽ СКЛАД НА ЗБІР</strong><span>${gatheringIsPast(g)?"Фінальний склад збережено в історії":"Показуються тільки ті, хто проголосував «Буду»"}</span></div>
+      ${!gatheringIsPast(g)&&canEditSite()?`<small>Натисни +, щоб поставити гравця</small>`:""}
+    </div>
+    <div class="gathering-lineup-pitch">
+      ${FORMATIONS["451"].map((slot,i)=>gatheringLineupSlotHtml(g,slot,i)).join("")}
+    </div>
+  </div>`;
+}
+
+async function openGatheringLineupPickerV599(gatheringId,slotKey,position){
+  if(!canEditSite())return;
+  const g=gatherings.find(x=>x.id===gatheringId);
+  if(!g || gatheringIsPast(g))return;
+
+  gatheringLineupPickerState={gatheringId,slotKey,position};
+  const list=$("gatheringLineupPickerList");
+  const title=$("gatheringLineupPickerTitle");
+  if(title)title.textContent=`ОБЕРИ ГРАВЦЯ — ${POS_LABEL[position]||position}`;
+  if(!list)return;
+
+  const eligible=yesLinkedPlayersForGathering(gatheringId);
+  const lineup=lineupForGathering(gatheringId);
+  const occupiedIds=new Set(lineup.filter(s=>s.slot_key!==slotKey && s.player_id).map(s=>s.player_id));
+  const current=lineup.find(s=>s.slot_key===slotKey)?.player_id||null;
+  const available=eligible.filter(p=>!occupiedIds.has(p.id));
+
+  list.innerHTML=`
+    ${current?`<button type="button" class="gathering-picker-player clear" data-gathering-player="">× <strong>ОЧИСТИТИ ПОЗИЦІЮ</strong></button>`:""}
+    ${available.length?available.map(p=>{
+      const comp=p.primaryPos===position?"good":(p.extraPositions||[]).includes(position)?"alt":"bad";
+      const label=comp==="good"?"ОСНОВНА":comp==="alt"?"ДОДАТКОВА":"НЕ РІДНА";
+      return `<button type="button" class="gathering-picker-player" data-gathering-player="${p.id}">
+        <img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="">
+        <div><strong>${esc(p.name)}</strong><small>${POS_LABEL[p.primaryPos]||p.primaryPos}${p.archetype?" • "+esc(p.archetype):""}</small></div>
+        <span class="compat ${comp}">${label}</span>
+      </button>`;
+    }).join(""):`<div class="empty-state"><strong>НЕМАЄ ДОСТУПНИХ ГРАВЦІВ</strong><span>Спочатку гравець має проголосувати «Буду» та мати прив’язаний акаунт.</span></div>`}`;
+
+  list.querySelectorAll("[data-gathering-player]").forEach(btn=>{
+    btn.addEventListener("click",()=>saveGatheringLineupSlotV599(btn.dataset.gatheringPlayer||null));
+  });
+  $("gatheringLineupPickerModal")?.classList.remove("hidden");
+}
+
+function closeGatheringLineupPickerV599(){
+  $("gatheringLineupPickerModal")?.classList.add("hidden");
+  gatheringLineupPickerState=null;
+}
+
+async function saveGatheringLineupSlotV599(playerId){
+  if(!canEditSite()||!gatheringLineupPickerState)return;
+  const {gatheringId,slotKey,position}=gatheringLineupPickerState;
+
+  if(playerId){
+    const eligible=yesLinkedPlayersForGathering(gatheringId).some(p=>p.id===playerId);
+    if(!eligible){
+      showToast("Цей гравець не проголосував «Буду»");
+      return;
+    }
+    const duplicate=lineupForGathering(gatheringId).find(s=>s.player_id===playerId && s.slot_key!==slotKey);
+    if(duplicate){
+      showToast("Цей гравець уже стоїть на полі");
+      return;
+    }
+    const {error}=await sb.from("gathering_lineup_slots").upsert({
+      gathering_id:gatheringId,
+      slot_key:slotKey,
+      position,
+      player_id:playerId,
+      updated_by:authUser.id,
+      updated_at:new Date().toISOString()
+    },{onConflict:"gathering_id,slot_key"});
+    if(error){
+      console.error("Gathering lineup save",error);
+      showToast("Не вдалося змінити склад");
+      return;
+    }
+  }else{
+    const {error}=await sb.from("gathering_lineup_slots")
+      .delete()
+      .eq("gathering_id",gatheringId)
+      .eq("slot_key",slotKey);
+    if(error){
+      console.error("Gathering lineup clear",error);
+      showToast("Не вдалося очистити позицію");
+      return;
+    }
+  }
+
+  closeGatheringLineupPickerV599();
+  await loadGatherings();
+}
+
+async function removeIneligiblePlayerFromGatheringV599(gatheringId,userId){
+  if(!sb)return;
+  const profile=teamProfiles.get(userId);
+  if(!profile?.player_id)return;
+  // Editors/admins can remove stale lineup spots when their own vote changes.
+  // If the voter is a viewer, cleanup is also attempted; RLS safely rejects it.
+  const {error}=await sb.from("gathering_lineup_slots")
+    .delete()
+    .eq("gathering_id",gatheringId)
+    .eq("player_id",profile.player_id);
+  if(error && canEditSite())console.warn("Gathering lineup cleanup",error);
+}
+
+$("closeGatheringLineupPicker")?.addEventListener("click",closeGatheringLineupPickerV599);
+document.querySelectorAll("[data-close-gathering-lineup-picker]").forEach(el=>el.addEventListener("click",closeGatheringLineupPickerV599));
 
 function memberName(userId){
   const p=teamProfiles.get(userId);
@@ -1951,11 +2098,19 @@ function renderGatherings(){
           ${renderVoteNames(votes,"no")}
         </div>
       </div>
+
+      ${gatheringLineupHtml(g)}
     </article>`;
   }).join("");
 
   list.querySelectorAll("[data-vote]").forEach(btn=>{
     btn.addEventListener("click",()=>voteGathering(btn.dataset.gathering,btn.dataset.vote));
+  });
+  list.querySelectorAll("[data-gathering-lineup-slot]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const [gatheringId,slotKey,position]=btn.dataset.gatheringLineupSlot.split("|");
+      openGatheringLineupPickerV599(gatheringId,slotKey,position);
+    });
   });
   list.querySelectorAll("[data-close-gathering-id]").forEach(btn=>{
     btn.addEventListener("click",()=>closeGathering(btn.dataset.closeGatheringId));
@@ -1983,6 +2138,10 @@ async function voteGathering(gatheringId,vote){
     console.error(error);
     showToast("Не вдалося зберегти голос");
     return;
+  }
+
+  if(vote!=="yes"){
+    await removeIneligiblePlayerFromGatheringV599(gatheringId,authUser.id);
   }
   await loadGatherings();
 }
@@ -6083,4 +6242,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.98 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.98");
+});
+
+/* v5.99 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.99");
 });
