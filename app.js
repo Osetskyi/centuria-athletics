@@ -835,7 +835,7 @@ async function loadPlayerStatistics(playerId){
   if(!sb||!playerId)return;
   const [officialRes,trainingRes]=await Promise.all([
     sb.from("official_match_player_stats").select("rating,goals,assists,match_id,calendar_matches(match_date)").eq("player_id",playerId),
-    sb.from("training_player_stats").select("rating,goals,assists,training_day_id,training_days(training_date,matches_played,gathering_id)").eq("player_id",playerId)
+    sb.from("training_player_stats").select("rating,goals,assists,matches_played,training_day_id,training_days(training_date,matches_played,gathering_id)").eq("player_id",playerId)
   ]);
   const official=(officialRes.data||[]).filter(r=>r.rating!=null || r.goals || r.assists);
   const training=(trainingRes.data||[]).filter(r=>r.rating!=null);
@@ -851,7 +851,12 @@ async function loadPlayerStatistics(playerId){
   const trRatings=training.map(r=>Number(r.rating)).filter(Number.isFinite);
   const trBest=trRatings.length?Math.max(...trRatings):null;
   const trWorst=trRatings.length?Math.min(...trRatings):null;
-  const trMatches=training.reduce((sum,r)=>sum+(Number(r.training_days?.matches_played)||0),0);
+  const trMatches=training.reduce((sum,r)=>{
+    /* New rows use each player's personal number of matches.
+       Old rows remain backward-compatible and fall back to the gathering total. */
+    const personal=Number(r.matches_played);
+    return sum+(Number.isFinite(personal) ? personal : (Number(r.training_days?.matches_played)||0));
+  },0);
 
   // MVP count = how many events this player's rating equals the best rating for that event.
   let officialMvp=0, trainingMvp=0;
@@ -2955,6 +2960,7 @@ function renderTrainingInputs(day=null){
     const row=existing.find(r=>r.player_id===p.id)||{};
     return `<div class="training-player-row extended">
       <span><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p.name)}</b></span>
+      <input type="number" min="0" max="${Math.max(0,Number(day?.matches_played||$("trainingMatchesInput")?.value||99))}" data-training-player-matches="${p.id}" value="${row.matches_played??(row.rating!=null ? (day?.matches_played||"") : "")}" placeholder="матчі">
       <input type="number" step="0.1" min="0" max="10" inputmode="decimal" data-training-rating="${p.id}" value="${row.rating??""}" placeholder="оцінка">
       <input type="number" min="0" max="99" data-training-goals="${p.id}" value="${row.goals||""}" placeholder="голи">
       <input type="number" min="0" max="99" data-training-assists="${p.id}" value="${row.assists||""}" placeholder="асисти">
@@ -3016,7 +3022,7 @@ function renderTrainingView(day){
     return `<div class="training-rank-row ${i===0?"mvp":""}">
       <span class="rank-place">${i+1}</span>
       <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${i===0?`<small>🏆 MVP</small>`:""}</span>
-      <small class="rank-extra">⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
+      <small class="rank-extra">🎮 ${r.matches_played??day.matches_played??0} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
       <strong>${fmtRating(Number(r.rating))}</strong>
     </div>`;
   }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор може внести оцінки.</span></div>`;
@@ -3053,12 +3059,14 @@ async function saveTrainingDay(){
 
     const rows=players.map(p=>({
       player_id:p.id,
+      matches_played:document.querySelector(`[data-training-player-matches="${p.id}"]`)?.value||"",
       rating:document.querySelector(`[data-training-rating="${p.id}"]`)?.value||"",
       goals:document.querySelector(`[data-training-goals="${p.id}"]`)?.value||"",
       assists:document.querySelector(`[data-training-assists="${p.id}"]`)?.value||""
-    })).filter(r=>r.rating!==""||r.goals!==""||r.assists!=="").map(r=>({
+    })).filter(r=>r.matches_played!==""||r.rating!==""||r.goals!==""||r.assists!=="").map(r=>({
       training_day_id:day.id,
       player_id:r.player_id,
+      matches_played:r.matches_played===""?matches:Math.min(matches,Math.max(0,Number(r.matches_played)||0)),
       rating:r.rating===""?null:Number(r.rating),
       goals:Number(r.goals||0),
       assists:Number(r.assists||0)
@@ -3858,7 +3866,12 @@ function generalAggregatePlayer(player){
 
   let matches=eventIds.length;
   if(generalStatsMode==="training"){
-    matches=eventIds.reduce((sum,id)=>sum+(Number(trainingDays.find(d=>d.id===id)?.matches_played)||0),0);
+    matches=rows.reduce((sum,r)=>{
+      const personal=Number(r.matches_played);
+      return sum+(Number.isFinite(personal)
+        ? personal
+        : (Number(trainingDays.find(d=>d.id===r.training_day_id)?.matches_played)||0));
+    },0);
   }
 
   return {
@@ -5188,4 +5201,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.78 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.78");
+});
+
+/* v5.79 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.79");
 });

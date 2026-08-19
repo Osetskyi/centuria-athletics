@@ -6985,3 +6985,20 @@ html.light-theme #homeBackgroundImage{
   object-position:center top!important;
   max-width:100%!important;
 }
+
+/* v5.79 — four compact personal training-stat inputs per player */
+.training-player-row.extended{
+  grid-template-columns:minmax(105px,1.45fr) repeat(4,minmax(52px,.72fr))!important;
+}
+@media(max-width:560px){
+  .training-player-row.extended{
+    grid-template-columns:minmax(92px,1.25fr) repeat(4,minmax(46px,.68fr))!important;
+    gap:5px!important;
+  }
+  .training-player-row.extended input{
+    min-width:0!important;
+    padding-left:5px!important;
+    padding-right:5px!important;
+    font-size:13px!important;
+  }
+}
