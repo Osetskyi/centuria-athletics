@@ -1117,7 +1117,21 @@ $("saveLineupBtn").addEventListener("click",async()=>{
 
   try{
     const image=await renderLineupImage(name.trim()||"Склад");
-    const obj={id:uid(),name:name.trim()||"Склад",formation:formationName(currentFormation),createdAt:Date.now(),image,theme:(document.documentElement.dataset.siteTheme||"dark")};
+    const obj={
+      id:uid(),
+      name:name.trim()||"Склад",
+      formation:formationName(currentFormation),
+      formationKey:currentFormation,
+      lineupSnapshot:Object.fromEntries(
+        FORMATIONS[currentFormation].map((_,i)=>{
+          const key=`${currentFormation}-${i}`;
+          return [key,lineup[key]||null];
+        })
+      ),
+      createdAt:Date.now(),
+      image,
+      theme:(document.documentElement.dataset.siteTheme||"dark")
+    };
 
     const saved=await put("squads",obj);
 
@@ -1300,10 +1314,76 @@ function renderSquads(){
 let currentSavedImage=null;
 function openSavedImage(s){
   currentSavedImage=s;
-  $("savedImageView").src=s.image;
+  const img=$("savedImageView");
+  img.src=s.image;
+  img.dataset.savedSquadId=s.id||"";
+  img.style.cursor="pointer";
   $("imageDialog").showModal();
 }
 $("closeImage").addEventListener("click",()=>$("imageDialog").close());
+
+/* v5.77 — tap a player card inside a saved lineup image to open that player's profile */
+function savedSquadFormationKey(s){
+  if(s?.formationKey && FORMATIONS[s.formationKey])return s.formationKey;
+  const wanted=String(s?.formation||"").trim();
+  return Object.keys(FORMATIONS).find(k=>formationName(k)===wanted)||null;
+}
+
+function savedSquadPlayerAtPoint(s,img,clientX,clientY){
+  if(!s||!img)return null;
+  const fk=savedSquadFormationKey(s);
+  if(!fk)return null;
+
+  const rect=img.getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+
+  /* renderLineupImage canonical coordinates: W=720,H=1080 */
+  const x=(clientX-rect.left)/rect.width*720;
+  const y=(clientY-rect.top)/rect.height*1080;
+
+  const px=56,py=135,pw=608,ph=850,cw=68,ch=96;
+  const slots=FORMATIONS[fk];
+
+  let best=null;
+  let bestDist=Infinity;
+
+  slots.forEach((slot,i)=>{
+    const [pos,sx,sy]=slot;
+    const cx=px+(sx/100)*pw;
+    const cy=py+(sy/100)*ph;
+
+    /* slightly larger than the visible card for easier finger tapping */
+    const hitW=cw+34;
+    const hitH=ch+34;
+    if(x>=cx-hitW/2 && x<=cx+hitW/2 && y>=cy-hitH/2 && y<=cy+hitH/2){
+      const d=Math.hypot(x-cx,y-cy);
+      if(d<bestDist){bestDist=d;best=i;}
+    }
+  });
+
+  if(best==null)return null;
+
+  const key=`${fk}-${best}`;
+  let playerId=s?.lineupSnapshot?.[key]||null;
+
+  /* Backward-compatible fallback for older saved squads:
+     use current lineup only if it uses the same formation. */
+  if(!playerId && currentFormation===fk){
+    playerId=lineup[key]||null;
+  }
+
+  return playerId ? players.find(p=>p.id===playerId)||null : null;
+}
+
+$("savedImageView")?.addEventListener("click",e=>{
+  const p=savedSquadPlayerAtPoint(currentSavedImage,e.currentTarget,e.clientX,e.clientY);
+  if(!p)return; /* tap outside a player card keeps normal image behaviour */
+  e.preventDefault();
+  e.stopPropagation();
+  $("imageDialog")?.close();
+  setTimeout(()=>openPlayerModal(p.id),60);
+});
+
 $("downloadImage").addEventListener("click",()=>{
   if(!currentSavedImage)return;
   const a=document.createElement("a");a.href=currentSavedImage.image;a.download=(currentSavedImage.name||"centuria-lineup").replace(/[^\wа-яіїєґ-]+/gi,"_")+".jpg";a.click();
@@ -2840,7 +2920,12 @@ async function openHomeMvp(){
     showCalendarMatchView(match);
   }
 }
-$("homeMvpCard")?.addEventListener("click",openHomeMvp);
+$("homeMvpCard")?.addEventListener("click",e=>{
+  if(!homeMvpData?.player?.id)return;
+  e.preventDefault();
+  e.stopPropagation();
+  openPlayerModal(homeMvpData.player.id);
+});
 
 function closeDayActionModal(){$("calendarDayActionModal")?.classList.add("hidden");}
 function showDayActionModal(dateKey){
@@ -4868,4 +4953,234 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.74 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.74");
+});
+
+/* v5.75 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.75");
+});
+
+/* ==========================================================
+   v5.76 — Fullscreen image viewer
+   ========================================================== */
+(function(){
+  const viewer=()=>document.getElementById("fullscreenImageViewer");
+  const target=()=>document.getElementById("fullscreenImageTarget");
+
+  function openFullscreenImage(src){
+    if(!src)return;
+    const v=viewer(), img=target();
+    if(!v||!img)return;
+    img.src=src;
+    v.classList.remove("hidden");
+    v.setAttribute("aria-hidden","false");
+    document.documentElement.style.overflow="hidden";
+    document.body.style.overflow="hidden";
+  }
+
+  function closeFullscreenImage(){
+    const v=viewer(), img=target();
+    if(!v||!img)return;
+    v.classList.add("hidden");
+    v.setAttribute("aria-hidden","true");
+    img.removeAttribute("src");
+    document.documentElement.style.overflow="";
+    document.body.style.overflow="";
+  }
+
+  window.openFullscreenImage=openFullscreenImage;
+  window.closeFullscreenImage=closeFullscreenImage;
+
+  document.addEventListener("click",function(e){
+    const close=e.target.closest && e.target.closest("#fullscreenImageClose");
+    if(close){ e.preventDefault(); closeFullscreenImage(); return; }
+
+    const v=e.target.closest && e.target.closest("#fullscreenImageViewer");
+    if(v && e.target.id==="fullscreenImageViewer"){ closeFullscreenImage(); return; }
+
+    const img=e.target.closest && e.target.closest("img");
+    if(!img)return;
+
+    /* The saved lineup preview has its own player-card hit testing.
+       Do not force fullscreen before that handler gets the click. */
+    if(img.id==="savedImageView" && typeof savedSquadPlayerAtPoint==="function"){
+      const p=savedSquadPlayerAtPoint(currentSavedImage,img,e.clientX,e.clientY);
+      if(p)return;
+    }
+
+    /* Chat images */
+    const inChat=img.closest(
+      ".chat-message,.chat-message-main,.chat-card,.message,.chat-attachment,.chat-image-wrap"
+    );
+
+    /* Saved squads list / preview images */
+    const inSaved=img.closest(
+      "#screen-squads,.squad-row,.squad-card,.saved-squad-card,.saved-lineup-card,.saved-squad-preview,.saved-lineup-preview"
+    );
+
+    if(inChat || inSaved){
+      /* Avoid tiny avatars/icons in chat; open only actual message images or larger images */
+      const rect=img.getBoundingClientRect();
+      const likelyPhoto = inSaved || rect.width>=120 || rect.height>=120 ||
+        img.classList.contains("chat-image") ||
+        img.closest(".chat-attachment");
+
+      if(likelyPhoto){
+        e.preventDefault();
+        e.stopPropagation();
+        openFullscreenImage(img.currentSrc || img.src);
+      }
+    }
+  },true);
+
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape")closeFullscreenImage();
+  });
+
+  /* Close by tapping dark area around the image */
+  document.addEventListener("click",function(e){
+    if(e.target && e.target.classList && e.target.classList.contains("fullscreen-image-stage")){
+      closeFullscreenImage();
+    }
+  });
+})();
+
+/* v5.76 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.76");
+});
+
+/* ==========================================================
+   v5.77 — Open player details from HOME MVP and saved squad cards
+   ========================================================== */
+(function(){
+  function norm(v){ return String(v||"").trim().toLowerCase(); }
+
+  function findPlayerByLooseHint(hint){
+    hint=norm(hint);
+    if(!hint || !Array.isArray(window.players || players)) return null;
+    const list=(window.players || players);
+    return list.find(p=>{
+      const candidates=[
+        p.id,p.name,p.nick,p.nickname,p.eaId,p.ea_id
+      ].map(norm).filter(Boolean);
+      return candidates.some(v=>v===hint || hint.includes(v) || v.includes(hint));
+    })||null;
+  }
+
+  function playerFromElement(el){
+    if(!el)return null;
+
+    // Strong hints from data attributes.
+    const dataHints=[
+      el.dataset?.playerId,
+      el.dataset?.player,
+      el.dataset?.nick,
+      el.dataset?.nickname
+    ];
+    for(const h of dataHints){
+      const p=findPlayerByLooseHint(h);
+      if(p)return p;
+    }
+
+    // Walk up a little and inspect nearby data/text.
+    let node=el;
+    for(let i=0;i<5 && node;i++,node=node.parentElement){
+      const hints=[
+        node.dataset?.playerId,
+        node.dataset?.player,
+        node.dataset?.nick,
+        node.dataset?.nickname
+      ];
+      for(const h of hints){
+        const p=findPlayerByLooseHint(h);
+        if(p)return p;
+      }
+
+      const txt=(node.textContent||"").replace(/\s+/g," ").trim();
+      if(txt && txt.length<220){
+        const p=findPlayerByLooseHint(txt);
+        if(p)return p;
+      }
+
+      const img=node.querySelector?.("img");
+      if(img){
+        const src=(img.getAttribute("src")||"").split("/").pop()||"";
+        const alt=img.getAttribute("alt")||"";
+        for(const h of [alt,src.replace(/\.[^.]+$/,"")]){
+          const p=findPlayerByLooseHint(h);
+          if(p)return p;
+        }
+      }
+    }
+    return null;
+  }
+
+  function openPlayerDetailsFromAnywhere(p){
+    if(!p)return false;
+
+    /* This site's actual player details function. */
+    try{
+      if(typeof openPlayerModal==="function"){ openPlayerModal(p.id); return true; }
+    }catch(e){}
+
+    // Preferred existing site handlers.
+    if(typeof window.showPlayer==="function"){ window.showPlayer(p.id); return true; }
+    if(typeof window.openPlayer==="function"){ window.openPlayer(p.id); return true; }
+    if(typeof window.openPlayerView==="function"){ window.openPlayerView(p.id); return true; }
+    if(typeof window.showPlayerDetails==="function"){ window.showPlayerDetails(p.id); return true; }
+
+    // Common internal functions that may not be exported to window.
+    try{
+      if(typeof showPlayer==="function"){ showPlayer(p.id); return true; }
+    }catch(e){}
+    try{
+      if(typeof openPlayer==="function"){ openPlayer(p.id); return true; }
+    }catch(e){}
+    try{
+      if(typeof openPlayerView==="function"){ openPlayerView(p.id); return true; }
+    }catch(e){}
+    try{
+      if(typeof showPlayerDetails==="function"){ showPlayerDetails(p.id); return true; }
+    }catch(e){}
+
+    return false;
+  }
+
+  document.addEventListener("click",function(e){
+    /* HOME MVP: clicking the visible player/photo/card opens player details. */
+    const homeMvp=e.target.closest && e.target.closest("#homeMvpCard");
+    if(homeMvp){
+      const p=playerFromElement(homeMvp);
+      if(p && openPlayerDetailsFromAnywhere(p)){
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+
+    /* Saved squad preview: only player cards/portraits, not empty slots or pitch. */
+    const savedCard=e.target.closest && e.target.closest(
+      ".saved-squad-preview .slot-card.filled,"+
+      ".saved-lineup-preview .slot-card.filled,"+
+      ".v564-saved-preview-shell .slot-card.filled,"+
+      ".saved-squad-preview [data-player-id],"+
+      ".saved-lineup-preview [data-player-id],"+
+      ".v564-saved-preview-shell [data-player-id]"
+    );
+
+    if(savedCard){
+      const p=playerFromElement(savedCard);
+      if(p && openPlayerDetailsFromAnywhere(p)){
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    }
+  },true);
+})();
+
+/* v5.77 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.77");
 });

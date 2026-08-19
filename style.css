@@ -6739,3 +6739,178 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
 #playerDialog textarea{
   font-size:16px!important;
 }
+
+/* ==========================================================
+   v5.75 — HOME artwork top crop fix
+   Base: stable v5.74
+   Cropped 160px blank strip from both light/dark home images.
+   Coordinates below are re-mapped to the cropped image.
+   ========================================================== */
+
+#screen-home .hs-chat{
+  left:13.2%!important; top:34.363%!important; width:34.0%!important; height:7.479%!important;
+}
+#screen-home .hs-gatherings{
+  left:48.9%!important; top:34.363%!important; width:37.8%!important; height:7.479%!important;
+}
+#screen-home .hs-players{
+  left:13.1%!important; top:42.847%!important; width:73.7%!important; height:10.047%!important;
+}
+#screen-home .hs-tactics{
+  left:13.1%!important; top:54.121%!important; width:73.7%!important; height:10.047%!important;
+}
+#screen-home .hs-squads{
+  left:13.1%!important; top:65.507%!important; width:73.7%!important; height:10.381%!important;
+}
+#screen-home .hs-calendar{
+  left:5.6%!important; top:88.167%!important; width:16.3%!important; height:8.707%!important;
+}
+#screen-home .hs-settings{
+  right:4.9%!important; top:87.944%!important; width:16.5%!important; height:8.930%!important;
+}
+
+#screen-home .home-online-badge{
+  top:34.419%!important;
+}
+
+#screen-home .home-next-event{
+  left:8.7%!important;
+  top:20.633%!important;
+  width:55.0%!important;
+  height:11.163%!important;
+}
+
+#screen-home .home-mvp-card,
+#screen-home .home-mvp-card.hidden{
+  left:65.2%!important;
+  top:20.633%!important;
+  width:25.8%!important;
+  height:11.163%!important;
+}
+
+/* Keep natural full image height and normal scrolling.
+   No clipping, no forced viewport height, no scale changes. */
+#screen-home{
+  height:auto!important;
+  min-height:0!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+}
+#screen-home .home-art-wrap{
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  margin-top:0!important;
+  padding-top:0!important;
+}
+#screen-home .home-art,
+#homeBackgroundImage{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+
+/* ==========================================================
+   v5.76 — Fullscreen image viewer
+   Chat images + saved squad images
+   ========================================================== */
+.fullscreen-image-viewer{
+  position:fixed;
+  inset:0;
+  z-index:99999;
+  background:rgba(0,0,0,.94);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:
+    max(14px,env(safe-area-inset-top))
+    max(14px,env(safe-area-inset-right))
+    max(14px,env(safe-area-inset-bottom))
+    max(14px,env(safe-area-inset-left));
+  touch-action:pan-x pan-y pinch-zoom;
+}
+.fullscreen-image-viewer.hidden{display:none!important}
+.fullscreen-image-stage{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.fullscreen-image-stage img{
+  display:block;
+  max-width:100%;
+  max-height:100%;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.fullscreen-image-close{
+  position:fixed;
+  top:max(14px,env(safe-area-inset-top));
+  right:max(14px,env(safe-area-inset-right));
+  z-index:100001;
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:1px solid rgba(226,189,112,.65);
+  background:rgba(10,10,10,.78);
+  color:#f2d078;
+  font-size:30px;
+  line-height:1;
+  display:grid;
+  place-items:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.45);
+}
+
+/* Make eligible images obviously tappable */
+.chat-message img,
+.chat-image,
+.chat-attachment img,
+.message-image,
+.squad-thumb img,
+.saved-squad-card img,
+.saved-lineup-card img,
+.squad-row img{
+  cursor:zoom-in;
+}
+
+/* ==========================================================
+   v5.77 — Larger touch targets, same visual size
+   ========================================================== */
+
+/* HOME MVP: invisible extra hit area */
+#homeMvpCard{
+  position:absolute;
+}
+#homeMvpCard::after{
+  content:"";
+  position:absolute;
+  inset:-10px;
+  z-index:5;
+}
+
+/* Saved squad player cards: larger touch target but unchanged image size */
+.saved-squad-preview .slot-card.filled,
+.saved-lineup-preview .slot-card.filled,
+.v564-saved-preview-shell .slot-card.filled{
+  position:relative;
+  cursor:pointer;
+}
+.saved-squad-preview .slot-card.filled::after,
+.saved-lineup-preview .slot-card.filled::after,
+.v564-saved-preview-shell .slot-card.filled::after{
+  content:"";
+  position:absolute;
+  inset:-9px;
+  z-index:4;
+}
+
+/* v5.77 — saved lineup player-card tapping */
+#savedImageView{
+  cursor:pointer!important;
+  touch-action:manipulation;
+}
