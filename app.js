@@ -4869,30 +4869,3 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.74");
 });
-
-/* v5.75 — mark home MVP visual */
-function markHomeMvpV575(){
-  try{
-    const roots=[
-      document.getElementById("screen-home"),
-      document.getElementById("homeScreen"),
-      document.querySelector(".home-screen")
-    ].filter(Boolean);
-    roots.forEach(root=>{
-      root.querySelectorAll("div,section,article").forEach(el=>{
-        const t=(el.textContent||"").replace(/\s+/g," ").trim().toUpperCase();
-        if(t.includes("MVP") && t.length<500){
-          const img=el.querySelector("img");
-          if(img) img.classList.add("v575-home-mvp-icon");
-        }
-      });
-    });
-  }catch(e){}
-}
-document.addEventListener("DOMContentLoaded",()=>setTimeout(markHomeMvpV575,200));
-document.addEventListener("click",()=>setTimeout(markHomeMvpV575,100));
-
-/* v5.75 — settings version */
-document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.75");
-});
