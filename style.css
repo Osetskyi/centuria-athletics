@@ -6621,3 +6621,67 @@ html.light-theme #playerDialog img[src*="platform-ps5"] {
   opacity:1!important;
   visibility:visible!important;
 }
+
+/* ==========================================================
+   v5.73 — Player edit modal: light card frame + stable mobile scale
+   ========================================================== */
+
+/* The remaining dark frame/arch around the uploaded player card */
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-photo-wrap,
+html.light-theme #playerDialog #playerEditMode .player-photo-wrap,
+body[data-site-theme="light"] #playerDialog #playerEditMode .player-photo-wrap,
+body.light-theme #playerDialog #playerEditMode .player-photo-wrap,
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-image-wrap,
+html.light-theme #playerDialog #playerEditMode .player-image-wrap,
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-card-preview,
+html.light-theme #playerDialog #playerEditMode .player-card-preview,
+html[data-site-theme="light"] #playerDialog #playerEditMode [class*="photo"][class*="wrap"],
+html.light-theme #playerDialog #playerEditMode [class*="photo"][class*="wrap"] {
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  border-color:#d8c59c!important;
+  box-shadow:none!important;
+}
+
+/* Do not alter the actual football card artwork */
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-photo-wrap img,
+html.light-theme #playerDialog #playerEditMode .player-photo-wrap img,
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-image-wrap img,
+html.light-theme #playerDialog #playerEditMode .player-image-wrap img,
+html[data-site-theme="light"] #playerDialog #playerEditMode .player-card-preview img,
+html.light-theme #playerDialog #playerEditMode .player-card-preview img {
+  background:transparent!important;
+}
+
+/* Stable mobile modal scale: no zooming/reflow while selecting/editing fields */
+#playerDialog {
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+#playerDialog .modal,
+#playerDialog #playerEditMode {
+  transform:none!important;
+  zoom:1!important;
+}
+#playerDialog input,
+#playerDialog select,
+#playerDialog textarea,
+#playerDialog button {
+  font-size:16px;
+}
+@media (max-width: 700px) {
+  #playerDialog .modal {
+    width:calc(100vw - 32px)!important;
+    max-width:calc(100vw - 32px)!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  #playerDialog #playerEditMode {
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  #playerDialog #playerEditMode * {
+    box-sizing:border-box;
+  }
+}
