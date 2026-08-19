@@ -7271,3 +7271,48 @@ html.dark-theme #imageDialog #savedImageView{
   left:12px!important;
   right:12px!important;
 }
+
+/* ==========================================================
+   v5.84 — no flash when opening a saved lineup
+   Keep v5.83 sizing unchanged.
+   ========================================================== */
+
+/* The correct viewer background is visible while the themed image is built. */
+#imageDialog.viewer-light,
+#imageDialog.viewer-light .image-modal{
+  background:#fffdf8!important;
+}
+#imageDialog.viewer-dark,
+#imageDialog.viewer-dark .image-modal{
+  background:#08090b!important;
+}
+
+/* Never expose the old saved bitmap while the new themed render is loading. */
+#imageDialog #savedImageView.saved-image-pending{
+  opacity:0!important;
+  visibility:hidden!important;
+}
+#imageDialog #savedImageView{
+  opacity:1;
+  visibility:visible;
+}
+
+/* Optional subtle loader, theme-aware, without changing layout. */
+#imageDialog.saved-image-loading .image-modal::after{
+  content:"ЗАВАНТАЖЕННЯ СКЛАДУ…";
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.08em;
+  white-space:nowrap;
+  pointer-events:none;
+}
+#imageDialog.saved-image-loading.viewer-light .image-modal::after{
+  color:#a97b1f;
+}
+#imageDialog.saved-image-loading.viewer-dark .image-modal::after{
+  color:#e2bd70;
+}

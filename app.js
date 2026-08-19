@@ -1430,20 +1430,51 @@ async function openSavedImage(s){
   const dialog=$("imageDialog");
   if(!img||!dialog)return;
 
-  /* Open immediately, then replace the image when the themed render is ready. */
-  img.src=s.image||"";
+  /* Apply the viewer's theme BEFORE the dialog is painted. */
+  const light=currentSiteThemeIsLight();
+  dialog.classList.toggle("viewer-light",light);
+  dialog.classList.toggle("viewer-dark",!light);
+  dialog.classList.add("saved-image-loading");
+
+  /* Never show the author's original image as an intermediate frame.
+     Keep the image hidden until the viewer-theme render is completely ready. */
+  img.classList.remove("zoomed");
+  img.classList.add("saved-image-pending");
+  img.removeAttribute("src");
   img.dataset.savedSquadId=s.id||"";
   img.style.cursor="zoom-in";
-  dialog.classList.toggle("viewer-light",currentSiteThemeIsLight());
-  dialog.classList.toggle("viewer-dark",!currentSiteThemeIsLight());
+
   dialog.showModal();
 
   const themedImage=await renderSavedLineupInViewerTheme(s);
-  if(currentSavedImage?.id===s.id && themedImage){
+  if(currentSavedImage?.id!==s.id || !themedImage)return;
+
+  await new Promise(resolve=>{
+    const done=()=>{
+      img.removeEventListener("load",done);
+      img.removeEventListener("error",done);
+      resolve();
+    };
+    img.addEventListener("load",done,{once:true});
+    img.addEventListener("error",done,{once:true});
     img.src=themedImage;
+    if(img.complete) done();
+  });
+
+  if(currentSavedImage?.id===s.id){
+    requestAnimationFrame(()=>{
+      dialog.classList.remove("saved-image-loading");
+      img.classList.remove("saved-image-pending");
+    });
   }
 }
-$("closeImage").addEventListener("click",()=>$("imageDialog").close());
+$("closeImage").addEventListener("click",()=>{
+  const dialog=$("imageDialog");
+  const img=$("savedImageView");
+  dialog?.close();
+  dialog?.classList.remove("saved-image-loading");
+  img?.classList.remove("saved-image-pending","zoomed");
+});
 
 $("savedImageView")?.addEventListener("click",e=>{
   /* If the click is on a player card, the existing profile-opening handler
@@ -5378,4 +5409,9 @@ document.addEventListener("click",e=>{
 /* v5.83 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.83");
+});
+
+/* v5.84 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.84");
 });
