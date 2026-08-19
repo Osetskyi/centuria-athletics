@@ -7558,3 +7558,26 @@ html.dark-theme #screen-home .home-mvp-photo img{
 }
 
 /* Light theme keeps its existing appearance. */
+
+/* v5.88 — linked player / awards */
+.linked-player-modal{max-width:680px!important;width:min(94vw,680px)!important}
+.linked-player-tabs{display:flex;gap:8px;margin:8px 0 14px}
+.linked-player-tabs button{flex:1;padding:10px;border-radius:10px;border:1px solid #8d6c2c;background:transparent;color:inherit;font-weight:900}
+.linked-player-tabs button.active{background:#c99a2e;color:#fff}
+.linked-player-head{display:flex;align-items:center;gap:14px;margin:8px 0 14px}
+.linked-player-head img{width:74px;height:90px;object-fit:contain}
+.linked-player-head h3{margin:0 0 4px}
+.linked-player-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.linked-player-form label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:800}
+.linked-player-form .wide{grid-column:1/-1}
+.linked-player-form input,.linked-player-form textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:9px;border:1px solid #6d5b38;background:#111;color:#fff}
+.pending-request{padding:9px 11px;border:1px solid #c99a2e;border-radius:10px;margin-bottom:10px}
+.player-awards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.player-award{padding:14px 10px;border:1px solid #b68c31;border-radius:14px;text-align:center;background:rgba(201,154,46,.08);display:flex;flex-direction:column;gap:4px}
+.player-award>b{font-size:30px}.player-award span,.player-award small{opacity:.7}
+.change-request-card{border:1px solid #8d6c2c;border-radius:14px;padding:12px;margin:10px 0}
+.request-changes>div{display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid rgba(150,120,60,.2)}
+.request-actions{display:flex;gap:8px;margin-top:12px}.request-actions button{flex:1}
+html[data-site-theme="light"] .linked-player-modal,html.light-theme .linked-player-modal{background:#fffdf8!important;color:#28241e!important}
+html[data-site-theme="light"] .linked-player-form input,html[data-site-theme="light"] .linked-player-form textarea,html.light-theme .linked-player-form input,html.light-theme .linked-player-form textarea{background:#fff!important;color:#28241e!important;border-color:#d9c79f!important}
+@media(max-width:560px){.linked-player-form{grid-template-columns:1fr}.linked-player-form .wide{grid-column:auto}.player-awards-grid{grid-template-columns:1fr 1fr}}

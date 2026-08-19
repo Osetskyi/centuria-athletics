@@ -5506,3 +5506,133 @@ document.addEventListener("click",e=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.87");
 });
+
+/* ==========================================================
+   v5.88 — account ↔ player, approval requests, awards
+   ========================================================== */
+let playerAwardsV588=[];
+let playerRequestsV588=[];
+
+function profileForPlayerV588(pid){return profiles?.find?.(p=>p.player_id===pid)||null}
+function linkedPlayerV588(){
+  const prof=profiles?.find?.(p=>p.user_id===authUser?.id);
+  return prof?.player_id ? players.find(p=>p.id===prof.player_id) : null;
+}
+function effectiveAvatarV588(profile){
+  if(profile?.avatar_url)return profile.avatar_url;
+  if(profile?.player_id){
+    const p=players.find(x=>x.id===profile.player_id);
+    if(p?.cardImage||p?.card_image_url)return p.cardImage||p.card_image_url;
+  }
+  return PLAYER_PLACEHOLDER;
+}
+
+async function loadPlayerAccountDataV588(){
+  if(!sb||!authUser)return;
+  const [rq,aw]=await Promise.all([
+    sb.from("player_change_requests").select("*").order("created_at",{ascending:false}),
+    sb.from("player_awards").select("*").order("award_date",{ascending:false})
+  ]);
+  if(!rq.error)playerRequestsV588=rq.data||[];
+  if(!aw.error)playerAwardsV588=aw.data||[];
+  renderPlayerRequestBadgeV588();
+}
+function renderPlayerRequestBadgeV588(){
+  const n=playerRequestsV588.filter(r=>r.status==="pending").length;
+  document.querySelectorAll("[data-player-request-count]").forEach(el=>el.textContent=n?String(n):"");
+}
+function awardsHtmlV588(pid){
+  const a=playerAwardsV588.filter(x=>x.player_id===pid);
+  return `<div class="player-awards-grid">${a.length?a.map(x=>`<div class="player-award"><b>${esc(x.icon||"🏅")}</b><strong>${esc(x.title)}</strong><span>${esc(x.award_date||"")}</span>${x.note?`<small>${esc(x.note)}</small>`:""}</div>`).join(""):'<div class="empty-state">Нагород поки немає</div>'}</div>`;
+}
+async function openMyPlayerV588(){
+  const p=linkedPlayerV588();
+  const box=$("linkedPlayerBody"); if(!box)return;
+  if(!p){box.innerHTML='<div class="empty-state"><strong>АКАУНТ ЩЕ НЕ ПРИВ’ЯЗАНИЙ</strong><span>Прив’язку до картки гравця виконує адміністратор.</span></div>'; $("linkedPlayerModal").classList.remove("hidden");return;}
+  const pending=playerRequestsV588.find(r=>r.player_id===p.id&&r.user_id===authUser.id&&r.status==="pending");
+  box.innerHTML=`<div class="linked-player-tabs"><button class="active" data-lptab="info">ІНФОРМАЦІЯ</button><button data-lptab="awards">НАГОРОДИ</button></div>
+  <div data-lppane="info">
+    <div class="linked-player-head"><img src="${p.cardImage||p.card_image_url||PLAYER_PLACEHOLDER}"><div><h3>${esc(p.name)}</h3><span>${esc(p.primary_position||"")} • #${p.shirt_number??"—"}</span></div></div>
+    ${pending?'<div class="pending-request">⏳ Є зміни, що очікують підтвердження</div>':""}
+    <form id="myPlayerEditForm" class="linked-player-form">
+      <label>Нік<input name="name" value="${esc(p.name||"")}"></label>
+      <label>Номер<input name="shirt_number" type="number" min="0" max="99" value="${p.shirt_number??""}"></label>
+      <label>Вік<input name="age" type="number" min="1" max="99" value="${p.age??""}"></label>
+      <label>Основна позиція<input name="primary_position" value="${esc(p.primary_position||"")}"></label>
+      <label>Додаткові позиції<input name="extra_positions" value="${esc((p.extra_positions||[]).join(", "))}"></label>
+      <label>Архетип<input name="archetype" value="${esc(p.archetype||"")}"></label>
+      <label>Платформа<input name="platform" value="${esc(p.platform||"")}"></label>
+      <label class="wide">Примітка<textarea name="note">${esc(p.note||"")}</textarea></label>
+      <label class="wide">URL картки / зображення<input name="card_image_url" value="${esc(p.cardImage||p.card_image_url||"")}"></label>
+      <button class="gold-btn wide" type="submit">НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ</button>
+    </form>
+  </div>
+  <div data-lppane="awards" class="hidden">${awardsHtmlV588(p.id)}</div>`;
+  $("linkedPlayerModal").classList.remove("hidden");
+  box.querySelectorAll("[data-lptab]").forEach(b=>b.onclick=()=>{
+    box.querySelectorAll("[data-lptab]").forEach(x=>x.classList.toggle("active",x===b));
+    box.querySelectorAll("[data-lppane]").forEach(x=>x.classList.toggle("hidden",x.dataset.lppane!==b.dataset.lptab));
+  });
+  $("myPlayerEditForm")?.addEventListener("submit",async e=>{
+    e.preventDefault();
+    const fd=new FormData(e.currentTarget);
+    const proposed={
+      name:String(fd.get("name")||"").trim(),
+      shirt_number:fd.get("shirt_number")===""?null:Number(fd.get("shirt_number")),
+      age:fd.get("age")===""?null:Number(fd.get("age")),
+      primary_position:String(fd.get("primary_position")||"").trim(),
+      extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim()).filter(Boolean).slice(0,3),
+      archetype:String(fd.get("archetype")||"").trim()||null,
+      platform:String(fd.get("platform")||"").trim()||null,
+      note:String(fd.get("note")||"").trim()||null,
+      card_image_url:String(fd.get("card_image_url")||"").trim()||null
+    };
+    const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
+    if(error)return alert("Не вдалося надіслати зміни: "+error.message);
+    await loadPlayerAccountDataV588(); openMyPlayerV588();
+  });
+}
+async function linkAccountToPlayerV588(userId,playerId){
+  if(!canEditSite())return;
+  const {error}=await sb.from("profiles").update({player_id:playerId||null}).eq("user_id",userId);
+  if(error)alert(error.message); else await loadProfiles?.();
+}
+async function reviewPlayerRequestV588(id,approve){
+  if(!canEditSite())return;
+  const r=playerRequestsV588.find(x=>x.id===id);if(!r)return;
+  if(approve){
+    const d={...r.proposed_data,updated_at:new Date().toISOString()};
+    const {error}=await sb.from("players").update(d).eq("id",r.player_id);
+    if(error)return alert(error.message);
+  }
+  await sb.from("player_change_requests").update({status:approve?"approved":"rejected",reviewed_by:authUser.id,reviewed_at:new Date().toISOString()}).eq("id",id);
+  await Promise.all([loadPlayers?.(),loadPlayerAccountDataV588()]);
+  openPlayerRequestsV588();
+}
+function openPlayerRequestsV588(){
+  const box=$("playerRequestsBody");if(!box)return;
+  const rows=playerRequestsV588.filter(r=>r.status==="pending");
+  box.innerHTML=rows.length?rows.map(r=>{
+    const p=players.find(x=>x.id===r.player_id);
+    const changes=Object.entries(r.proposed_data||{}).map(([k,v])=>`<div><span>${esc(k)}</span><b>${esc(Array.isArray(v)?v.join(", "):String(v??"—"))}</b></div>`).join("");
+    return `<div class="change-request-card"><h3>${esc(p?.name||"Гравець")}</h3><div class="request-changes">${changes}</div><div class="request-actions"><button onclick="reviewPlayerRequestV588('${r.id}',true)" class="gold-btn">ПІДТВЕРДИТИ</button><button onclick="reviewPlayerRequestV588('${r.id}',false)" class="dark-btn">ВІДХИЛИТИ</button></div></div>`;
+  }).join(""):'<div class="empty-state">Нових запитів немає</div>';
+  $("playerRequestsModal").classList.remove("hidden");
+}
+async function addPlayerAwardV588(playerId,title,date,note="",icon="🏅"){
+  if(!canEditSite())return;
+  const {error}=await sb.from("player_awards").insert({player_id:playerId,title,award_date:date||new Date().toISOString().slice(0,10),note:note||null,icon:icon||"🏅",created_by:authUser.id});
+  if(error)alert(error.message);else await loadPlayerAccountDataV588();
+}
+$("closeLinkedPlayer")?.addEventListener("click",()=>$("linkedPlayerModal").classList.add("hidden"));
+$("closePlayerRequests")?.addEventListener("click",()=>$("playerRequestsModal").classList.add("hidden"));
+document.addEventListener("DOMContentLoaded",()=>setTimeout(loadPlayerAccountDataV588,800));
+
+/* expose helpers for existing settings/admin UI integration */
+window.openMyPlayerV588=openMyPlayerV588;
+window.openPlayerRequestsV588=openPlayerRequestsV588;
+window.linkAccountToPlayerV588=linkAccountToPlayerV588;
+window.addPlayerAwardV588=addPlayerAwardV588;
+
+/* v5.88 — settings version */
+document.addEventListener("DOMContentLoaded",()=>document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.88"));

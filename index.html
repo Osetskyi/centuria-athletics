@@ -15,7 +15,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=5.87">
+<link rel="stylesheet" href="style.css?v=5.88">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#090909">
@@ -530,7 +530,7 @@
     <div class="settings-card author">
       <span>АВТОР</span>
       <strong>Daniil Osetskyi</strong>
-<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.87</strong></div>
+<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.88</strong></div>
     </div>
   </section>
 
@@ -1108,7 +1108,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=5.87"></script>
+<script src="app.js?v=5.88"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
@@ -1118,5 +1118,18 @@
   </div>
 </div>
 
+
+<div id="linkedPlayerModal" class="modal-backdrop hidden">
+  <div class="modal linked-player-modal">
+    <div class="modal-head"><div><div class="brand-small">CENTURIA ATHLETICS</div><h2>МІЙ ГРАВЕЦЬ</h2></div><button id="closeLinkedPlayer" class="icon-btn">✕</button></div>
+    <div id="linkedPlayerBody"></div>
+  </div>
+</div>
+<div id="playerRequestsModal" class="modal-backdrop hidden">
+  <div class="modal linked-player-modal">
+    <div class="modal-head"><div><div class="brand-small">CENTURIA ATHLETICS</div><h2>ЗАПИТИ НА ЗМІНИ</h2></div><button id="closePlayerRequests" class="icon-btn">✕</button></div>
+    <div id="playerRequestsBody"></div>
+  </div>
+</div>
 </body>
 </html>
