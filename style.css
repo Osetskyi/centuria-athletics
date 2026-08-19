@@ -7002,3 +7002,117 @@ html.light-theme #homeBackgroundImage{
     font-size:13px!important;
   }
 }
+
+/* ==========================================================
+   v5.80 — Saved lineup fullscreen viewer + viewer-owned theme
+   ========================================================== */
+
+#imageDialog.image-dialog{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  max-width:none!important;
+  height:100dvh!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  background:#08090b!important;
+}
+#imageDialog.image-dialog::backdrop{
+  background:rgba(0,0,0,.86)!important;
+}
+#imageDialog.image-dialog.viewer-light{
+  background:#fffdf8!important;
+}
+#imageDialog.image-dialog.viewer-dark{
+  background:#08090b!important;
+}
+
+#imageDialog .image-modal{
+  position:relative!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:
+    max(12px,env(safe-area-inset-top))
+    max(10px,env(safe-area-inset-right))
+    max(12px,env(safe-area-inset-bottom))
+    max(10px,env(safe-area-inset-left))!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:auto!important;
+  -webkit-overflow-scrolling:touch;
+  background:transparent!important;
+}
+
+#imageDialog .image-toolbar{
+  position:fixed!important;
+  top:max(12px,env(safe-area-inset-top))!important;
+  left:max(12px,env(safe-area-inset-left))!important;
+  right:max(12px,env(safe-area-inset-right))!important;
+  z-index:4!important;
+  display:flex!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  pointer-events:none!important;
+}
+#imageDialog .image-toolbar button{
+  pointer-events:auto!important;
+  min-height:46px!important;
+}
+
+#imageDialog #savedImageView{
+  display:block!important;
+  width:auto!important;
+  height:auto!important;
+  max-width:100%!important;
+  max-height:calc(100dvh - max(24px,env(safe-area-inset-top)) - max(24px,env(safe-area-inset-bottom)))!important;
+  object-fit:contain!important;
+  margin:auto!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  cursor:zoom-in!important;
+  touch-action:pan-x pan-y pinch-zoom!important;
+  transform-origin:center center!important;
+  transition:transform .18s ease!important;
+}
+
+#imageDialog #savedImageView.zoomed{
+  max-width:none!important;
+  max-height:none!important;
+  width:min(135vw,1080px)!important;
+  height:auto!important;
+  cursor:zoom-out!important;
+}
+
+#imageDialog.viewer-light .image-toolbar .dark-btn{
+  background:#fffaf1!important;
+  color:#4a4033!important;
+  border-color:#d8c59c!important;
+}
+#imageDialog.viewer-light .image-toolbar .gold-btn{
+  background:#c99a2e!important;
+  color:#fff!important;
+}
+#imageDialog.viewer-dark .image-toolbar .dark-btn{
+  background:#111216!important;
+  color:#f3e6cd!important;
+  border-color:#8d6c2c!important;
+}
+
+/* The saved lineup's surrounding UI follows the VIEWER theme, never the author theme. */
+html[data-site-theme="light"] #imageDialog,
+html.light-theme #imageDialog,
+body[data-site-theme="light"] #imageDialog,
+body.light-theme #imageDialog{
+  background:#fffdf8!important;
+}

@@ -1134,8 +1134,7 @@ $("saveLineupBtn").addEventListener("click",async()=>{
         })
       ),
       createdAt:Date.now(),
-      image,
-      theme:(document.documentElement.dataset.siteTheme||"dark")
+      image
     };
 
     const saved=await put("squads",obj);
@@ -1317,15 +1316,73 @@ function renderSquads(){
   });
 }
 let currentSavedImage=null;
-function openSavedImage(s){
+
+function currentSiteThemeIsLight(){
+  return document.documentElement.dataset.siteTheme==="light" ||
+    document.documentElement.classList.contains("light-theme") ||
+    document.body?.dataset.siteTheme==="light" ||
+    document.body?.classList.contains("light-theme");
+}
+
+async function renderSavedLineupInViewerTheme(s){
+  /* Older saved squads may only contain an image. In that case we keep
+     the original image; newer ones with formationKey + lineupSnapshot
+     are rebuilt using the CURRENT viewer's theme. */
+  const fk=savedSquadFormationKey(s);
+  if(!fk || !s?.lineupSnapshot)return s?.image||"";
+
+  const oldFormation=currentFormation;
+  const oldLineup=lineup;
+
+  try{
+    currentFormation=fk;
+    lineup={...s.lineupSnapshot};
+    return await renderLineupImage(s.name||"Склад");
+  }catch(err){
+    console.warn("Saved lineup theme render failed",err);
+    return s?.image||"";
+  }finally{
+    currentFormation=oldFormation;
+    lineup=oldLineup;
+  }
+}
+
+async function openSavedImage(s){
   currentSavedImage=s;
   const img=$("savedImageView");
-  img.src=s.image;
+  const dialog=$("imageDialog");
+  if(!img||!dialog)return;
+
+  /* Open immediately, then replace the image when the themed render is ready. */
+  img.src=s.image||"";
   img.dataset.savedSquadId=s.id||"";
-  img.style.cursor="pointer";
-  $("imageDialog").showModal();
+  img.style.cursor="zoom-in";
+  dialog.classList.toggle("viewer-light",currentSiteThemeIsLight());
+  dialog.classList.toggle("viewer-dark",!currentSiteThemeIsLight());
+  dialog.showModal();
+
+  const themedImage=await renderSavedLineupInViewerTheme(s);
+  if(currentSavedImage?.id===s.id && themedImage){
+    img.src=themedImage;
+  }
 }
 $("closeImage").addEventListener("click",()=>$("imageDialog").close());
+
+$("savedImageView")?.addEventListener("click",e=>{
+  /* If the click is on a player card, the existing profile-opening handler
+     may consume it. Otherwise toggle a larger zoom for detailed viewing. */
+  const p=typeof savedSquadPlayerAtPoint==="function"
+    ? savedSquadPlayerAtPoint(currentSavedImage,e.currentTarget,e.clientX,e.clientY)
+    : null;
+  if(p)return;
+
+  e.currentTarget.classList.toggle("zoomed");
+});
+
+/* Tap the dark/light area around the image to return/close. */
+$("imageDialog")?.addEventListener("click",e=>{
+  if(e.target===$("imageDialog"))$("imageDialog").close();
+});
 
 /* v5.77 — tap a player card inside a saved lineup image to open that player's profile */
 function savedSquadFormationKey(s){
@@ -5206,4 +5263,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.79 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.79");
+});
+
+/* v5.80 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.80");
 });
