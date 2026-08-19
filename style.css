@@ -6739,3 +6739,36 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
 #playerDialog textarea{
   font-size:16px!important;
 }
+
+/* ==========================================================
+   v5.75 — HOME ONLY: remove the white top strip on iPhone
+   Base: stable v5.74
+   ========================================================== */
+
+/* Extend ONLY the home screen into the iPhone top safe-area. */
+#screen-home.active{
+  margin-top:calc(-1 * env(safe-area-inset-top, 0px))!important;
+  padding-top:env(safe-area-inset-top, 0px)!important;
+  min-height:100dvh!important;
+  height:100dvh!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+
+/* Keep the artwork/background at the physical top edge. */
+#screen-home.active::before{
+  top:0!important;
+}
+
+/* No extra vertical page scroll while HOME is active. */
+html:has(#screen-home.active),
+body:has(#screen-home.active){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+/* Do not change the scale or dimensions of controls. */
+#screen-home.active,
+#screen-home.active *{
+  zoom:1!important;
+}
