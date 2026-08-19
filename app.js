@@ -5690,12 +5690,27 @@ function renderAwardsIntoPlayerModalV589(pid){
   box.querySelectorAll("[data-delete-award]").forEach(btn=>btn.onclick=()=>deletePlayerAwardV589(btn.dataset.deleteAward));
 }
 
-function showPlayerAwardsV589(){
+async function showPlayerAwardsV589(){
   if(!editPlayerId)return;
   $("playerViewSlider")?.classList.add("hidden");
   $("playerAwardsPane")?.classList.remove("hidden");
   document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
   $("playerAwardsTab")?.classList.add("active");
+
+  if(sb && authUser){
+    const {data,error}=await sb.from("player_awards")
+      .select("*")
+      .eq("player_id",editPlayerId)
+      .order("award_date",{ascending:false});
+    if(error){
+      console.error("Awards load error",error);
+      showToast("Не вдалося завантажити нагороди");
+    }else{
+      const rest=(playerAwardsV589||[]).filter(a=>a.player_id!==editPlayerId);
+      playerAwardsV589=[...rest,...(data||[])];
+    }
+  }
+
   renderAwardsIntoPlayerModalV589(editPlayerId);
 }
 function returnPlayerSlidesV589(slide=0){
@@ -6009,4 +6024,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.91 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.91");
+});
+
+/* v5.92 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.92");
 });

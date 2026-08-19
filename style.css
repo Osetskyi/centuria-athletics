@@ -7643,3 +7643,28 @@ html.light-theme .player-account-link-field select{
   color:#28241e!important;
   border-color:#d9c79f!important;
 }
+
+/* ==========================================================
+   v5.92 — Awards tab fixed
+   ========================================================== */
+.player-view-tabs{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;
+}
+.player-view-tabs .player-view-tab{
+  min-width:0!important;
+  padding:8px 4px!important;
+  font-size:9.5px!important;
+}
+#playerAwardsPane{
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px 0 4px!important;
+}
+#playerAwardsPane.hidden{display:none!important}
+#playerAwardsPane .player-awards-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}

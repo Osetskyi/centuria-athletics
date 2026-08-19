@@ -15,7 +15,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=5.91">
+<link rel="stylesheet" href="style.css?v=5.92">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#090909">
@@ -550,7 +550,7 @@
     <div class="settings-card author">
       <span>АВТОР</span>
       <strong>Daniil Osetskyi</strong>
-<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.91</strong></div>
+<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.92</strong></div>
     </div>
   </section>
 
@@ -635,20 +635,6 @@
         </div>
       </div>
 
-          <div id="playerAwardsPane" class="player-awards-pane hidden">
-            <div id="playerAwardsList" class="player-awards-grid"></div>
-            <div id="playerAwardAdminBox" class="player-award-admin hidden">
-              <h3>ДОДАТИ НАГОРОДУ</h3>
-              <div class="award-admin-grid">
-                <input id="awardTitleInput" type="text" maxlength="80" placeholder="Напр. Гравець місяця">
-                <input id="awardDateInput" type="date">
-                <input id="awardIconInput" type="text" maxlength="4" value="🏅" placeholder="🏅">
-                <input id="awardNoteInput" type="text" maxlength="120" placeholder="Примітка">
-              </div>
-              <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
-            </div>
-          </div>
-
           <div class="modal-actions">
             <button type="button" id="viewDeletePlayerBtn" class="danger-btn">ВИДАЛИТИ</button>
             <div class="grow"></div>
@@ -699,6 +685,20 @@
           <div class="player-stats-swipe-note">‹ свайпни назад до інформації</div>
         </div>
       </div>
+
+      <div id="playerAwardsPane" class="player-awards-pane hidden">
+                  <div id="playerAwardsList" class="player-awards-grid"></div>
+                  <div id="playerAwardAdminBox" class="player-award-admin hidden">
+                    <h3>ДОДАТИ НАГОРОДУ</h3>
+                    <div class="award-admin-grid">
+                      <input id="awardTitleInput" type="text" maxlength="80" placeholder="Напр. Гравець місяця">
+                      <input id="awardDateInput" type="date">
+                      <input id="awardIconInput" type="text" maxlength="4" value="🏅" placeholder="🏅">
+                      <input id="awardNoteInput" type="text" maxlength="120" placeholder="Примітка">
+                    </div>
+                    <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
+                  </div>
+                </div>
     </div>
 
     <!-- EDIT / CREATE MODE -->
@@ -1171,7 +1171,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=5.91"></script>
+<script src="app.js?v=5.92"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
