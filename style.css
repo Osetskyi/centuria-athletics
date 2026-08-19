@@ -6739,3 +6739,34 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
 #playerDialog textarea{
   font-size:16px!important;
 }
+
+/* ==========================================================
+   v5.75 — Larger MVP badge/icon on HOME screen only
+   ========================================================== */
+#screen-home [class*="mvp"] img,
+#homeScreen [class*="mvp"] img,
+.home-screen [class*="mvp"] img,
+#screen-home .mvp-icon,
+#homeScreen .mvp-icon,
+.home-screen .mvp-icon{
+  width:140%!important;
+  height:140%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:contain!important;
+}
+
+/* If MVP emblem is text/emoji rather than an image */
+#screen-home .mvp-icon,
+#homeScreen .mvp-icon,
+.home-screen .mvp-icon,
+#screen-home [class*="mvp-badge"],
+#homeScreen [class*="mvp-badge"],
+.home-screen [class*="mvp-badge"]{
+  font-size:140%!important;
+}
+
+.v575-home-mvp-icon{
+  transform:scale(1.4)!important;
+  transform-origin:center!important;
+}
