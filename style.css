@@ -7167,3 +7167,63 @@ body.light-theme #imageDialog{
     max-height:calc(100dvh - 16px)!important;
   }
 }
+
+/* ==========================================================
+   v5.82 — larger saved-lineup field + no light-theme flash
+   ========================================================== */
+
+/* Saved squads screen paints in the correct theme immediately. */
+html[data-site-theme="light"] #screen-squads,
+html.light-theme #screen-squads{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+}
+html[data-site-theme="dark"] #screen-squads,
+html.dark-theme #screen-squads{
+  background:#08090b!important;
+  background-color:#08090b!important;
+}
+
+/* Do not animate the saved-squads page background during theme/render updates. */
+#screen-squads,
+#screen-squads *,
+#imageDialog,
+#imageDialog *{
+  transition-property:none!important;
+}
+
+/* Put the lineup directly under the toolbar and use almost the full phone width. */
+#imageDialog .image-modal{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  padding-top:max(86px,calc(env(safe-area-inset-top) + 72px))!important;
+  padding-left:6px!important;
+  padding-right:6px!important;
+  padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+}
+
+#imageDialog #savedImageView{
+  width:calc(100vw - 12px)!important;
+  max-width:calc(100vw - 12px)!important;
+  height:auto!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  margin:0 auto!important;
+}
+
+/* The toolbar stays floating over the top edge instead of reserving a large blank area. */
+#imageDialog .image-toolbar{
+  top:max(8px,env(safe-area-inset-top))!important;
+  left:8px!important;
+  right:8px!important;
+  margin:0!important;
+}
+
+/* On taller phones keep the complete composition visible while still filling the width. */
+@media(max-width:600px){
+  #imageDialog #savedImageView{
+    width:calc(100vw - 10px)!important;
+    max-width:calc(100vw - 10px)!important;
+  }
+}
