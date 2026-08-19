@@ -977,7 +977,7 @@ function openPlayerModal(id=null){
     fillViewMode(p);
     $("playerAwardsPane")?.classList.add("hidden");
     $("playerViewSlider")?.classList.remove("hidden");
-    setTimeout(()=>renderAwardsIntoPlayerModalV589?.(p.id),0);
+    /* awards load only when the Awards tab is opened */
   }
   $("playerDialog").showModal();
   refreshEditOnlyVisibility();
@@ -5674,10 +5674,33 @@ function fieldLabelV589(k){
 function awardsForPlayerV589(pid){
   return playerAwardsV589.filter(a=>a.player_id===pid);
 }
-function renderAwardsIntoPlayerModalV589(pid){
+async function renderAwardsIntoPlayerModalV589(pid){
   currentAwardsPlayerIdV589=pid;
   const box=$("playerAwardsList");if(!box)return;
-  const rows=awardsForPlayerV589(pid);
+
+  box.innerHTML='<div class="empty-state"><strong>ЗАВАНТАЖЕННЯ НАГОРОД…</strong></div>';
+
+  let rows=[];
+  if(sb && authUser){
+    const {data,error}=await sb.from("player_awards")
+      .select("id,player_id,title,award_date,note,icon,created_at")
+      .eq("player_id",pid)
+      .order("award_date",{ascending:false})
+      .order("created_at",{ascending:false});
+    if(error){
+      console.error("v5.93 player awards load",error);
+      box.innerHTML='<div class="empty-state"><strong>НЕ ВДАЛОСЯ ЗАВАНТАЖИТИ НАГОРОДИ</strong></div>';
+      return;
+    }
+    rows=data||[];
+
+    // Keep the shared cache synchronized for "Мій гравець".
+    const rest=(playerAwardsV589||[]).filter(a=>a.player_id!==pid);
+    playerAwardsV589=[...rest,...rows];
+  }else{
+    rows=awardsForPlayerV589(pid);
+  }
+
   box.innerHTML=rows.length?rows.map(a=>`
     <div class="player-award-card">
       <div class="player-award-icon">${esc(a.icon||"🏅")}</div>
@@ -5686,6 +5709,7 @@ function renderAwardsIntoPlayerModalV589(pid){
       ${a.note?`<small>${esc(a.note)}</small>`:""}
       ${(isAdminV589()||authRole==="editor")?`<button type="button" class="award-delete-btn" data-delete-award="${a.id}">ВИДАЛИТИ</button>`:""}
     </div>`).join(""):'<div class="empty-state"><strong>НАГОРОД ПОКИ НЕМАЄ</strong></div>';
+
   $("playerAwardAdminBox")?.classList.toggle("hidden",!(isAdminV589()||authRole==="editor"));
   box.querySelectorAll("[data-delete-award]").forEach(btn=>btn.onclick=()=>deletePlayerAwardV589(btn.dataset.deleteAward));
 }
@@ -5696,22 +5720,7 @@ async function showPlayerAwardsV589(){
   $("playerAwardsPane")?.classList.remove("hidden");
   document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
   $("playerAwardsTab")?.classList.add("active");
-
-  if(sb && authUser){
-    const {data,error}=await sb.from("player_awards")
-      .select("*")
-      .eq("player_id",editPlayerId)
-      .order("award_date",{ascending:false});
-    if(error){
-      console.error("Awards load error",error);
-      showToast("Не вдалося завантажити нагороди");
-    }else{
-      const rest=(playerAwardsV589||[]).filter(a=>a.player_id!==editPlayerId);
-      playerAwardsV589=[...rest,...(data||[])];
-    }
-  }
-
-  renderAwardsIntoPlayerModalV589(editPlayerId);
+  await renderAwardsIntoPlayerModalV589(editPlayerId);
 }
 function returnPlayerSlidesV589(slide=0){
   $("playerAwardsPane")?.classList.add("hidden");
@@ -5737,7 +5746,7 @@ async function addPlayerAwardV589(){
   if(error){console.error(error);showToast("Не вдалося додати нагороду");return;}
   $("awardTitleInput").value="";$("awardNoteInput").value="";
   await loadPlayerAccountSystemV589();
-  renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
+  await renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
   showToast("Нагороду додано");
 }
 async function deletePlayerAwardV589(id){
@@ -5746,7 +5755,7 @@ async function deletePlayerAwardV589(id){
   const {error}=await sb.from("player_awards").delete().eq("id",id);
   if(error){showToast("Не вдалося видалити нагороду");return;}
   await loadPlayerAccountSystemV589();
-  renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
+  await renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
 }
 $("addPlayerAwardBtn")?.addEventListener("click",addPlayerAwardV589);
 
@@ -6029,4 +6038,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.92 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.92");
+});
+
+/* v5.93 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.93");
 });

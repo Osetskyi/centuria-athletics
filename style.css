@@ -7668,3 +7668,11 @@ html.light-theme .player-account-link-field select{
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
   gap:10px!important;
 }
+
+/* v5.93 — ordinary player profile awards */
+#playerAwardsPane .empty-state{
+  min-height:120px;
+  display:grid;
+  place-items:center;
+  text-align:center;
+}
