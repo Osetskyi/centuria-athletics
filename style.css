@@ -6487,3 +6487,35 @@ html[data-site-theme="light"] #playerDialog .view-card-image img,
 html.light-theme #playerDialog .view-card-image img{
   background:transparent!important;
 }
+
+/* v5.70 — light player modal: card plate + white icon visibility */
+html.light-theme #playerDialog .view-card-image,
+html[data-site-theme="light"] #playerDialog .view-card-image{
+  background:#fffdf8 !important;
+  border-color:#d5b35f !important;
+}
+html.light-theme #playerDialog .view-platform .platform-logo-img,
+html[data-site-theme="light"] #playerDialog .view-platform .platform-logo-img,
+html.light-theme #playerDialog .view-archetype img,
+html[data-site-theme="light"] #playerDialog .view-archetype img{
+  filter:brightness(0) saturate(100%) sepia(35%) saturate(900%) hue-rotate(3deg) brightness(55%) contrast(110%) !important;
+  opacity:1 !important;
+}
+
+/* v5.71 — make ALL platform icons visible in player modal on light theme:
+   PS5 / Xbox / PC. Dark theme remains unchanged. */
+html[data-site-theme="light"] #playerDialog [class*="platform"] img,
+html.light-theme #playerDialog [class*="platform"] img,
+body[data-site-theme="light"] #playerDialog [class*="platform"] img,
+body.light-theme #playerDialog [class*="platform"] img,
+html[data-site-theme="light"] #playerDialog img[alt*="PS"],
+html.light-theme #playerDialog img[alt*="PS"],
+html[data-site-theme="light"] #playerDialog img[alt*="Xbox" i],
+html.light-theme #playerDialog img[alt*="Xbox" i],
+html[data-site-theme="light"] #playerDialog img[alt*="PC" i],
+html.light-theme #playerDialog img[alt*="PC" i] {
+  filter: brightness(0) saturate(100%) sepia(35%) saturate(1100%)
+          hue-rotate(4deg) brightness(55%) contrast(105%) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}

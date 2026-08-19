@@ -4846,3 +4846,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   const el=document.querySelector(".settings-version strong");
   if(el)el.textContent="v5.69";
 });
+
+/* v5.70 settings version */
+document.addEventListener("DOMContentLoaded",()=>document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.70"));
+
+/* v5.71 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.71");
+});
