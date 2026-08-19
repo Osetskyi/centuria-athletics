@@ -6363,3 +6363,127 @@ html.light-theme #screen-gatherings .v568-vote-no{
   color:#a54842!important;
   -webkit-text-fill-color:#a54842!important;
 }
+
+/* ==========================================================
+   v5.69 — Player details modal, LIGHT theme
+   Remove the dark modal background while keeping player artwork untouched.
+   ========================================================== */
+
+html[data-site-theme="light"] #playerDialog,
+html.light-theme #playerDialog,
+body[data-site-theme="light"] #playerDialog,
+body.light-theme #playerDialog{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d6bd82!important;
+  box-shadow:0 24px 70px rgba(74,58,30,.18)!important;
+}
+
+html[data-site-theme="light"] #playerDialog .modal,
+html.light-theme #playerDialog .modal,
+body[data-site-theme="light"] #playerDialog .modal,
+body.light-theme #playerDialog .modal,
+html[data-site-theme="light"] #playerDialog #playerViewMode,
+html.light-theme #playerDialog #playerViewMode,
+html[data-site-theme="light"] #playerDialog .player-view-slide,
+html.light-theme #playerDialog .player-view-slide{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  color:#28241e!important;
+}
+
+/* Header/title */
+html[data-site-theme="light"] #playerDialog .modal-head h2,
+html.light-theme #playerDialog .modal-head h2,
+html[data-site-theme="light"] #playerDialog .brand-small,
+html.light-theme #playerDialog .brand-small{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Close button */
+html[data-site-theme="light"] #playerDialog .icon-btn,
+html.light-theme #playerDialog .icon-btn{
+  background:#fffaf1!important;
+  color:#8a6414!important;
+  border-color:#d3b46c!important;
+}
+
+/* Information rows */
+html[data-site-theme="light"] #playerDialog .player-view-info,
+html.light-theme #playerDialog .player-view-info{
+  background:#fffdf8!important;
+}
+html[data-site-theme="light"] #playerDialog .view-row,
+html.light-theme #playerDialog .view-row{
+  border-bottom-color:#eadfc8!important;
+}
+html[data-site-theme="light"] #playerDialog .view-row>span,
+html.light-theme #playerDialog .view-row>span{
+  color:#9a896b!important;
+  -webkit-text-fill-color:#9a896b!important;
+}
+html[data-site-theme="light"] #playerDialog .view-row strong,
+html.light-theme #playerDialog .view-row strong,
+html[data-site-theme="light"] #playerDialog .view-note,
+html.light-theme #playerDialog .view-note{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Extra-position pills also become light */
+html[data-site-theme="light"] #playerDialog .view-pos-chip,
+html.light-theme #playerDialog .view-pos-chip{
+  background:#fff4d8!important;
+  color:#76550f!important;
+  border-color:#cfa64a!important;
+}
+
+/* Tabs */
+html[data-site-theme="light"] #playerDialog .player-view-tab,
+html.light-theme #playerDialog .player-view-tab{
+  background:#fffaf1!important;
+  color:#6e6557!important;
+  border-color:#dfd2b8!important;
+}
+html[data-site-theme="light"] #playerDialog .player-view-tab.active,
+html.light-theme #playerDialog .player-view-tab.active{
+  background:#fff0c4!important;
+  color:#8a6414!important;
+  border-color:#d2aa46!important;
+}
+
+/* Statistics page, if swiped right */
+html[data-site-theme="light"] #playerDialog .player-stats-columns,
+html.light-theme #playerDialog .player-stats-columns,
+html[data-site-theme="light"] #playerDialog .player-stats-columns section,
+html.light-theme #playerDialog .player-stats-columns section{
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e4d8c0!important;
+}
+html[data-site-theme="light"] #playerDialog .stat-line,
+html.light-theme #playerDialog .stat-line{
+  border-bottom-color:#eee4d2!important;
+}
+html[data-site-theme="light"] #playerDialog .stat-line span,
+html.light-theme #playerDialog .stat-line span{
+  color:#776d60!important;
+}
+html[data-site-theme="light"] #playerDialog .stat-line b,
+html.light-theme #playerDialog .stat-line b{
+  color:#28241e!important;
+}
+html[data-site-theme="light"] #playerDialog .stat-form-row span,
+html.light-theme #playerDialog .stat-form-row span{
+  background:#fff7e6!important;
+  color:#28241e!important;
+  border-color:#e2d1ae!important;
+}
+
+/* Player card image itself is not recolored */
+html[data-site-theme="light"] #playerDialog .view-card-image img,
+html.light-theme #playerDialog .view-card-image img{
+  background:transparent!important;
+}

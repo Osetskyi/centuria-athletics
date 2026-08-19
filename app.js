@@ -4840,3 +4840,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   const el=document.querySelector(".settings-version strong");
   if(el)el.textContent="v5.68";
 });
+
+/* v5.69 — current settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  const el=document.querySelector(".settings-version strong");
+  if(el)el.textContent="v5.69";
+});
