@@ -7316,3 +7316,181 @@ html.dark-theme #imageDialog #savedImageView{
 #imageDialog.saved-image-loading.viewer-dark .image-modal::after{
   color:#e2bd70;
 }
+
+/* ==========================================================
+   v5.85 — Tactics player picker light theme
+   ========================================================== */
+
+#pickerDialog.picker-light,
+html[data-site-theme="light"] #pickerDialog,
+html.light-theme #pickerDialog{
+  background:transparent!important;
+  color:#28241e!important;
+}
+
+#pickerDialog.picker-light::backdrop,
+html[data-site-theme="light"] #pickerDialog::backdrop,
+html.light-theme #pickerDialog::backdrop{
+  background:rgba(60,55,45,.42)!important;
+  backdrop-filter:blur(4px);
+}
+
+#pickerDialog.picker-light .modal,
+html[data-site-theme="light"] #pickerDialog .modal,
+html.light-theme #pickerDialog .modal{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d8b75f!important;
+  box-shadow:0 18px 45px rgba(83,67,33,.18)!important;
+}
+
+#pickerDialog.picker-light .brand-small,
+html[data-site-theme="light"] #pickerDialog .brand-small,
+html.light-theme #pickerDialog .brand-small{
+  color:#b88722!important;
+  -webkit-text-fill-color:#b88722!important;
+}
+
+#pickerDialog.picker-light h2,
+html[data-site-theme="light"] #pickerDialog h2,
+html.light-theme #pickerDialog h2{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+#pickerDialog.picker-light .icon-btn,
+html[data-site-theme="light"] #pickerDialog .icon-btn,
+html.light-theme #pickerDialog .icon-btn{
+  background:#fffaf0!important;
+  color:#b88722!important;
+  -webkit-text-fill-color:#b88722!important;
+  border-color:#d8b75f!important;
+  box-shadow:0 0 0 4px rgba(216,183,95,.18)!important;
+}
+
+/* Player rows */
+#pickerDialog.picker-light .picker-item,
+#pickerDialog.picker-light .picker-player,
+#pickerDialog.picker-light .player-pick,
+#pickerDialog.picker-light .picker-list > button,
+html[data-site-theme="light"] #pickerDialog .picker-list > button,
+html.light-theme #pickerDialog .picker-list > button{
+  background:#fff!important;
+  background-color:#fff!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+  box-shadow:none!important;
+}
+
+#pickerDialog.picker-light .picker-list > button strong,
+#pickerDialog.picker-light .picker-list > button span:not(.compat),
+#pickerDialog.picker-light .picker-list > button small,
+html[data-site-theme="light"] #pickerDialog .picker-list > button strong,
+html[data-site-theme="light"] #pickerDialog .picker-list > button span:not(.compat),
+html[data-site-theme="light"] #pickerDialog .picker-list > button small,
+html.light-theme #pickerDialog .picker-list > button strong,
+html.light-theme #pickerDialog .picker-list > button span:not(.compat),
+html.light-theme #pickerDialog .picker-list > button small{
+  color:#28241e!important;
+  -webkit-text-fill-color:#28241e!important;
+}
+
+/* Preserve compatibility badges */
+#pickerDialog .compat.good{
+  background:#169645!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+#pickerDialog .compat.alt{
+  background:#d07a0d!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+#pickerDialog .compat.bad{
+  background:#bd2630!important;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+}
+
+/* Clear position row */
+#pickerDialog.picker-light .picker-clear,
+html[data-site-theme="light"] #pickerDialog .picker-clear,
+html.light-theme #pickerDialog .picker-clear{
+  background:#fffaf5!important;
+  color:#a94a4f!important;
+  -webkit-text-fill-color:#a94a4f!important;
+  border-color:#dfb77c!important;
+}
+#pickerDialog.picker-light .picker-clear *,
+html[data-site-theme="light"] #pickerDialog .picker-clear *,
+html.light-theme #pickerDialog .picker-clear *{
+  color:#a94a4f!important;
+  -webkit-text-fill-color:#a94a4f!important;
+}
+
+/* Make images/cards retain their original artwork */
+#pickerDialog.picker-light img,
+html[data-site-theme="light"] #pickerDialog img,
+html.light-theme #pickerDialog img{
+  background:transparent!important;
+}
+
+/* No dark flash when opening in light mode */
+html[data-site-theme="light"] #pickerDialog,
+html.light-theme #pickerDialog{
+  color-scheme:light;
+}
+
+/* ==========================================================
+   v5.86 — MVP of the day visible in BOTH themes
+   Functional visibility is theme-independent; only appearance changes.
+   ========================================================== */
+
+/* Never hide an existing MVP because of theme. */
+.home-mvp:not([hidden]),
+.mvp-home:not([hidden]),
+.mvp-card:not([hidden]),
+#mvpHome:not([hidden]),
+#homeMvp:not([hidden]),
+#homeMVP:not([hidden]),
+#homeMvpCard:not([hidden]),
+#dailyMvp:not([hidden]),
+#dailyMVP:not([hidden]){
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* Dark-theme appearance only — preserve existing dimensions/position. */
+html[data-site-theme="dark"] .home-mvp,
+html[data-site-theme="dark"] .mvp-home,
+html[data-site-theme="dark"] .mvp-card,
+html[data-site-theme="dark"] #mvpHome,
+html[data-site-theme="dark"] #homeMvp,
+html[data-site-theme="dark"] #homeMVP,
+html[data-site-theme="dark"] #homeMvpCard,
+html[data-site-theme="dark"] #dailyMvp,
+html[data-site-theme="dark"] #dailyMVP,
+html.dark-theme .home-mvp,
+html.dark-theme .mvp-home,
+html.dark-theme .mvp-card,
+html.dark-theme #mvpHome,
+html.dark-theme #homeMvp,
+html.dark-theme #homeMVP,
+html.dark-theme #homeMvpCard,
+html.dark-theme #dailyMvp,
+html.dark-theme #dailyMVP{
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+/* If legacy light-only CSS hid children, restore them in dark mode too. */
+html[data-site-theme="dark"] .home-mvp *,
+html[data-site-theme="dark"] .mvp-home *,
+html[data-site-theme="dark"] .mvp-card *,
+html.dark-theme .home-mvp *,
+html.dark-theme .mvp-home *,
+html.dark-theme .mvp-card *{
+  visibility:visible;
+}

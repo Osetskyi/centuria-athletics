@@ -1104,7 +1104,15 @@ function openPicker(key,pos){
       list.appendChild(btn);
     });
   }
-  $("pickerDialog").showModal();
+  const picker=$("pickerDialog");
+  if(picker){
+    const light=
+      document.documentElement.dataset.siteTheme==="light" ||
+      document.documentElement.classList.contains("light-theme");
+    picker.classList.toggle("picker-light",light);
+    picker.classList.toggle("picker-dark",!light);
+    picker.showModal();
+  }
 }
 $("closePicker").addEventListener("click",()=>$("pickerDialog").close());
 function saveLineupState(){localStorage.setItem("ca_lineup",JSON.stringify(lineup))}
@@ -5414,4 +5422,48 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.84 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.84");
+});
+
+/* v5.85 — keep tactics picker synced with current theme */
+window.addEventListener("centuria-theme-change",()=>{
+  const picker=document.getElementById("pickerDialog");
+  if(!picker)return;
+  const light=
+    document.documentElement.dataset.siteTheme==="light" ||
+    document.documentElement.classList.contains("light-theme");
+  picker.classList.toggle("picker-light",light);
+  picker.classList.toggle("picker-dark",!light);
+});
+
+/* v5.85 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.85");
+});
+
+/* v5.86 — MVP visibility must not depend on light/dark theme */
+function syncHomeMvpV586(){
+  const selectors=[
+    ".home-mvp",".mvp-home",".mvp-card",
+    "#mvpHome","#homeMvp","#homeMVP","#homeMvpCard","#dailyMvp","#dailyMVP"
+  ];
+  document.querySelectorAll(selectors.join(",")).forEach(el=>{
+    /* Respect genuine no-MVP state represented by hidden attribute.
+       Otherwise theme is never allowed to conceal the card. */
+    if(!el.hasAttribute("hidden")){
+      el.style.visibility="visible";
+      el.style.opacity="1";
+    }
+  });
+}
+document.addEventListener("DOMContentLoaded",syncHomeMvpV586);
+window.addEventListener("centuria-theme-change",()=>requestAnimationFrame(syncHomeMvpV586));
+document.addEventListener("click",e=>{
+  if(e.target.closest?.("[data-theme],[data-site-theme],.theme-option,.theme-toggle")){
+    requestAnimationFrame(syncHomeMvpV586);
+  }
+});
+
+/* v5.86 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.86");
 });
