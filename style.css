@@ -7767,3 +7767,39 @@ html.light-theme .player-account-link-field select{
     box-sizing:border-box!important;
   }
 }
+
+/* ==========================================================
+   v5.98 — smooth 3-page player profile slider
+   ========================================================== */
+#playerViewSlider.player-view-slider{
+  display:flex!important;
+  width:300%!important;
+  transition:transform .32s ease!important;
+  will-change:transform;
+  align-items:flex-start!important;
+}
+
+#playerViewSlider > .player-view-slide{
+  flex:0 0 33.333333%!important;
+  width:33.333333%!important;
+  max-width:33.333333%!important;
+  box-sizing:border-box!important;
+}
+
+#playerAwardsPane.player-awards-slide{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  padding:10px 0 4px!important;
+}
+
+/* Do not let old rules hide the third slide. */
+#playerAwardsPane.hidden{
+  display:block!important;
+}
+
+@media (prefers-reduced-motion: reduce){
+  #playerViewSlider.player-view-slider{
+    transition:none!important;
+  }
+}

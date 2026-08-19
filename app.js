@@ -817,12 +817,18 @@ $("searchToggle").addEventListener("click",()=>$("searchRow").classList.toggle("
 
 
 /* Player statistics */
-function playerViewSlide(index){
+async function playerViewSlide(index){
   const slider=$("playerViewSlider");
   if(!slider)return;
-  slider.style.transform=`translateX(-${index*50}%)`;
+  index=Math.max(0,Math.min(2,index));
+  slider.style.transform=`translateX(-${index*(100/3)}%)`;
   $("playerInfoTab")?.classList.toggle("active",index===0);
   $("playerStatsTab")?.classList.toggle("active",index===1);
+  $("playerAwardsTab")?.classList.toggle("active",index===2);
+
+  if(index===2 && editPlayerId){
+    await renderAwardsIntoPlayerModalV589(editPlayerId);
+  }
 }
 
 function averageRating(rows){
@@ -975,8 +981,7 @@ function openPlayerModal(id=null){
     editPlayerId=id;
     currentCardImage=p.cardImage||"";
     fillViewMode(p);
-    $("playerAwardsPane")?.classList.add("hidden");
-    $("playerViewSlider")?.classList.remove("hidden");
+    playerViewSlide(0);
     /* awards load only when the Awards tab is opened */
   }
   $("playerDialog").showModal();
@@ -989,7 +994,15 @@ $("playerStatsTab")?.addEventListener("click",()=>playerViewSlide(1));
 let playerSwipeStartX=null;
 let playerSwipeStartY=null;
 
+function currentPlayerSlideV598(){
+  const tr=$("playerViewSlider")?.style.transform||"";
+  if(tr.includes("66.666") || tr.includes("66.667"))return 2;
+  if(tr.includes("33.333") || tr.includes("33.334"))return 1;
+  return 0;
+}
+
 $("playerViewSlider")?.addEventListener("touchstart",e=>{
+  if(e.target.closest?.("input,textarea,select,button"))return;
   const t=e.touches?.[0];
   playerSwipeStartX=t?.clientX??null;
   playerSwipeStartY=t?.clientY??null;
@@ -998,53 +1011,16 @@ $("playerViewSlider")?.addEventListener("touchstart",e=>{
 $("playerViewSlider")?.addEventListener("touchend",async e=>{
   if(playerSwipeStartX==null)return;
   const t=e.changedTouches?.[0];
-  const x=t?.clientX??playerSwipeStartX;
-  const y=t?.clientY??playerSwipeStartY;
-  const dx=x-playerSwipeStartX;
-  const dy=y-playerSwipeStartY;
-
+  const dx=(t?.clientX??playerSwipeStartX)-playerSwipeStartX;
+  const dy=(t?.clientY??playerSwipeStartY)-playerSwipeStartY;
   playerSwipeStartX=null;
   playerSwipeStartY=null;
 
-  // Ignore vertical scrolling / tiny movements.
   if(Math.abs(dx)<45 || Math.abs(dx)<=Math.abs(dy)*1.15)return;
 
-  const slider=$("playerViewSlider");
-  const onStats=(slider?.style.transform||"").includes("-50%");
-
-  if(dx<0){
-    if(onStats){
-      await showPlayerAwardsV589();
-    }else{
-      playerViewSlide(1);
-    }
-  }else if(dx>0){
-    if(onStats)playerViewSlide(0);
-  }
-},{passive:true});
-
-/* Swipe right on Awards returns to Statistics. */
-let awardsSwipeStartX=null;
-let awardsSwipeStartY=null;
-$("playerAwardsPane")?.addEventListener("touchstart",e=>{
-  // Do not steal gestures while editing award fields/buttons.
-  if(e.target.closest?.("input,textarea,select,button"))return;
-  const t=e.touches?.[0];
-  awardsSwipeStartX=t?.clientX??null;
-  awardsSwipeStartY=t?.clientY??null;
-},{passive:true});
-
-$("playerAwardsPane")?.addEventListener("touchend",e=>{
-  if(awardsSwipeStartX==null)return;
-  const t=e.changedTouches?.[0];
-  const dx=(t?.clientX??awardsSwipeStartX)-awardsSwipeStartX;
-  const dy=(t?.clientY??awardsSwipeStartY)-awardsSwipeStartY;
-
-  awardsSwipeStartX=null;
-  awardsSwipeStartY=null;
-
-  if(Math.abs(dx)<45 || Math.abs(dx)<=Math.abs(dy)*1.15)return;
-  if(dx>0)returnPlayerSlidesV589(1);
+  const page=currentPlayerSlideV598();
+  if(dx<0 && page<2) await playerViewSlide(page+1);
+  if(dx>0 && page>0) await playerViewSlide(page-1);
 },{passive:true});
 
 $("addPlayerBtn").addEventListener("click",()=>openPlayerModal());
@@ -5766,18 +5742,10 @@ async function renderAwardsIntoPlayerModalV589(pid){
 
 async function showPlayerAwardsV589(){
   if(!editPlayerId)return;
-  $("playerViewSlider")?.classList.add("hidden");
-  $("playerAwardsPane")?.classList.remove("hidden");
-  document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
-  $("playerAwardsTab")?.classList.add("active");
-  await renderAwardsIntoPlayerModalV589(editPlayerId);
+  await playerViewSlide(2);
 }
 function returnPlayerSlidesV589(slide=0){
-  $("playerAwardsPane")?.classList.add("hidden");
-  $("playerViewSlider")?.classList.remove("hidden");
-  document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
-  (slide===0?$("playerInfoTab"):$("playerStatsTab"))?.classList.add("active");
-  if(typeof playerViewSlide==="function")playerViewSlide(slide);
+  playerViewSlide(slide);
 }
 $("playerAwardsTab")?.addEventListener("click",showPlayerAwardsV589);
 $("playerInfoTab")?.addEventListener("click",()=>returnPlayerSlidesV589(0));
@@ -6110,4 +6078,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.97 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.97");
+});
+
+/* v5.98 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.98");
 });
