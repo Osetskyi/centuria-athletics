@@ -8068,3 +8068,129 @@ body:not(.read-only) #playerRequestsModal .player-request-actions{
     flex-direction:column!important;
   }
 }
+
+/* ==========================================================
+   v6.12 — stronger visible 3D perspective for football fields
+   ========================================================== */
+
+/* Gathering lineup */
+.gathering-lineup-wrap{
+  perspective:900px!important;
+  perspective-origin:50% 18%!important;
+  padding-top:10px;
+}
+
+.gathering-lineup-pitch{
+  position:relative!important;
+  transform:
+    perspective(900px)
+    rotateX(13deg)
+    scaleX(.96)
+    scaleY(.98)!important;
+  transform-origin:50% 12%!important;
+  clip-path:polygon(8% 0%,92% 0%,100% 100%,0% 100%)!important;
+  border-radius:18px!important;
+  overflow:hidden!important;
+  box-shadow:
+    0 28px 36px rgba(0,0,0,.28),
+    0 9px 14px rgba(0,0,0,.18),
+    inset 0 0 40px rgba(0,0,0,.18)!important;
+}
+
+/* Create a subtle "raised board" edge */
+.gathering-lineup-pitch::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  border:2px solid rgba(255,255,255,.20)!important;
+  clip-path:polygon(8% 0%,92% 0%,100% 100%,0% 100%)!important;
+  pointer-events:none!important;
+  z-index:1!important;
+}
+
+.gathering-lineup-pitch::after{
+  content:""!important;
+  position:absolute!important;
+  left:5%!important;
+  right:5%!important;
+  bottom:-10px!important;
+  height:18px!important;
+  background:rgba(0,0,0,.22)!important;
+  filter:blur(7px)!important;
+  border-radius:50%!important;
+  pointer-events:none!important;
+  z-index:0!important;
+}
+
+/* Keep slots readable while field itself is tilted */
+.gathering-lineup-slot{
+  transform:translate(-50%,-50%) translateZ(18px)!important;
+  transform-style:preserve-3d!important;
+}
+
+/* Tactics / squad-like fields */
+.tactics-pitch-wrap,
+.pitch-wrap,
+.lineup-field-wrap,
+.squad-field-wrap{
+  perspective:900px!important;
+  perspective-origin:50% 18%!important;
+}
+
+.tactics-pitch,
+.pitch,
+.lineup-pitch,
+.saved-lineup-pitch,
+.squad-pitch{
+  transform:
+    perspective(900px)
+    rotateX(11deg)
+    scaleX(.97)
+    scaleY(.985)!important;
+  transform-origin:50% 12%!important;
+  clip-path:polygon(7% 0%,93% 0%,100% 100%,0% 100%)!important;
+  box-shadow:
+    0 24px 32px rgba(0,0,0,.22),
+    0 8px 12px rgba(0,0,0,.14)!important;
+}
+
+/* Slight lift for cards */
+.gathering-lineup-card.filled{
+  transform-style:preserve-3d!important;
+  box-shadow:
+    0 7px 12px rgba(0,0,0,.32),
+    0 0 0 1px rgba(224,190,104,.18)!important;
+}
+
+/* Make 3D still obvious in light theme */
+html[data-site-theme="light"] .gathering-lineup-pitch,
+html.light-theme .gathering-lineup-pitch{
+  box-shadow:
+    0 26px 34px rgba(96,75,29,.22),
+    0 8px 13px rgba(77,59,22,.15),
+    inset 0 0 34px rgba(0,0,0,.08)!important;
+}
+
+@media(max-width:560px){
+  .gathering-lineup-pitch{
+    transform:
+      perspective(850px)
+      rotateX(11deg)
+      scaleX(.965)
+      scaleY(.985)!important;
+    clip-path:polygon(7% 0%,93% 0%,100% 100%,0% 100%)!important;
+  }
+
+  .tactics-pitch,
+  .pitch,
+  .lineup-pitch,
+  .saved-lineup-pitch,
+  .squad-pitch{
+    transform:
+      perspective(850px)
+      rotateX(9deg)
+      scaleX(.975)
+      scaleY(.99)!important;
+    clip-path:polygon(6% 0%,94% 0%,100% 100%,0% 100%)!important;
+  }
+}
