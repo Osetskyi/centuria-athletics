@@ -987,14 +987,64 @@ function openPlayerModal(id=null){
 $("playerInfoTab")?.addEventListener("click",()=>playerViewSlide(0));
 $("playerStatsTab")?.addEventListener("click",()=>playerViewSlide(1));
 let playerSwipeStartX=null;
-$("playerViewSlider")?.addEventListener("touchstart",e=>{playerSwipeStartX=e.touches?.[0]?.clientX??null},{passive:true});
-$("playerViewSlider")?.addEventListener("touchend",e=>{
+let playerSwipeStartY=null;
+
+$("playerViewSlider")?.addEventListener("touchstart",e=>{
+  const t=e.touches?.[0];
+  playerSwipeStartX=t?.clientX??null;
+  playerSwipeStartY=t?.clientY??null;
+},{passive:true});
+
+$("playerViewSlider")?.addEventListener("touchend",async e=>{
   if(playerSwipeStartX==null)return;
-  const x=e.changedTouches?.[0]?.clientX??playerSwipeStartX;
+  const t=e.changedTouches?.[0];
+  const x=t?.clientX??playerSwipeStartX;
+  const y=t?.clientY??playerSwipeStartY;
   const dx=x-playerSwipeStartX;
-  if(dx<-45)playerViewSlide(1);
-  if(dx>45)playerViewSlide(0);
+  const dy=y-playerSwipeStartY;
+
   playerSwipeStartX=null;
+  playerSwipeStartY=null;
+
+  // Ignore vertical scrolling / tiny movements.
+  if(Math.abs(dx)<45 || Math.abs(dx)<=Math.abs(dy)*1.15)return;
+
+  const slider=$("playerViewSlider");
+  const onStats=(slider?.style.transform||"").includes("-50%");
+
+  if(dx<0){
+    if(onStats){
+      await showPlayerAwardsV589();
+    }else{
+      playerViewSlide(1);
+    }
+  }else if(dx>0){
+    if(onStats)playerViewSlide(0);
+  }
+},{passive:true});
+
+/* Swipe right on Awards returns to Statistics. */
+let awardsSwipeStartX=null;
+let awardsSwipeStartY=null;
+$("playerAwardsPane")?.addEventListener("touchstart",e=>{
+  // Do not steal gestures while editing award fields/buttons.
+  if(e.target.closest?.("input,textarea,select,button"))return;
+  const t=e.touches?.[0];
+  awardsSwipeStartX=t?.clientX??null;
+  awardsSwipeStartY=t?.clientY??null;
+},{passive:true});
+
+$("playerAwardsPane")?.addEventListener("touchend",e=>{
+  if(awardsSwipeStartX==null)return;
+  const t=e.changedTouches?.[0];
+  const dx=(t?.clientX??awardsSwipeStartX)-awardsSwipeStartX;
+  const dy=(t?.clientY??awardsSwipeStartY)-awardsSwipeStartY;
+
+  awardsSwipeStartX=null;
+  awardsSwipeStartY=null;
+
+  if(Math.abs(dx)<45 || Math.abs(dx)<=Math.abs(dy)*1.15)return;
+  if(dx>0)returnPlayerSlidesV589(1);
 },{passive:true});
 
 $("addPlayerBtn").addEventListener("click",()=>openPlayerModal());
@@ -6055,64 +6105,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.95");
 });
 
-/* ==========================================================
-   v5.96 — swipe navigation: Information ↔ Statistics ↔ Awards
-   ========================================================== */
-(()=>{
-  let sx=0, sy=0, tracking=false;
 
-  function currentPlayerViewPageV596(){
-    if(!$("playerAwardsPane")?.classList.contains("hidden")) return 2;
-    const slider=$("playerViewSlider");
-    if(!slider) return 0;
-    const x=(slider.style.transform||"");
-    return x.includes("-50%") ? 1 : 0;
-  }
 
-  async function goPlayerViewPageV596(page){
-    if(page<=0){
-      showPlayerSlide?.(0);
-      return;
-    }
-    if(page===1){
-      showPlayerSlide?.(1);
-      return;
-    }
-    if(page>=2){
-      await showPlayerAwardsV589?.();
-    }
-  }
-
-  function isInteractiveV596(el){
-    return !!el?.closest?.("input,textarea,select,button,a,[contenteditable='true']");
-  }
-
-  document.addEventListener("touchstart",e=>{
-    const modal=e.target.closest?.("#playerModal");
-    if(!modal || $("playerViewMode")?.classList.contains("hidden")) return;
-    if(isInteractiveV596(e.target)) return;
-    const t=e.touches?.[0];
-    if(!t)return;
-    sx=t.clientX; sy=t.clientY; tracking=true;
-  },{passive:true});
-
-  document.addEventListener("touchend",async e=>{
-    if(!tracking)return;
-    tracking=false;
-    const t=e.changedTouches?.[0];
-    if(!t)return;
-    const dx=t.clientX-sx, dy=t.clientY-sy;
-
-    // Deliberate horizontal swipe only.
-    if(Math.abs(dx)<55 || Math.abs(dx)<=Math.abs(dy)*1.2) return;
-
-    const page=currentPlayerViewPageV596();
-    if(dx<0 && page<2) await goPlayerViewPageV596(page+1);
-    if(dx>0 && page>0) await goPlayerViewPageV596(page-1);
-  },{passive:true});
-})();
-
-/* v5.96 — settings version */
+/* v5.97 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.96");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.97");
 });
