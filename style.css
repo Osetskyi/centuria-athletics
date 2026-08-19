@@ -8308,3 +8308,80 @@ html.light-theme #screen-tactics #pitch{
     animation:none!important;
   }
 }
+
+/* ==========================================================
+   v6.14 — moderated 3D tactics field
+   ========================================================== */
+#screen-tactics .pitch-shell{
+  perspective:1200px!important;
+  perspective-origin:50% 20%!important;
+  padding:12px 10px 14px!important;
+  overflow:hidden!important;
+}
+
+#screen-tactics #pitch{
+  transform:
+    perspective(1200px)
+    rotateX(6deg)
+    scaleX(.985)
+    scaleY(.995)!important;
+  transform-origin:50% 10%!important;
+  clip-path:polygon(3.5% 0%,96.5% 0%,100% 100%,0% 100%)!important;
+  border-radius:10px!important;
+  box-shadow:
+    0 14px 20px rgba(0,0,0,.20),
+    0 5px 9px rgba(0,0,0,.12),
+    inset 0 0 22px rgba(0,0,0,.08)!important;
+}
+
+/* Keep the player elements visually upright */
+#screen-tactics #pitch .slot{
+  transform:translate(-50%,-50%)!important;
+}
+
+#screen-tactics #pitch .slot-card.filled{
+  animation:centuriaTacticsCardFloatSoft 4.4s ease-in-out infinite!important;
+  transform-origin:50% 78%!important;
+}
+
+@keyframes centuriaTacticsCardFloatSoft{
+  0%,100%{
+    transform:translateY(0) rotateZ(-.2deg);
+  }
+  50%{
+    transform:translateY(-3px) rotateZ(.3deg);
+  }
+}
+
+#screen-tactics #pitch .slot-card.filled:active{
+  transform:translateY(-5px) scale(1.025)!important;
+}
+
+/* Softer shadow edge */
+#screen-tactics .pitch-shell::after{
+  left:14%!important;
+  right:14%!important;
+  bottom:5px!important;
+  height:8px!important;
+  background:rgba(0,0,0,.20)!important;
+  filter:blur(6px)!important;
+}
+
+html[data-site-theme="light"] #screen-tactics #pitch,
+html.light-theme #screen-tactics #pitch{
+  box-shadow:
+    0 12px 18px rgba(73,52,16,.14),
+    0 4px 8px rgba(73,52,16,.09),
+    inset 0 0 18px rgba(0,0,0,.05)!important;
+}
+
+@media(max-width:560px){
+  #screen-tactics #pitch{
+    transform:
+      perspective(1200px)
+      rotateX(5deg)
+      scaleX(.988)
+      scaleY(.997)!important;
+    clip-path:polygon(3% 0%,97% 0%,100% 100%,0% 100%)!important;
+  }
+}
