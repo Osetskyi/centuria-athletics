@@ -7953,3 +7953,118 @@ html.light-theme .gathering-lineup-pitch .gathering-lineup-pos,
 html.light-theme .gathering-lineup-pitch .gathering-lineup-card > span{
   color:#fff!important;
 }
+
+/* ==========================================================
+   v6.10 — 3D pitch + subtle live player-card motion
+   ========================================================== */
+.gathering-lineup-wrap{
+  perspective:1100px;
+  perspective-origin:50% 34%;
+}
+.gathering-lineup-pitch{
+  transform:rotateX(5.5deg) scale(.99);
+  transform-origin:50% 38%;
+  transform-style:preserve-3d;
+  backface-visibility:hidden;
+  transition:transform .35s ease,box-shadow .35s ease;
+  box-shadow:
+    0 18px 34px rgba(0,0,0,.20),
+    inset 0 0 45px rgba(0,0,0,.22)!important;
+}
+.gathering-lineup-slot{
+  transform-style:preserve-3d;
+}
+.gathering-lineup-card.filled{
+  animation:centuriaCardFloat 4.4s ease-in-out infinite;
+  will-change:transform;
+  transform-origin:50% 72%;
+}
+.gathering-lineup-slot:nth-child(2n) .gathering-lineup-card.filled{animation-delay:-1.2s}
+.gathering-lineup-slot:nth-child(3n) .gathering-lineup-card.filled{animation-delay:-2.1s}
+
+@keyframes centuriaCardFloat{
+  0%,100%{transform:translateY(0) rotateZ(-.25deg) translateZ(6px)}
+  50%{transform:translateY(-3px) rotateZ(.4deg) translateZ(12px)}
+}
+.gathering-lineup-card.filled:active{
+  transform:translateY(-6px) scale(1.035) translateZ(22px)!important;
+  transition:transform .12s ease!important;
+}
+.gathering-lineup-name,
+.gathering-lineup-pos{
+  transform:translateZ(10px);
+}
+html[data-site-theme="light"] .gathering-lineup-pitch,
+html.light-theme .gathering-lineup-pitch{
+  box-shadow:
+    0 16px 28px rgba(77,59,22,.16),
+    inset 0 0 35px rgba(0,0,0,.10)!important;
+}
+
+/* Existing tactics / saved-lineup card images also get the same subtle life effect,
+   without moving empty slots. */
+.tactics-pitch img,
+.pitch img,
+.lineup-pitch img,
+.saved-lineup-pitch img,
+.squad-pitch img{
+  animation:centuriaCardFloat 4.6s ease-in-out infinite;
+  will-change:transform;
+  transform-origin:50% 72%;
+}
+.tactics-pitch img:nth-child(2n),
+.pitch img:nth-child(2n),
+.lineup-pitch img:nth-child(2n),
+.saved-lineup-pitch img:nth-child(2n),
+.squad-pitch img:nth-child(2n){
+  animation-delay:-1.4s;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .gathering-lineup-card.filled,
+  .tactics-pitch img,
+  .pitch img,
+  .lineup-pitch img,
+  .saved-lineup-pitch img,
+  .squad-pitch img{
+    animation:none!important;
+  }
+}
+
+/* ==========================================================
+   v6.11 — restore player change approval buttons
+   ========================================================== */
+#playerRequestsModal .player-request-actions{
+  display:flex!important;
+  gap:10px!important;
+  width:100%!important;
+  margin-top:12px!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+
+#playerRequestsModal .player-request-actions .request-approve-btn,
+#playerRequestsModal .player-request-actions .request-reject-btn{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex:1 1 0!important;
+  min-height:44px!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
+body.read-only #playerRequestsModal .player-request-actions{
+  display:none!important;
+}
+
+body:not(.read-only) #playerRequestsModal .player-request-actions{
+  display:flex!important;
+}
+
+@media(max-width:560px){
+  #playerRequestsModal .player-request-actions{
+    flex-direction:column!important;
+  }
+}

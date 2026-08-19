@@ -1892,7 +1892,7 @@ function gatheringLineupSlotHtml(g,slot,index){
   const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
   const editable=canEditSite()&&!gatheringIsPast(g);
   return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
-    <button type="button" class="gathering-lineup-card ${p?"filled":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
+    <button type="button" class="gathering-lineup-card ${p?"filled live-player-card":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
       ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
     </button>
     <div class="gathering-lineup-name">${p?esc(p.name):"Порожньо"}</div>
@@ -6011,6 +6011,7 @@ document.querySelectorAll("[data-close-my-player]").forEach(x=>x.addEventListene
 
 function renderPlayerRequestsV589(){
   const box=$("playerRequestsBody");if(!box)return;
+  const canReview=(isAdminV589()||authRole==="editor");
   const rows=playerChangeRequestsV589.filter(r=>r.status==="pending");
   if(!rows.length){box.innerHTML='<div class="empty-state"><strong>НОВИХ ЗАПИТІВ НЕМАЄ</strong></div>';return;}
   box.innerHTML=rows.map(r=>{
@@ -6035,13 +6036,20 @@ function renderPlayerRequestsV589(){
     return `<div class="player-request-card">
       <div class="request-head"><strong>${esc(prof?.display_name||p?.name||"Гравець")}</strong><span>${new Date(r.created_at).toLocaleString("uk-UA")}</span></div>
       ${diffs}
-      <div class="request-actions"><button class="gold-btn" data-approve-request="${r.id}">ПІДТВЕРДИТИ</button><button class="danger-btn" data-reject-request="${r.id}">ВІДХИЛИТИ</button></div>
+      ${canReview?`<div class="request-actions player-request-actions">
+        <button type="button" class="gold-btn request-approve-btn" data-approve-request="${r.id}">ПІДТВЕРДИТИ</button>
+        <button type="button" class="danger-btn request-reject-btn" data-reject-request="${r.id}">ВІДХИЛИТИ</button>
+      </div>`:""}
     </div>`;
   }).join("");
   box.querySelectorAll("[data-approve-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.approveRequest,true));
   box.querySelectorAll("[data-reject-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.rejectRequest,false));
 }
-function openPlayerRequestsV589(){renderPlayerRequestsV589();$("playerRequestsModal")?.classList.remove("hidden")}
+function openPlayerRequestsV589(){
+  applyPermissions?.();
+  renderPlayerRequestsV589();
+  $("playerRequestsModal")?.classList.remove("hidden");
+}
 $("openPlayerRequestsBtn")?.addEventListener("click",openPlayerRequestsV589);
 $("closePlayerRequestsModal")?.addEventListener("click",()=>$("playerRequestsModal")?.classList.add("hidden"));
 document.querySelectorAll("[data-close-player-requests]").forEach(x=>x.addEventListener("click",()=>$("playerRequestsModal")?.classList.add("hidden")));
@@ -6252,4 +6260,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v6.00 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.00");
+});
+
+/* v6.10 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.10");
+});
+
+/* v6.11 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.11");
 });
