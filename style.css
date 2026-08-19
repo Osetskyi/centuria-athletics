@@ -7169,61 +7169,105 @@ body.light-theme #imageDialog{
 }
 
 /* ==========================================================
-   v5.82 — larger saved-lineup field + no light-theme flash
+   v5.83 — saved lineup viewer balanced size + no flash
+   Base: v5.81
    ========================================================== */
 
-/* Saved squads screen paints in the correct theme immediately. */
+/* The saved-squads screen gets its final background immediately,
+   before individual cards are rendered. */
+#screen-squads.squads-light-now,
 html[data-site-theme="light"] #screen-squads,
 html.light-theme #screen-squads{
   background:#fffdf8!important;
   background-color:#fffdf8!important;
 }
+#screen-squads.squads-dark-now,
 html[data-site-theme="dark"] #screen-squads,
 html.dark-theme #screen-squads{
   background:#08090b!important;
   background-color:#08090b!important;
 }
 
-/* Do not animate the saved-squads page background during theme/render updates. */
+/* Remove background transitions only on saved squads/cards. */
 #screen-squads,
-#screen-squads *,
-#imageDialog,
-#imageDialog *{
-  transition-property:none!important;
+#screen-squads .squad-row,
+#screen-squads .squad-card,
+#screen-squads .v564-squad-card-light{
+  transition:none!important;
 }
 
-/* Put the lineup directly under the toolbar and use almost the full phone width. */
+/* Force list cards to be correct immediately in light mode. */
+#screen-squads.squads-light-now .squad-row,
+#screen-squads.squads-light-now .squad-card,
+#screen-squads.squads-light-now .v564-squad-card-light,
+html[data-site-theme="light"] #screen-squads .squad-row,
+html.light-theme #screen-squads .squad-row{
+  background:#fffdf8!important;
+  background-color:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d9c79f!important;
+}
+#screen-squads.squads-light-now .squad-row *,
+html[data-site-theme="light"] #screen-squads .squad-row *,
+html.light-theme #screen-squads .squad-row *{
+  color:#28241e;
+}
+
+/* Viewer: moderately large and IDENTICAL sizing in both themes. */
+#imageDialog.image-dialog[open]{
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  max-width:100vw!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+}
+
 #imageDialog .image-modal{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  padding:
+    max(78px,calc(env(safe-area-inset-top) + 64px))
+    14px
+    max(14px,env(safe-area-inset-bottom))
+    14px!important;
+  box-sizing:border-box!important;
   display:flex!important;
   align-items:flex-start!important;
   justify-content:center!important;
-  padding-top:max(86px,calc(env(safe-area-inset-top) + 72px))!important;
-  padding-left:6px!important;
-  padding-right:6px!important;
-  padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+  overflow:auto!important;
 }
 
 #imageDialog #savedImageView{
-  width:calc(100vw - 12px)!important;
-  max-width:calc(100vw - 12px)!important;
+  display:block!important;
+  width:min(88vw,560px)!important;
+  max-width:min(88vw,560px)!important;
   height:auto!important;
   max-height:none!important;
   object-fit:contain!important;
   margin:0 auto!important;
+  border-radius:0!important;
+  background:transparent!important;
 }
 
-/* The toolbar stays floating over the top edge instead of reserving a large blank area. */
+/* Same exact size in light and dark, overriding older theme-specific rules. */
+html[data-site-theme="light"] #imageDialog #savedImageView,
+html.light-theme #imageDialog #savedImageView,
+html[data-site-theme="dark"] #imageDialog #savedImageView,
+html.dark-theme #imageDialog #savedImageView{
+  width:min(88vw,560px)!important;
+  max-width:min(88vw,560px)!important;
+  height:auto!important;
+  max-height:none!important;
+}
+
 #imageDialog .image-toolbar{
-  top:max(8px,env(safe-area-inset-top))!important;
-  left:8px!important;
-  right:8px!important;
-  margin:0!important;
-}
-
-/* On taller phones keep the complete composition visible while still filling the width. */
-@media(max-width:600px){
-  #imageDialog #savedImageView{
-    width:calc(100vw - 10px)!important;
-    max-width:calc(100vw - 10px)!important;
-  }
+  top:max(10px,env(safe-area-inset-top))!important;
+  left:12px!important;
+  right:12px!important;
 }

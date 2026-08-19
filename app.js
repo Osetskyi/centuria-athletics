@@ -1288,6 +1288,15 @@ async function loadImg(src){
 }
 
 function renderSquads(){
+  const squadsScreen=$("screen-squads");
+  if(squadsScreen){
+    const light=
+      document.documentElement.dataset.siteTheme==="light" ||
+      document.documentElement.classList.contains("light-theme");
+    squadsScreen.classList.toggle("squads-light-now",light);
+    squadsScreen.classList.toggle("squads-dark-now",!light);
+  }
+
   const box=$("squadsList");
   const arr=[...squads].sort((a,b)=>b.createdAt-a.createdAt);
   if(!arr.length){box.innerHTML=`<div class="empty-state"><strong>ЩЕ НЕМАЄ ЗБЕРЕЖЕНИХ СКЛАДІВ</strong><span>Створи розстановку у вкладці «Тактика».</span></div>`;return}
@@ -5350,7 +5359,23 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.81");
 });
 
-/* v5.82 — settings version */
+/* v5.83 — keep saved-squads screen theme class synchronized immediately */
+function syncSquadsThemeV583(){
+  const s=document.getElementById("screen-squads");
+  if(!s)return;
+  const light=
+    document.documentElement.dataset.siteTheme==="light" ||
+    document.documentElement.classList.contains("light-theme");
+  s.classList.toggle("squads-light-now",light);
+  s.classList.toggle("squads-dark-now",!light);
+}
+document.addEventListener("DOMContentLoaded",syncSquadsThemeV583);
+window.addEventListener("centuria-theme-change",syncSquadsThemeV583);
+document.addEventListener("click",e=>{
+  if(e.target.closest?.("[data-nav='squads']")) syncSquadsThemeV583();
+});
+
+/* v5.83 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.82");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.83");
 });
