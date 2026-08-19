@@ -8194,3 +8194,117 @@ html.light-theme .gathering-lineup-pitch{
     clip-path:polygon(6% 0%,94% 0%,100% 100%,0% 100%)!important;
   }
 }
+
+/* ==========================================================
+   v6.13 — actual Tactics field 3D
+   ========================================================== */
+#screen-tactics .pitch-shell{
+  position:relative!important;
+  perspective:760px!important;
+  perspective-origin:50% 12%!important;
+  padding:16px 12px 22px!important;
+  overflow:visible!important;
+  background:linear-gradient(180deg,#17130d,#090a0b)!important;
+}
+
+#screen-tactics #pitch{
+  transform:
+    perspective(760px)
+    rotateX(15deg)
+    scaleX(.94)
+    scaleY(.975)!important;
+  transform-origin:50% 4%!important;
+  clip-path:polygon(9% 0%,91% 0%,100% 100%,0% 100%)!important;
+  border-radius:13px 13px 8px 8px!important;
+  overflow:hidden!important;
+  box-shadow:
+    0 30px 36px rgba(0,0,0,.38),
+    0 13px 15px rgba(0,0,0,.24),
+    inset 0 0 30px rgba(0,0,0,.12)!important;
+  transform-style:preserve-3d!important;
+}
+
+/* Stronger perspective outline inside the pitch */
+#screen-tactics #pitch::before{
+  inset:4.5% 4%!important;
+  clip-path:polygon(6% 0%,94% 0%,100% 100%,0% 100%);
+}
+
+/* Keep markers/cards elevated above the tilted surface */
+#screen-tactics #pitch .slot{
+  transform:translate(-50%,-50%) translateZ(24px)!important;
+  transform-style:preserve-3d!important;
+}
+
+/* Real cards move gently; empty + slots don't */
+#screen-tactics #pitch .slot-card.filled{
+  animation:centuriaTacticsCardFloat 4.2s ease-in-out infinite!important;
+  transform-origin:50% 78%!important;
+  will-change:transform;
+}
+#screen-tactics #pitch .slot:nth-child(2n) .slot-card.filled{animation-delay:-1.3s!important}
+#screen-tactics #pitch .slot:nth-child(3n) .slot-card.filled{animation-delay:-2.2s!important}
+
+@keyframes centuriaTacticsCardFloat{
+  0%,100%{
+    transform:translateY(0) translateZ(8px) rotateZ(-.35deg);
+  }
+  50%{
+    transform:translateY(-5px) translateZ(22px) rotateZ(.55deg);
+  }
+}
+
+#screen-tactics #pitch .slot-card.filled:active{
+  transform:translateY(-8px) translateZ(30px) scale(1.04)!important;
+  transition:transform .12s ease!important;
+}
+
+/* Player labels stay legible despite field perspective */
+#screen-tactics #pitch .slot-name,
+#screen-tactics #pitch .slot-position{
+  transform:translateZ(18px);
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+}
+
+/* A visible lower board edge to sell the 3D effect */
+#screen-tactics .pitch-shell::after{
+  content:"";
+  position:absolute;
+  left:9%;
+  right:9%;
+  bottom:8px;
+  height:14px;
+  border-radius:50%;
+  background:rgba(0,0,0,.42);
+  filter:blur(8px);
+  pointer-events:none;
+}
+
+html[data-site-theme="light"] #screen-tactics .pitch-shell,
+html.light-theme #screen-tactics .pitch-shell{
+  background:#fffaf0!important;
+}
+html[data-site-theme="light"] #screen-tactics #pitch,
+html.light-theme #screen-tactics #pitch{
+  box-shadow:
+    0 28px 34px rgba(73,52,16,.24),
+    0 11px 15px rgba(73,52,16,.15),
+    inset 0 0 28px rgba(0,0,0,.08)!important;
+}
+
+@media(max-width:560px){
+  #screen-tactics #pitch{
+    transform:
+      perspective(720px)
+      rotateX(13deg)
+      scaleX(.95)
+      scaleY(.982)!important;
+    clip-path:polygon(8% 0%,92% 0%,100% 100%,0% 100%)!important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce){
+  #screen-tactics #pitch .slot-card.filled{
+    animation:none!important;
+  }
+}
