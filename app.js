@@ -4869,8 +4869,3 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.74");
 });
-
-/* v5.75 — settings version */
-document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.75");
-});
