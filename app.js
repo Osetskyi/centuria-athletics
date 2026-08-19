@@ -1324,12 +1324,80 @@ function currentSiteThemeIsLight(){
     document.body?.classList.contains("light-theme");
 }
 
+async function rebuildLegacySavedImageForTheme(s){
+  const src=s?.image||"";
+  if(!src)return "";
+
+  try{
+    const im=await loadImg(src);
+    /* Saved lineup canonical canvas is 720x1080. The pitch is always
+       rendered at x=56,y=135,w=608,h=850. Scale coordinates to the
+       actual stored image so this also works with 1.5x exports. */
+    const sx=im.naturalWidth/720;
+    const sy=im.naturalHeight/1080;
+
+    const W=720,H=1080,SCALE=1.5;
+    const c=document.createElement("canvas");
+    c.width=W*SCALE;c.height=H*SCALE;
+    const ctx=c.getContext("2d");
+    ctx.scale(SCALE,SCALE);
+    ctx.imageSmoothingEnabled=true;
+    ctx.imageSmoothingQuality="high";
+
+    const light=currentSiteThemeIsLight();
+
+    if(light){
+      ctx.fillStyle="#fffdf8";ctx.fillRect(0,0,W,H);
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,"#fffaf0");g.addColorStop(.5,"#fffdf8");g.addColorStop(1,"#f7eedc");
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    }else{
+      ctx.fillStyle="#08090b";ctx.fillRect(0,0,W,H);
+      const g=ctx.createLinearGradient(0,0,W,H);
+      g.addColorStop(0,"#180b0b");g.addColorStop(.5,"#090a0b");g.addColorStop(1,"#15100b");
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+    }
+
+    ctx.fillStyle=light?"#a97b1f":"#e2bd70";
+    ctx.font="bold 16px Arial";
+    ctx.fillText("CENTURIA ATHLETICS",38,42);
+
+    ctx.fillStyle=light?"#28241e":"#f3e6cd";
+    ctx.font="bold 30px Arial";
+    ctx.fillText(String(s?.name||"Склад").toUpperCase(),38,82);
+
+    ctx.fillStyle=light?"#8f826e":"#b9a98e";
+    ctx.font="bold 14px Arial";
+    const formation=s?.formation||"—";
+    const dt=s?.createdAt ? new Date(s.createdAt).toLocaleString("uk-UA") : "";
+    ctx.fillText(`СХЕМА: ${formation}${dt?"   •   "+dt:""}`,38,108);
+
+    /* Copy ONLY the green pitch from the old saved screenshot. */
+    ctx.drawImage(
+      im,
+      56*sx,135*sy,608*sx,850*sy,
+      56,135,608,850
+    );
+
+    ctx.fillStyle=light?"#8f826e":"#b9a98e";
+    ctx.font="13px Arial";
+    ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1038);
+
+    return c.toDataURL("image/jpeg",0.94);
+  }catch(err){
+    console.warn("Legacy lineup theme adaptation failed",err);
+    return src;
+  }
+}
+
 async function renderSavedLineupInViewerTheme(s){
-  /* Older saved squads may only contain an image. In that case we keep
-     the original image; newer ones with formationKey + lineupSnapshot
-     are rebuilt using the CURRENT viewer's theme. */
+  /* New saved squads are fully re-rendered from formation/player data.
+     Old image-only squads are rebuilt by preserving just the pitch and
+     redrawing the surrounding frame in the CURRENT viewer theme. */
   const fk=savedSquadFormationKey(s);
-  if(!fk || !s?.lineupSnapshot)return s?.image||"";
+  if(!fk || !s?.lineupSnapshot){
+    return await rebuildLegacySavedImageForTheme(s);
+  }
 
   const oldFormation=currentFormation;
   const oldLineup=lineup;
@@ -5071,6 +5139,11 @@ document.addEventListener("DOMContentLoaded",()=>{
     const img=e.target.closest && e.target.closest("img");
     if(!img)return;
 
+    /* v5.81: saved squads are handled by openSavedImage, never generic fullscreen. */
+    if(img.closest?.("#screen-squads,.squad-row,.squad-card,.saved-squad-card,.saved-lineup-card,.squad-thumb")){
+      return;
+    }
+
     /* The saved lineup preview has its own player-card hit testing.
        Do not force fullscreen before that handler gets the click. */
     if(img.id==="savedImageView" && typeof savedSquadPlayerAtPoint==="function"){
@@ -5083,12 +5156,14 @@ document.addEventListener("DOMContentLoaded",()=>{
       ".chat-message,.chat-message-main,.chat-card,.message,.chat-attachment,.chat-image-wrap"
     );
 
-    /* Saved squads list / preview images */
+    /* Saved squad thumbnails use their OWN viewer (openSavedImage).
+       Do not let the generic image viewer intercept those clicks. */
     const inSaved=img.closest(
       "#screen-squads,.squad-row,.squad-card,.saved-squad-card,.saved-lineup-card,.saved-squad-preview,.saved-lineup-preview"
     );
+    if(inSaved)return;
 
-    if(inChat || inSaved){
+    if(inChat){
       /* Avoid tiny avatars/icons in chat; open only actual message images or larger images */
       const rect=img.getBoundingClientRect();
       const likelyPhoto = inSaved || rect.width>=120 || rect.height>=120 ||
@@ -5268,4 +5343,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* v5.80 — settings version */
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.80");
+});
+
+/* v5.81 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.81");
 });
