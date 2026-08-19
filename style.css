@@ -6741,34 +6741,38 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
 }
 
 /* ==========================================================
-   v5.75 — HOME ONLY: remove the white top strip on iPhone
-   Base: stable v5.74
+   v5.75 — iPhone status-bar fix, based on stable v5.74
+   The home artwork may render under the status bar.
+   Scrolling and full bottom content remain untouched.
    ========================================================== */
 
-/* Extend ONLY the home screen into the iPhone top safe-area. */
-#screen-home.active{
-  margin-top:calc(-1 * env(safe-area-inset-top, 0px))!important;
-  padding-top:env(safe-area-inset-top, 0px)!important;
-  min-height:100dvh!important;
-  height:100dvh!important;
-  box-sizing:border-box!important;
-  overflow:hidden!important;
+#screen-home,
+#screen-home .home-art-wrap,
+#screen-home .home-art{
+  margin-top:0!important;
+  padding-top:0!important;
 }
 
-/* Keep the artwork/background at the physical top edge. */
-#screen-home.active::before{
-  top:0!important;
+/* No artificial height/overflow restrictions on HOME. */
+#screen-home{
+  height:auto!important;
+  min-height:0!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+}
+#screen-home .home-art-wrap{
+  height:auto!important;
+  overflow:visible!important;
 }
 
-/* No extra vertical page scroll while HOME is active. */
-html:has(#screen-home.active),
-body:has(#screen-home.active){
-  overflow:hidden!important;
-  overscroll-behavior:none!important;
+/* Fallback color behind iOS safe area if standalone mode has not refreshed yet. */
+html[data-site-theme="light"],
+html.light-theme,
+body[data-site-theme="light"],
+body.light-theme{
+  background-color:#f3eee2!important;
 }
-
-/* Do not change the scale or dimensions of controls. */
-#screen-home.active,
-#screen-home.active *{
-  zoom:1!important;
+html:not([data-site-theme="light"]):not(.light-theme),
+body:not([data-site-theme="light"]):not(.light-theme){
+  background-color:#060708!important;
 }
