@@ -6054,3 +6054,65 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.95");
 });
+
+/* ==========================================================
+   v5.96 — swipe navigation: Information ↔ Statistics ↔ Awards
+   ========================================================== */
+(()=>{
+  let sx=0, sy=0, tracking=false;
+
+  function currentPlayerViewPageV596(){
+    if(!$("playerAwardsPane")?.classList.contains("hidden")) return 2;
+    const slider=$("playerViewSlider");
+    if(!slider) return 0;
+    const x=(slider.style.transform||"");
+    return x.includes("-50%") ? 1 : 0;
+  }
+
+  async function goPlayerViewPageV596(page){
+    if(page<=0){
+      showPlayerSlide?.(0);
+      return;
+    }
+    if(page===1){
+      showPlayerSlide?.(1);
+      return;
+    }
+    if(page>=2){
+      await showPlayerAwardsV589?.();
+    }
+  }
+
+  function isInteractiveV596(el){
+    return !!el?.closest?.("input,textarea,select,button,a,[contenteditable='true']");
+  }
+
+  document.addEventListener("touchstart",e=>{
+    const modal=e.target.closest?.("#playerModal");
+    if(!modal || $("playerViewMode")?.classList.contains("hidden")) return;
+    if(isInteractiveV596(e.target)) return;
+    const t=e.touches?.[0];
+    if(!t)return;
+    sx=t.clientX; sy=t.clientY; tracking=true;
+  },{passive:true});
+
+  document.addEventListener("touchend",async e=>{
+    if(!tracking)return;
+    tracking=false;
+    const t=e.changedTouches?.[0];
+    if(!t)return;
+    const dx=t.clientX-sx, dy=t.clientY-sy;
+
+    // Deliberate horizontal swipe only.
+    if(Math.abs(dx)<55 || Math.abs(dx)<=Math.abs(dy)*1.2) return;
+
+    const page=currentPlayerViewPageV596();
+    if(dx<0 && page<2) await goPlayerViewPageV596(page+1);
+    if(dx>0 && page>0) await goPlayerViewPageV596(page-1);
+  },{passive:true});
+})();
+
+/* v5.96 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.96");
+});
