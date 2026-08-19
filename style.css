@@ -6519,3 +6519,105 @@ html.light-theme #playerDialog img[alt*="PC" i] {
   opacity: 1 !important;
   visibility: visible !important;
 }
+
+/* ==========================================================
+   v5.72 — Player EDIT form, LIGHT theme
+   Make remaining dark controls light.
+   ========================================================== */
+
+/* Platform options */
+html[data-site-theme="light"] #playerDialog .platform-option,
+html.light-theme #playerDialog .platform-option,
+body[data-site-theme="light"] #playerDialog .platform-option,
+body.light-theme #playerDialog .platform-option {
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d8c59c!important;
+  box-shadow:none!important;
+}
+html[data-site-theme="light"] #playerDialog .platform-option.active,
+html.light-theme #playerDialog .platform-option.active {
+  background:#fff2c8!important;
+  color:#8a6414!important;
+  border-color:#d2aa46!important;
+}
+
+/* Additional positions */
+html[data-site-theme="light"] #playerDialog .position-checks label,
+html.light-theme #playerDialog .position-checks label,
+body[data-site-theme="light"] #playerDialog .position-checks label,
+body.light-theme #playerDialog .position-checks label {
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d8c59c!important;
+}
+html[data-site-theme="light"] #playerDialog .position-checks label:has(input:checked),
+html.light-theme #playerDialog .position-checks label:has(input:checked) {
+  background:#fff2c8!important;
+  color:#8a6414!important;
+  border-color:#d2aa46!important;
+}
+
+/* Archetype / status main picker buttons */
+html[data-site-theme="light"] #playerDialog .archetype-picker-btn,
+html.light-theme #playerDialog .archetype-picker-btn,
+body[data-site-theme="light"] #playerDialog .archetype-picker-btn,
+body.light-theme #playerDialog .archetype-picker-btn,
+html[data-site-theme="light"] #playerDialog .status-picker-btn,
+html.light-theme #playerDialog .status-picker-btn,
+body[data-site-theme="light"] #playerDialog .status-picker-btn,
+body.light-theme #playerDialog .status-picker-btn {
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d8c59c!important;
+  box-shadow:none!important;
+}
+
+/* Picker dropdowns + options */
+html[data-site-theme="light"] #playerDialog .archetype-menu,
+html.light-theme #playerDialog .archetype-menu,
+html[data-site-theme="light"] #playerDialog .status-menu,
+html.light-theme #playerDialog .status-menu {
+  background:#fffaf1!important;
+  border-color:#d8c59c!important;
+}
+html[data-site-theme="light"] #playerDialog .archetype-option,
+html.light-theme #playerDialog .archetype-option,
+html[data-site-theme="light"] #playerDialog .status-option,
+html.light-theme #playerDialog .status-option {
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#e1d2b4!important;
+}
+
+/* Generic select/input surfaces in edit mode */
+html[data-site-theme="light"] #playerDialog #playerEditMode select,
+html.light-theme #playerDialog #playerEditMode select,
+html[data-site-theme="light"] #playerDialog #playerEditMode input:not([type="checkbox"]):not([type="file"]),
+html.light-theme #playerDialog #playerEditMode input:not([type="checkbox"]):not([type="file"]),
+html[data-site-theme="light"] #playerDialog #playerEditMode textarea,
+html.light-theme #playerDialog #playerEditMode textarea {
+  background:#fffdf8!important;
+  color:#28241e!important;
+  border-color:#d8c59c!important;
+}
+
+/* Keep Xbox artwork exactly as its source asset.
+   v5.71 applied a generic recolor; undo that for Xbox only. */
+html[data-site-theme="light"] #playerDialog img[src*="platform-xbox"],
+html.light-theme #playerDialog img[src*="platform-xbox"],
+body[data-site-theme="light"] #playerDialog img[src*="platform-xbox"],
+body.light-theme #playerDialog img[src*="platform-xbox"] {
+  filter:none!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+
+/* PC and PS5 remain contrast-adjusted for the light theme. */
+html[data-site-theme="light"] #playerDialog img[src*="platform-pc"],
+html.light-theme #playerDialog img[src*="platform-pc"],
+html[data-site-theme="light"] #playerDialog img[src*="platform-ps5"],
+html.light-theme #playerDialog img[src*="platform-ps5"] {
+  opacity:1!important;
+  visibility:visible!important;
+}
