@@ -6739,3 +6739,47 @@ html.light-theme #playerDialog #cardPreview.card-preview img{
 #playerDialog textarea{
   font-size:16px!important;
 }
+
+/* v5.76 — HOME: enlarge only MVP field; lock everything else */
+#screen-home .home-mvp-card{
+  width:min(96%,520px)!important;
+  max-width:520px!important;
+  min-height:150px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  transform:none!important;
+}
+#screen-home .home-mvp-photo{
+  width:118px!important;
+  min-width:118px!important;
+  height:132px!important;
+  transform:none!important;
+}
+#screen-home .home-mvp-photo img{
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  transform:none!important;
+  zoom:1!important;
+}
+/* no page/site scaling */
+html,body,#app,.app-shell,#screen-home{
+  zoom:1!important;
+  -webkit-text-size-adjust:100%!important;
+  text-size-adjust:100%!important;
+}
+/* remove spare top strip and prevent scrolling on the main screen */
+#screen-home{
+  margin-top:0!important;
+  padding-top:0!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  overflow:hidden!important;
+}
+#screen-home > :first-child{margin-top:0!important;}
+body:has(#screen-home.active),html:has(#screen-home.active){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
