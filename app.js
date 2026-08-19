@@ -379,7 +379,7 @@ async function refreshAuth(){
 
   if(authUser){
     const {data:profile}=await sb.from("profiles")
-      .select("user_id,display_name,avatar_url,role")
+      .select("user_id,display_name,avatar_url,role,player_id")
       .eq("user_id",authUser.id)
       .maybeSingle();
     authProfile=profile||null;
@@ -969,6 +969,9 @@ function openPlayerModal(id=null){
     editPlayerId=id;
     currentCardImage=p.cardImage||"";
     fillViewMode(p);
+    $("playerAwardsPane")?.classList.add("hidden");
+    $("playerViewSlider")?.classList.remove("hidden");
+    setTimeout(()=>renderAwardsIntoPlayerModalV589?.(p.id),0);
   }
   $("playerDialog").showModal();
   refreshEditOnlyVisibility();
@@ -2074,6 +2077,12 @@ function profileAvatarHtml(profile,extraClass=""){
   if(profile?.avatar_url){
     return `<span class="chat-avatar ${extraClass}"><img src="${profile.avatar_url}" alt=""></span>`;
   }
+  if(profile?.player_id){
+    const linked=players.find(x=>x.id===profile.player_id);
+    if(linked?.cardImage){
+      return `<span class="chat-avatar ${extraClass} linked-player-avatar"><img src="${linked.cardImage}" alt=""></span>`;
+    }
+  }
   return `<span class="chat-avatar chat-avatar-fallback ${extraClass}">${esc(initials(profile?.display_name))}</span>`;
 }
 
@@ -2083,7 +2092,7 @@ async function loadTeamProfiles(){
     return;
   }
   const {data,error}=await sb.from("profiles")
-    .select("user_id,display_name,avatar_url,role");
+    .select("user_id,display_name,avatar_url,role,player_id");
   if(error){
     console.error("Profiles load error",error);
     return;
@@ -2511,18 +2520,28 @@ function renderMembersList(){
 
   list.innerHTML=profiles.map(p=>{
     const online=onlineIds.has(p.user_id);
-    return `<div class="member-row">
+    const linked=!!(p.player_id && players.some(x=>x.id===p.player_id));
+    return `<div class="member-row ${linked?"has-linked-player":""}" data-member-user="${p.user_id}" ${linked?`data-member-player="${p.player_id}"`:""}>
       ${profileAvatarHtml(p,"member-avatar")}
       <div class="member-main">
-        <div class="member-nick">${esc(p.display_name||"Гравець")}</div>
+        ${linked
+          ? `<button type="button" class="member-nick member-player-link" data-open-member-player="${p.player_id}" data-viewer-allowed="true">${esc(p.display_name||"Гравець")}</button>`
+          : `<div class="member-nick">${esc(p.display_name||"Гравець")}</div>`}
         <div class="member-state ${online?"online":"offline"}">
           <span class="member-state-dot"></span>
-          ${online?"ОНЛАЙН":"ОФЛАЙН"}
+          ${online?"ОНЛАЙН":"ОФЛАЙН"}${linked?' · ГРАВЕЦЬ КОМАНДИ ✓':""}
         </div>
       </div>
       ${p.role==="admin"?`<span class="member-role admin">ADMIN</span>`:p.role==="editor"?`<span class="member-role">EDITOR</span>`:""}
     </div>`;
   }).join("");
+
+  list.querySelectorAll("[data-open-member-player]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const id=btn.dataset.openMemberPlayer;
+      if(id && players.some(p=>p.id===id))openPlayerModal(id);
+    });
+  });
 }
 
 function setChatSection(section){
@@ -5508,131 +5527,327 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 /* ==========================================================
-   v5.88 — account ↔ player, approval requests, awards
+   v5.89 — Visible account↔player system, approvals, awards
    ========================================================== */
-let playerAwardsV588=[];
-let playerRequestsV588=[];
+let accountProfilesV589=[];
+let playerChangeRequestsV589=[];
+let playerAwardsV589=[];
+let currentAwardsPlayerIdV589=null;
 
-function profileForPlayerV588(pid){return profiles?.find?.(p=>p.player_id===pid)||null}
-function linkedPlayerV588(){
-  const prof=profiles?.find?.(p=>p.user_id===authUser?.id);
-  return prof?.player_id ? players.find(p=>p.id===prof.player_id) : null;
+function isAdminV589(){ return authRole==="admin"; }
+function linkedPlayerForProfileV589(profile){
+  return profile?.player_id ? players.find(p=>p.id===profile.player_id)||null : null;
 }
-function effectiveAvatarV588(profile){
-  if(profile?.avatar_url)return profile.avatar_url;
-  if(profile?.player_id){
-    const p=players.find(x=>x.id===profile.player_id);
-    if(p?.cardImage||p?.card_image_url)return p.cardImage||p.card_image_url;
+function myLinkedPlayerV589(){ return linkedPlayerForProfileV589(authProfile); }
+
+async function loadPlayerAccountSystemV589(){
+  if(!sb||!authUser){
+    accountProfilesV589=[];playerChangeRequestsV589=[];playerAwardsV589=[];
+    renderPlayerAccountSettingsV589();return;
   }
-  return PLAYER_PLACEHOLDER;
+
+  const profileQuery=sb.from("profiles").select("user_id,display_name,avatar_url,role,player_id").order("display_name",{ascending:true});
+  const awardsQuery=sb.from("player_awards").select("*").order("award_date",{ascending:false});
+  const tasks=[profileQuery,awardsQuery];
+
+  if(isAdminV589() || authRole==="editor"){
+    tasks.push(sb.from("player_change_requests").select("*").order("created_at",{ascending:false}));
+  }else{
+    tasks.push(sb.from("player_change_requests").select("*").eq("user_id",authUser.id).order("created_at",{ascending:false}));
+  }
+
+  const [pr,aw,rq]=await Promise.all(tasks);
+  if(!pr.error)accountProfilesV589=pr.data||[];
+  if(!aw.error)playerAwardsV589=aw.data||[];
+  if(!rq.error)playerChangeRequestsV589=rq.data||[];
+  renderPlayerAccountSettingsV589();
+
+  // Keep chat profiles in sync with linked player IDs.
+  if(accountProfilesV589.length){
+    teamProfiles=new Map(accountProfilesV589.map(p=>[p.user_id,p]));
+    if($("membersList"))renderMembersList();
+  }
 }
 
-async function loadPlayerAccountDataV588(){
-  if(!sb||!authUser)return;
-  const [rq,aw]=await Promise.all([
-    sb.from("player_change_requests").select("*").order("created_at",{ascending:false}),
-    sb.from("player_awards").select("*").order("award_date",{ascending:false})
-  ]);
-  if(!rq.error)playerRequestsV588=rq.data||[];
-  if(!aw.error)playerAwardsV588=aw.data||[];
-  renderPlayerRequestBadgeV588();
+function renderPlayerAccountSettingsV589(){
+  const mine=$("myPlayerSettingsCard");
+  const links=$("adminPlayerLinksCard");
+  const requests=$("playerRequestsSettingsCard");
+  if(mine)mine.classList.toggle("hidden",!authUser);
+  if(links)links.classList.toggle("hidden",!isAdminV589());
+  if(requests)requests.classList.toggle("hidden",!(isAdminV589()||authRole==="editor"));
+
+  const myStatus=$("myPlayerLinkStatus");
+  if(myStatus && authUser){
+    const p=myLinkedPlayerV589();
+    myStatus.textContent=p?`Прив’язано: ${p.name}`:"Акаунт ще не прив’язаний до картки гравця.";
+  }
+
+  const count=playerChangeRequestsV589.filter(r=>r.status==="pending").length;
+  if($("playerRequestCountBadge"))$("playerRequestCountBadge").textContent=count?String(count):"";
+
+  if(isAdminV589())renderAdminPlayerLinksV589();
 }
-function renderPlayerRequestBadgeV588(){
-  const n=playerRequestsV588.filter(r=>r.status==="pending").length;
-  document.querySelectorAll("[data-player-request-count]").forEach(el=>el.textContent=n?String(n):"");
+
+function renderAdminPlayerLinksV589(){
+  const box=$("adminPlayerLinksList");if(!box)return;
+  if(!accountProfilesV589.length){
+    box.innerHTML='<div class="empty-state">Зареєстрованих акаунтів немає.</div>';return;
+  }
+  const opts=['<option value="">— НЕ ПРИВ’ЯЗАНО —</option>']
+    .concat(players.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`)).join("");
+  box.innerHTML=accountProfilesV589.map(p=>`
+    <div class="account-link-row">
+      <div class="account-link-user">
+        ${profileAvatarHtml(p,"member-avatar")}
+        <div><strong>${esc(p.display_name||"Гравець")}</strong><small>${esc(String(p.role||"viewer").toUpperCase())}</small></div>
+      </div>
+      <select data-link-account="${p.user_id}">${opts}</select>
+    </div>`).join("");
+  box.querySelectorAll("[data-link-account]").forEach(sel=>{
+    const prof=accountProfilesV589.find(p=>p.user_id===sel.dataset.linkAccount);
+    sel.value=prof?.player_id||"";
+    sel.addEventListener("change",()=>saveAccountPlayerLinkV589(sel.dataset.linkAccount,sel.value||null));
+  });
 }
-function awardsHtmlV588(pid){
-  const a=playerAwardsV588.filter(x=>x.player_id===pid);
-  return `<div class="player-awards-grid">${a.length?a.map(x=>`<div class="player-award"><b>${esc(x.icon||"🏅")}</b><strong>${esc(x.title)}</strong><span>${esc(x.award_date||"")}</span>${x.note?`<small>${esc(x.note)}</small>`:""}</div>`).join(""):'<div class="empty-state">Нагород поки немає</div>'}</div>`;
+
+async function saveAccountPlayerLinkV589(userId,playerId){
+  if(!isAdminV589())return;
+  // enforce one account ↔ one player in UI
+  if(playerId){
+    const other=accountProfilesV589.find(p=>p.player_id===playerId && p.user_id!==userId);
+    if(other){
+      showToast(`Цей гравець вже прив’язаний до ${other.display_name||"іншого акаунта"}`);
+      renderAdminPlayerLinksV589();return;
+    }
+  }
+  const {error}=await sb.from("profiles").update({player_id:playerId}).eq("user_id",userId);
+  if(error){console.error(error);showToast("Не вдалося змінити прив’язку");return;}
+  showToast(playerId?"Акаунт прив’язано":"Прив’язку видалено");
+  await refreshAuth();
+  await loadPlayerAccountSystemV589();
+  await loadTeamProfiles();
 }
-async function openMyPlayerV588(){
-  const p=linkedPlayerV588();
-  const box=$("linkedPlayerBody"); if(!box)return;
-  if(!p){box.innerHTML='<div class="empty-state"><strong>АКАУНТ ЩЕ НЕ ПРИВ’ЯЗАНИЙ</strong><span>Прив’язку до картки гравця виконує адміністратор.</span></div>'; $("linkedPlayerModal").classList.remove("hidden");return;}
-  const pending=playerRequestsV588.find(r=>r.player_id===p.id&&r.user_id===authUser.id&&r.status==="pending");
-  box.innerHTML=`<div class="linked-player-tabs"><button class="active" data-lptab="info">ІНФОРМАЦІЯ</button><button data-lptab="awards">НАГОРОДИ</button></div>
-  <div data-lppane="info">
-    <div class="linked-player-head"><img src="${p.cardImage||p.card_image_url||PLAYER_PLACEHOLDER}"><div><h3>${esc(p.name)}</h3><span>${esc(p.primary_position||"")} • #${p.shirt_number??"—"}</span></div></div>
-    ${pending?'<div class="pending-request">⏳ Є зміни, що очікують підтвердження</div>':""}
-    <form id="myPlayerEditForm" class="linked-player-form">
-      <label>Нік<input name="name" value="${esc(p.name||"")}"></label>
-      <label>Номер<input name="shirt_number" type="number" min="0" max="99" value="${p.shirt_number??""}"></label>
-      <label>Вік<input name="age" type="number" min="1" max="99" value="${p.age??""}"></label>
-      <label>Основна позиція<input name="primary_position" value="${esc(p.primary_position||"")}"></label>
-      <label>Додаткові позиції<input name="extra_positions" value="${esc((p.extra_positions||[]).join(", "))}"></label>
-      <label>Архетип<input name="archetype" value="${esc(p.archetype||"")}"></label>
-      <label>Платформа<input name="platform" value="${esc(p.platform||"")}"></label>
-      <label class="wide">Примітка<textarea name="note">${esc(p.note||"")}</textarea></label>
-      <label class="wide">URL картки / зображення<input name="card_image_url" value="${esc(p.cardImage||p.card_image_url||"")}"></label>
-      <button class="gold-btn wide" type="submit">НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ</button>
+
+function fieldLabelV589(k){
+  return ({
+    name:"Нік / ім’я",shirt_number:"Номер",age:"Вік",platform:"Платформа",
+    primary_position:"Основна позиція",extra_positions:"Додаткові позиції",
+    archetype:"Архетип",status:"Статус",note:"Примітка",card_image_url:"Картка"
+  })[k]||k;
+}
+
+function awardsForPlayerV589(pid){
+  return playerAwardsV589.filter(a=>a.player_id===pid);
+}
+function renderAwardsIntoPlayerModalV589(pid){
+  currentAwardsPlayerIdV589=pid;
+  const box=$("playerAwardsList");if(!box)return;
+  const rows=awardsForPlayerV589(pid);
+  box.innerHTML=rows.length?rows.map(a=>`
+    <div class="player-award-card">
+      <div class="player-award-icon">${esc(a.icon||"🏅")}</div>
+      <strong>${esc(a.title||"Нагорода")}</strong>
+      <span>${a.award_date?new Date(a.award_date+"T00:00:00").toLocaleDateString("uk-UA",{month:"long",year:"numeric"}):""}</span>
+      ${a.note?`<small>${esc(a.note)}</small>`:""}
+      ${(isAdminV589()||authRole==="editor")?`<button type="button" class="award-delete-btn" data-delete-award="${a.id}">ВИДАЛИТИ</button>`:""}
+    </div>`).join(""):'<div class="empty-state"><strong>НАГОРОД ПОКИ НЕМАЄ</strong></div>';
+  $("playerAwardAdminBox")?.classList.toggle("hidden",!(isAdminV589()||authRole==="editor"));
+  box.querySelectorAll("[data-delete-award]").forEach(btn=>btn.onclick=()=>deletePlayerAwardV589(btn.dataset.deleteAward));
+}
+
+function showPlayerAwardsV589(){
+  if(!editPlayerId)return;
+  $("playerViewSlider")?.classList.add("hidden");
+  $("playerAwardsPane")?.classList.remove("hidden");
+  document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
+  $("playerAwardsTab")?.classList.add("active");
+  renderAwardsIntoPlayerModalV589(editPlayerId);
+}
+function returnPlayerSlidesV589(slide=0){
+  $("playerAwardsPane")?.classList.add("hidden");
+  $("playerViewSlider")?.classList.remove("hidden");
+  document.querySelectorAll(".player-view-tab").forEach(b=>b.classList.remove("active"));
+  (slide===0?$("playerInfoTab"):$("playerStatsTab"))?.classList.add("active");
+  if(typeof playerViewSlide==="function")playerViewSlide(slide);
+}
+$("playerAwardsTab")?.addEventListener("click",showPlayerAwardsV589);
+$("playerInfoTab")?.addEventListener("click",()=>returnPlayerSlidesV589(0));
+$("playerStatsTab")?.addEventListener("click",()=>returnPlayerSlidesV589(1));
+
+async function addPlayerAwardV589(){
+  if(!(isAdminV589()||authRole==="editor")||!currentAwardsPlayerIdV589)return;
+  const title=$("awardTitleInput")?.value.trim();
+  const date=$("awardDateInput")?.value||new Date().toISOString().slice(0,10);
+  const icon=$("awardIconInput")?.value.trim()||"🏅";
+  const note=$("awardNoteInput")?.value.trim()||null;
+  if(!title){showToast("Введи назву нагороди");return;}
+  const {error}=await sb.from("player_awards").insert({
+    player_id:currentAwardsPlayerIdV589,title,award_date:date,icon,note,created_by:authUser.id
+  });
+  if(error){console.error(error);showToast("Не вдалося додати нагороду");return;}
+  $("awardTitleInput").value="";$("awardNoteInput").value="";
+  await loadPlayerAccountSystemV589();
+  renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
+  showToast("Нагороду додано");
+}
+async function deletePlayerAwardV589(id){
+  if(!(isAdminV589()||authRole==="editor"))return;
+  if(!confirm("Видалити цю нагороду?"))return;
+  const {error}=await sb.from("player_awards").delete().eq("id",id);
+  if(error){showToast("Не вдалося видалити нагороду");return;}
+  await loadPlayerAccountSystemV589();
+  renderAwardsIntoPlayerModalV589(currentAwardsPlayerIdV589);
+}
+$("addPlayerAwardBtn")?.addEventListener("click",addPlayerAwardV589);
+
+function openMyPlayerModalV589(){
+  const modal=$("myPlayerModal"),box=$("myPlayerModalBody");
+  if(!modal||!box)return;
+  const p=myLinkedPlayerV589();
+  if(!p){
+    box.innerHTML='<div class="empty-state"><strong>АКАУНТ ЩЕ НЕ ПРИВ’ЯЗАНИЙ</strong><span>Адміністратор має прив’язати твій акаунт до картки гравця.</span></div>';
+    modal.classList.remove("hidden");return;
+  }
+  const pending=playerChangeRequestsV589.some(r=>r.player_id===p.id&&r.user_id===authUser.id&&r.status==="pending");
+  const posOptions=POSITIONS.map(([v,l])=>`<option value="${v}" ${p.primaryPos===v?"selected":""}>${l}</option>`).join("");
+  const arcOptions=['<option value="">Без архетипу</option>'].concat(ARCHETYPES.map(a=>`<option ${p.archetype===a?"selected":""}>${a}</option>`)).join("");
+  const statOptions=PLAYER_STATUSES.map(([v,l])=>`<option value="${v}" ${p.status===v?"selected":""}>${l}</option>`).join("");
+  const platOptions=['<option value="">Не вибрано</option>'].concat(PLAYER_PLATFORMS.map(v=>`<option ${p.platform===v?"selected":""}>${v}</option>`)).join("");
+  box.innerHTML=`
+    <div class="my-player-summary"><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><div><strong>${esc(p.name)}</strong><span>${POS_LABEL[p.primaryPos]||p.primaryPos} · #${p.number||"—"}</span></div></div>
+    ${pending?'<div class="pending-request">⏳ Є запит, який очікує підтвердження.</div>':""}
+    <form id="myPlayerRequestForm" class="my-player-edit-grid">
+      <label>НІК / ІМ’Я<input name="name" value="${esc(p.name||"")}" required></label>
+      <label>НОМЕР<input name="shirt_number" type="number" min="0" max="99" value="${p.number??""}"></label>
+      <label>ВІК<input name="age" type="number" min="10" max="99" value="${p.age??""}"></label>
+      <label>ПЛАТФОРМА<select name="platform">${platOptions}</select></label>
+      <label>ОСНОВНА ПОЗИЦІЯ<select name="primary_position">${posOptions}</select></label>
+      <label>ДОДАТКОВІ ПОЗИЦІЇ<input name="extra_positions" value="${esc((p.extraPositions||[]).join(", "))}" placeholder="CB, RB"></label>
+      <label>АРХЕТИП<select name="archetype">${arcOptions}</select></label>
+      <label>СТАТУС<select name="status">${statOptions}</select></label>
+      <label class="wide">ПРИМІТКА<textarea name="note" maxlength="100">${esc(p.note||"")}</textarea></label>
+      <label class="wide">КАРТКА ГРАВЦЯ<input id="myPlayerCardFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+      <button type="submit" class="gold-btn wide">НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ</button>
     </form>
-  </div>
-  <div data-lppane="awards" class="hidden">${awardsHtmlV588(p.id)}</div>`;
-  $("linkedPlayerModal").classList.remove("hidden");
-  box.querySelectorAll("[data-lptab]").forEach(b=>b.onclick=()=>{
-    box.querySelectorAll("[data-lptab]").forEach(x=>x.classList.toggle("active",x===b));
-    box.querySelectorAll("[data-lppane]").forEach(x=>x.classList.toggle("hidden",x.dataset.lppane!==b.dataset.lptab));
-  });
-  $("myPlayerEditForm")?.addEventListener("submit",async e=>{
-    e.preventDefault();
-    const fd=new FormData(e.currentTarget);
-    const proposed={
-      name:String(fd.get("name")||"").trim(),
-      shirt_number:fd.get("shirt_number")===""?null:Number(fd.get("shirt_number")),
-      age:fd.get("age")===""?null:Number(fd.get("age")),
-      primary_position:String(fd.get("primary_position")||"").trim(),
-      extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim()).filter(Boolean).slice(0,3),
-      archetype:String(fd.get("archetype")||"").trim()||null,
-      platform:String(fd.get("platform")||"").trim()||null,
-      note:String(fd.get("note")||"").trim()||null,
-      card_image_url:String(fd.get("card_image_url")||"").trim()||null
-    };
-    const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
-    if(error)return alert("Не вдалося надіслати зміни: "+error.message);
-    await loadPlayerAccountDataV588(); openMyPlayerV588();
-  });
+    <div class="my-player-awards-title">🏅 НАГОРОДИ</div>
+    <div class="player-awards-grid">${awardsForPlayerV589(p.id).length?awardsForPlayerV589(p.id).map(a=>`<div class="player-award-card"><div class="player-award-icon">${esc(a.icon||"🏅")}</div><strong>${esc(a.title)}</strong><span>${esc(a.award_date||"")}</span></div>`).join(""):'<div class="empty-state">Нагород поки немає.</div>'}</div>`;
+  modal.classList.remove("hidden");
+
+  $("myPlayerRequestForm")?.addEventListener("submit",submitMyPlayerRequestV589);
 }
-async function linkAccountToPlayerV588(userId,playerId){
-  if(!canEditSite())return;
-  const {error}=await sb.from("profiles").update({player_id:playerId||null}).eq("user_id",userId);
-  if(error)alert(error.message); else await loadProfiles?.();
-}
-async function reviewPlayerRequestV588(id,approve){
-  if(!canEditSite())return;
-  const r=playerRequestsV588.find(x=>x.id===id);if(!r)return;
-  if(approve){
-    const d={...r.proposed_data,updated_at:new Date().toISOString()};
-    const {error}=await sb.from("players").update(d).eq("id",r.player_id);
-    if(error)return alert(error.message);
+
+async function submitMyPlayerRequestV589(e){
+  e.preventDefault();
+  const p=myLinkedPlayerV589();if(!p)return;
+  const fd=new FormData(e.currentTarget);
+  let cardUrl=p.cardImage||null;
+  const file=$("myPlayerCardFile")?.files?.[0];
+  if(file){
+    try{
+      const data=await resizeImage(file,500,760,.86);
+      cardUrl=await uploadDataImage(`player-requests/${authUser.id}-${Date.now()}.png`,data);
+    }catch(err){showToast("Не вдалося завантажити картку");return;}
   }
-  await sb.from("player_change_requests").update({status:approve?"approved":"rejected",reviewed_by:authUser.id,reviewed_at:new Date().toISOString()}).eq("id",id);
-  await Promise.all([loadPlayers?.(),loadPlayerAccountDataV588()]);
-  openPlayerRequestsV588();
+  const rawStatus=String(fd.get("status")||"");
+  const proposed={
+    name:String(fd.get("name")||"").trim(),
+    shirt_number:fd.get("shirt_number")===""?null:Number(fd.get("shirt_number")),
+    age:fd.get("age")===""?null:Number(fd.get("age")),
+    platform:String(fd.get("platform")||"")||null,
+    primary_position:String(fd.get("primary_position")||""),
+    extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean).slice(0,3),
+    archetype:String(fd.get("archetype")||"")||null,
+    status:rawStatus,
+    note:String(fd.get("note")||"").trim(),
+    card_image_url:cardUrl
+  };
+  const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
+  if(error){console.error(error);showToast("Не вдалося надіслати зміни");return;}
+  showToast("Зміни надіслано адміністратору");
+  await loadPlayerAccountSystemV589();
+  openMyPlayerModalV589();
 }
-function openPlayerRequestsV588(){
+
+function closeMyPlayerModalV589(){$("myPlayerModal")?.classList.add("hidden")}
+$("openMyPlayerBtn")?.addEventListener("click",openMyPlayerModalV589);
+$("closeMyPlayerModal")?.addEventListener("click",closeMyPlayerModalV589);
+document.querySelectorAll("[data-close-my-player]").forEach(x=>x.addEventListener("click",closeMyPlayerModalV589));
+
+function renderPlayerRequestsV589(){
   const box=$("playerRequestsBody");if(!box)return;
-  const rows=playerRequestsV588.filter(r=>r.status==="pending");
-  box.innerHTML=rows.length?rows.map(r=>{
+  const rows=playerChangeRequestsV589.filter(r=>r.status==="pending");
+  if(!rows.length){box.innerHTML='<div class="empty-state"><strong>НОВИХ ЗАПИТІВ НЕМАЄ</strong></div>';return;}
+  box.innerHTML=rows.map(r=>{
     const p=players.find(x=>x.id===r.player_id);
-    const changes=Object.entries(r.proposed_data||{}).map(([k,v])=>`<div><span>${esc(k)}</span><b>${esc(Array.isArray(v)?v.join(", "):String(v??"—"))}</b></div>`).join("");
-    return `<div class="change-request-card"><h3>${esc(p?.name||"Гравець")}</h3><div class="request-changes">${changes}</div><div class="request-actions"><button onclick="reviewPlayerRequestV588('${r.id}',true)" class="gold-btn">ПІДТВЕРДИТИ</button><button onclick="reviewPlayerRequestV588('${r.id}',false)" class="dark-btn">ВІДХИЛИТИ</button></div></div>`;
-  }).join(""):'<div class="empty-state">Нових запитів немає</div>';
-  $("playerRequestsModal").classList.remove("hidden");
+    const prof=accountProfilesV589.find(x=>x.user_id===r.user_id);
+    const d=r.proposed_data||{};
+    const diffs=Object.entries(d).map(([k,v])=>{
+      let oldv="";
+      if(k==="name")oldv=p?.name;
+      else if(k==="shirt_number")oldv=p?.number;
+      else if(k==="age")oldv=p?.age;
+      else if(k==="platform")oldv=p?.platform;
+      else if(k==="primary_position")oldv=p?.primaryPos;
+      else if(k==="extra_positions")oldv=(p?.extraPositions||[]).join(", ");
+      else if(k==="archetype")oldv=p?.archetype;
+      else if(k==="status")oldv=p?.status;
+      else if(k==="note")oldv=p?.note;
+      else if(k==="card_image_url")oldv=p?.cardImage?"Поточна картка":"Немає";
+      const nv=Array.isArray(v)?v.join(", "):(k==="card_image_url"?(v?"Нова картка":"Немає"):String(v??"—"));
+      return `<div class="request-diff"><span>${fieldLabelV589(k)}</span><small>${esc(String(oldv??"—"))}</small><b>→ ${esc(nv)}</b></div>`;
+    }).join("");
+    return `<div class="player-request-card">
+      <div class="request-head"><strong>${esc(prof?.display_name||p?.name||"Гравець")}</strong><span>${new Date(r.created_at).toLocaleString("uk-UA")}</span></div>
+      ${diffs}
+      <div class="request-actions"><button class="gold-btn" data-approve-request="${r.id}">ПІДТВЕРДИТИ</button><button class="danger-btn" data-reject-request="${r.id}">ВІДХИЛИТИ</button></div>
+    </div>`;
+  }).join("");
+  box.querySelectorAll("[data-approve-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.approveRequest,true));
+  box.querySelectorAll("[data-reject-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.rejectRequest,false));
 }
-async function addPlayerAwardV588(playerId,title,date,note="",icon="🏅"){
-  if(!canEditSite())return;
-  const {error}=await sb.from("player_awards").insert({player_id:playerId,title,award_date:date||new Date().toISOString().slice(0,10),note:note||null,icon:icon||"🏅",created_by:authUser.id});
-  if(error)alert(error.message);else await loadPlayerAccountDataV588();
+function openPlayerRequestsV589(){renderPlayerRequestsV589();$("playerRequestsModal")?.classList.remove("hidden")}
+$("openPlayerRequestsBtn")?.addEventListener("click",openPlayerRequestsV589);
+$("closePlayerRequestsModal")?.addEventListener("click",()=>$("playerRequestsModal")?.classList.add("hidden"));
+document.querySelectorAll("[data-close-player-requests]").forEach(x=>x.addEventListener("click",()=>$("playerRequestsModal")?.classList.add("hidden")));
+
+async function reviewPlayerRequestV589(id,approve){
+  if(!(isAdminV589()||authRole==="editor"))return;
+  const r=playerChangeRequestsV589.find(x=>x.id===id);if(!r)return;
+  if(approve){
+    const d=r.proposed_data||{};
+    const note=encodePlayerNote(d.status||"",d.note||"");
+    const payload={
+      name:d.name,
+      shirt_number:d.shirt_number,
+      age:d.age,
+      platform:d.platform,
+      primary_position:d.primary_position,
+      extra_positions:d.extra_positions||[],
+      archetype:d.archetype,
+      note:note||null,
+      card_image_url:d.card_image_url||null,
+      updated_at:new Date().toISOString()
+    };
+    const {error}=await sb.from("players").update(payload).eq("id",r.player_id);
+    if(error){console.error(error);showToast("Не вдалося застосувати зміни");return;}
+  }
+  const {error}=await sb.from("player_change_requests").update({
+    status:approve?"approved":"rejected",reviewed_by:authUser.id,reviewed_at:new Date().toISOString()
+  }).eq("id",id);
+  if(error){showToast("Не вдалося закрити запит");return;}
+  players=await getAll("players");
+  renderPlayers();renderPitch();
+  await loadPlayerAccountSystemV589();
+  renderPlayerRequestsV589();
+  showToast(approve?"Зміни підтверджено":"Зміни відхилено");
 }
-$("closeLinkedPlayer")?.addEventListener("click",()=>$("linkedPlayerModal").classList.add("hidden"));
-$("closePlayerRequests")?.addEventListener("click",()=>$("playerRequestsModal").classList.add("hidden"));
-document.addEventListener("DOMContentLoaded",()=>setTimeout(loadPlayerAccountDataV588,800));
 
-/* expose helpers for existing settings/admin UI integration */
-window.openMyPlayerV588=openMyPlayerV588;
-window.openPlayerRequestsV588=openPlayerRequestsV588;
-window.linkAccountToPlayerV588=linkAccountToPlayerV588;
-window.addPlayerAwardV588=addPlayerAwardV588;
+// Refresh visible system after normal auth finishes.
+document.addEventListener("DOMContentLoaded",()=>setTimeout(loadPlayerAccountSystemV589,1200));
+window.addEventListener("load",()=>setTimeout(loadPlayerAccountSystemV589,700));
 
-/* v5.88 — settings version */
-document.addEventListener("DOMContentLoaded",()=>document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.88"));
+/* v5.89 — settings version */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v5.89");
+});

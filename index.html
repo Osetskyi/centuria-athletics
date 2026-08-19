@@ -15,7 +15,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=5.88">
+<link rel="stylesheet" href="style.css?v=5.89">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#090909">
@@ -521,6 +521,26 @@
       </label>
     </div>
 
+
+    <div id="myPlayerSettingsCard" class="settings-card player-account-card hidden">
+      <h2>👤 МІЙ ГРАВЕЦЬ</h2>
+      <p class="settings-hint">Переглядай свою картку, статистику та нагороди. Зміни даних надсилаються адміністратору на підтвердження.</p>
+      <button type="button" id="openMyPlayerBtn" class="gold-btn" data-viewer-allowed="true">ВІДКРИТИ МОГО ГРАВЦЯ</button>
+      <div id="myPlayerLinkStatus" class="settings-hint"></div>
+    </div>
+
+    <div id="adminPlayerLinksCard" class="settings-card player-account-card hidden">
+      <h2>🔗 ПРИВ’ЯЗКА ГРАВЦІВ</h2>
+      <p class="settings-hint">Прив’яжи зареєстрований акаунт до картки гравця. Один акаунт — один гравець.</p>
+      <div id="adminPlayerLinksList" class="account-link-list"></div>
+    </div>
+
+    <div id="playerRequestsSettingsCard" class="settings-card player-account-card hidden">
+      <h2>📥 ЗАПИТИ НА ЗМІНИ <span id="playerRequestCountBadge" class="request-count-badge"></span></h2>
+      <p class="settings-hint">Перевір зміни, які гравці запропонували для своїх карток.</p>
+      <button type="button" id="openPlayerRequestsBtn" class="gold-btn">ВІДКРИТИ ЗАПИТИ</button>
+    </div>
+
     <div class="settings-card danger-zone">
       <h2>ДАНІ</h2>
       <button type="button" id="clearPlayersBtn" class="danger-btn">ОЧИСТИТИ ВСІХ ГРАВЦІВ</button>
@@ -530,7 +550,7 @@
     <div class="settings-card author">
       <span>АВТОР</span>
       <strong>Daniil Osetskyi</strong>
-<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.88</strong></div>
+<div class="settings-version" data-viewer-allowed="true">Версія <strong>v5.89</strong></div>
     </div>
   </section>
 
@@ -564,6 +584,7 @@
       <div class="player-view-tabs">
         <button type="button" id="playerInfoTab" class="player-view-tab active" data-viewer-allowed="true">ІНФОРМАЦІЯ</button>
         <button type="button" id="playerStatsTab" class="player-view-tab" data-viewer-allowed="true">СТАТИСТИКА ›</button>
+        <button type="button" id="playerAwardsTab" class="player-view-tab" data-viewer-allowed="true">НАГОРОДИ 🏅</button>
       </div>
       <div id="playerViewSlider" class="player-view-slider">
         <div id="playerInfoSlide" class="player-view-slide">
@@ -613,6 +634,20 @@
           </div>
         </div>
       </div>
+
+          <div id="playerAwardsPane" class="player-awards-pane hidden">
+            <div id="playerAwardsList" class="player-awards-grid"></div>
+            <div id="playerAwardAdminBox" class="player-award-admin hidden">
+              <h3>ДОДАТИ НАГОРОДУ</h3>
+              <div class="award-admin-grid">
+                <input id="awardTitleInput" type="text" maxlength="80" placeholder="Напр. Гравець місяця">
+                <input id="awardDateInput" type="date">
+                <input id="awardIconInput" type="text" maxlength="4" value="🏅" placeholder="🏅">
+                <input id="awardNoteInput" type="text" maxlength="120" placeholder="Примітка">
+              </div>
+              <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
+            </div>
+          </div>
 
           <div class="modal-actions">
             <button type="button" id="viewDeletePlayerBtn" class="danger-btn">ВИДАЛИТИ</button>
@@ -762,6 +797,27 @@
     <img id="savedImageView" alt="Збережений склад">
   </div>
 </dialog>
+
+
+<div id="myPlayerModal" class="auth-overlay hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-my-player></div>
+  <div class="modal-card my-player-modal-card">
+    <button id="closeMyPlayerModal" class="modal-close" type="button">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2>МІЙ ГРАВЕЦЬ</h2>
+    <div id="myPlayerModalBody"></div>
+  </div>
+</div>
+
+<div id="playerRequestsModal" class="auth-overlay hidden" role="dialog" aria-modal="true">
+  <div class="modal-backdrop" data-close-player-requests></div>
+  <div class="modal-card player-requests-modal-card">
+    <button id="closePlayerRequestsModal" class="modal-close" type="button">✕</button>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h2>ЗАПИТИ НА ЗМІНИ</h2>
+    <div id="playerRequestsBody"></div>
+  </div>
+</div>
 
 <button id="musicStartBtn" class="music-start hidden" type="button">▶ УВІМКНУТИ МУЗИКУ</button>
 
@@ -1108,7 +1164,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=5.88"></script>
+<script src="app.js?v=5.89"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
@@ -1118,18 +1174,5 @@
   </div>
 </div>
 
-
-<div id="linkedPlayerModal" class="modal-backdrop hidden">
-  <div class="modal linked-player-modal">
-    <div class="modal-head"><div><div class="brand-small">CENTURIA ATHLETICS</div><h2>МІЙ ГРАВЕЦЬ</h2></div><button id="closeLinkedPlayer" class="icon-btn">✕</button></div>
-    <div id="linkedPlayerBody"></div>
-  </div>
-</div>
-<div id="playerRequestsModal" class="modal-backdrop hidden">
-  <div class="modal linked-player-modal">
-    <div class="modal-head"><div><div class="brand-small">CENTURIA ATHLETICS</div><h2>ЗАПИТИ НА ЗМІНИ</h2></div><button id="closePlayerRequests" class="icon-btn">✕</button></div>
-    <div id="playerRequestsBody"></div>
-  </div>
-</div>
 </body>
 </html>
