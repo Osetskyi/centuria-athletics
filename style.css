@@ -9081,3 +9081,170 @@ body.light .main-screen{
     min-height:0!important;
   }
 }
+
+
+/* ==========================================================
+   v6.29 — PRIVATE SITE ACCESS
+   ========================================================== */
+.site-access-gate{
+  position:fixed;
+  inset:0;
+  z-index:10000;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:
+    max(22px,env(safe-area-inset-top))
+    18px
+    max(22px,env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 20%,rgba(157,35,40,.22),transparent 34%),
+    linear-gradient(180deg,#090909,#030303);
+  overflow:hidden;
+}
+.site-access-gate.hidden{display:none!important}
+.site-access-panel{
+  width:min(440px,100%);
+  border:1px solid rgba(214,176,94,.42);
+  border-radius:22px;
+  padding:28px 22px 24px;
+  text-align:center;
+  background:linear-gradient(180deg,rgba(25,21,17,.98),rgba(9,9,10,.98));
+  box-shadow:0 24px 80px rgba(0,0,0,.58);
+}
+.site-access-logo{
+  width:70px;height:70px;
+  margin:0 auto 17px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  border:1px solid rgba(226,189,112,.75);
+  color:#efd17f;
+  font-weight:1000;
+  font-size:25px;
+  letter-spacing:.06em;
+  box-shadow:0 0 30px rgba(226,189,112,.12);
+}
+.site-access-panel h1{
+  margin:7px 0 10px;
+  color:#f0dfb5;
+  font-size:24px;
+  letter-spacing:.035em;
+}
+.site-access-panel p{
+  margin:0 auto;
+  max-width:340px;
+  color:#b6aa98;
+  font-size:13px;
+  line-height:1.55;
+}
+.site-access-user{
+  margin:17px auto 0;
+  width:max-content;
+  max-width:100%;
+  padding:8px 12px;
+  border:1px solid rgba(226,189,112,.18);
+  border-radius:999px;
+  color:#ead6a5;
+  background:rgba(255,255,255,.035);
+  font-weight:850;
+  font-size:12px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.site-access-actions{
+  margin-top:22px;
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.site-access-actions button{width:100%;min-height:44px}
+body.site-access-locked{
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+.site-access-admin-list{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+.site-access-member{
+  border:1px solid rgba(226,189,112,.13);
+  border-radius:12px;
+  padding:10px;
+  background:rgba(0,0,0,.20);
+}
+.site-access-member.pending{border-color:rgba(230,181,70,.28)}
+.site-access-member.blocked{border-color:rgba(189,64,64,.30)}
+.site-access-member-main{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+.site-access-member-info{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  text-align:left;
+}
+.site-access-member-info strong{
+  color:#eee5d8;
+  font-size:12px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.site-access-member-info small{
+  color:#81786d;
+  font-size:8px;
+}
+.site-access-status{
+  flex:0 0 auto;
+  padding:5px 7px;
+  border-radius:999px;
+  font-size:7px;
+  font-weight:1000;
+  border:1px solid rgba(255,255,255,.10);
+}
+.site-access-status.approved{color:#a9d9ad;border-color:rgba(94,173,105,.32)}
+.site-access-status.pending{color:#efd078;border-color:rgba(226,189,112,.32)}
+.site-access-status.blocked{color:#e59b9b;border-color:rgba(196,78,78,.34)}
+.site-access-member-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:9px;
+}
+.site-access-member-actions .compact{
+  min-height:31px;
+  padding:6px 9px;
+  font-size:8px;
+}
+.site-access-self{
+  color:#c9b27c;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+html[data-site-theme="light"] .site-access-gate,
+html.light-theme .site-access-gate{
+  background:
+    radial-gradient(circle at 50% 20%,rgba(205,174,112,.18),transparent 34%),
+    linear-gradient(180deg,#fffdf8,#f1eadf);
+}
+html[data-site-theme="light"] .site-access-panel,
+html.light-theme .site-access-panel{
+  background:rgba(255,255,255,.96);
+  border-color:rgba(171,131,61,.28);
+  box-shadow:0 24px 70px rgba(85,61,25,.14);
+}
+html[data-site-theme="light"] .site-access-panel h1,
+html.light-theme .site-access-panel h1{color:#3a3024}
+html[data-site-theme="light"] .site-access-panel p,
+html.light-theme .site-access-panel p{color:#6d6255}
+html[data-site-theme="light"] .site-access-user,
+html.light-theme .site-access-user{color:#6a5128;background:#faf6ee}

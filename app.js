@@ -251,6 +251,8 @@ async function sendPushEvent(type,title,body){
 let authUser = null;
 let authRole = "viewer";
 let authProfile = null;
+let authAccessStatus = "guest";
+let adminSiteAccessProfilesV629 = [];
 let teamProfiles = new Map();
 let chatMessages = [];
 let chatAttachment = null;
@@ -369,6 +371,197 @@ function refreshTacticalBoardPermissions(){
   if(hint && !editable)hint.textContent="Режим перегляду. Редагування доступне admin/editor.";
 }
 
+
+function currentHasSiteAccessV629(){
+  return !!authUser && (authRole==="admin" || authAccessStatus==="approved");
+}
+
+function renderSiteAccessGateV629(){
+  const gate=$("siteAccessGate");
+  if(!gate)return;
+
+  const allowed=currentHasSiteAccessV629();
+  gate.classList.toggle("hidden",allowed);
+  document.body.classList.toggle("site-access-locked",!allowed);
+
+  const title=$("siteAccessTitle");
+  const text=$("siteAccessText");
+  const user=$("siteAccessUser");
+  const login=$("siteAccessLoginBtn");
+  const check=$("siteAccessCheckBtn");
+  const logout=$("siteAccessLogoutBtn");
+
+  if(allowed)return;
+
+  if(!authUser){
+    if(title)title.textContent="ЗАКРИТИЙ ДОСТУП";
+    if(text)text.textContent="Цей сайт доступний тільки учасникам, яких підтвердив адміністратор.";
+    if(user){user.textContent="";user.classList.add("hidden");}
+    login?.classList.remove("hidden");
+    check?.classList.add("hidden");
+    logout?.classList.add("hidden");
+    return;
+  }
+
+  const nick=authProfile?.display_name || authUser.email || "Користувач";
+  if(user){
+    user.textContent=nick;
+    user.classList.remove("hidden");
+  }
+  login?.classList.add("hidden");
+  check?.classList.remove("hidden");
+  logout?.classList.remove("hidden");
+
+  if(authAccessStatus==="blocked"){
+    if(title)title.textContent="ДОСТУП ЗАБЛОКОВАНО";
+    if(text)text.textContent="Адміністратор закрив доступ цьому акаунту. Якщо це помилка — звернись до адміністратора.";
+  }else{
+    if(title)title.textContent="ОЧІКУЄ ПІДТВЕРДЖЕННЯ";
+    if(text)text.textContent="Акаунт створено. ADMIN має дозволити доступ до сайту.";
+  }
+}
+
+async function refreshSiteAccessOnlyV629(){
+  if(!sb||!authUser)return;
+  const {data,error}=await sb.from("profiles")
+    .select("user_id,display_name,role,player_id,access_status")
+    .eq("user_id",authUser.id)
+    .maybeSingle();
+  if(error)return;
+  const previous=authAccessStatus;
+  authProfile=data||authProfile;
+  if(data?.role)authRole=data.role;
+  authAccessStatus=data?.access_status||"pending";
+  renderSiteAccessGateV629();
+
+  if(previous!==authAccessStatus){
+    if(currentHasSiteAccessV629()){
+      await refreshAuth();
+      showToast("Доступ до сайту дозволено");
+    }else if(authAccessStatus==="blocked"){
+      try{ await stopChatPresence(); }catch(_e){}
+    }
+  }
+}
+
+async function loadAdminSiteAccessV629(){
+  const card=$("adminSiteAccessCard");
+  if(card)card.classList.toggle("hidden",authRole!=="admin");
+  if(!sb||!authUser||authRole!=="admin"){
+    adminSiteAccessProfilesV629=[];
+    return;
+  }
+
+  const {data,error}=await sb.from("profiles")
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
+    .order("created_at",{ascending:false});
+  if(error){
+    console.error("Access profiles load",error);
+    return;
+  }
+  adminSiteAccessProfilesV629=data||[];
+  renderAdminSiteAccessV629();
+}
+
+function accessStatusLabelV629(status){
+  if(status==="approved")return "ДОЗВОЛЕНО";
+  if(status==="blocked")return "ЗАБЛОКОВАНО";
+  return "ОЧІКУЄ";
+}
+
+function renderAdminSiteAccessV629(){
+  const box=$("adminSiteAccessList");
+  const badge=$("siteAccessPendingBadge");
+  if(!box)return;
+
+  const list=[...adminSiteAccessProfilesV629].sort((a,b)=>{
+    const order={pending:0,blocked:1,approved:2};
+    return (order[a.access_status]??3)-(order[b.access_status]??3) ||
+      String(a.display_name||"").localeCompare(String(b.display_name||""),"uk");
+  });
+
+  const pending=list.filter(p=>p.access_status==="pending").length;
+  if(badge)badge.textContent=pending?String(pending):"";
+
+  if(!list.length){
+    box.innerHTML='<div class="empty-state">Акаунтів немає.</div>';
+    return;
+  }
+
+  box.innerHTML=list.map(p=>{
+    const self=p.user_id===authUser?.id;
+    const isAdmin=p.role==="admin";
+    const status=p.access_status||"pending";
+    const player=p.player_id ? players.find(x=>x.id===p.player_id) : null;
+
+    return `<div class="site-access-member ${status}">
+      <div class="site-access-member-main">
+        ${profileAvatarHtml(p,"member-avatar")}
+        <div class="site-access-member-info">
+          <strong>${esc(p.display_name||"Гравець")}</strong>
+          <small>${esc(String(p.role||"viewer").toUpperCase())}${player?` · ${esc(player.name)}`:""}</small>
+        </div>
+        <span class="site-access-status ${status}">${accessStatusLabelV629(status)}</span>
+      </div>
+      <div class="site-access-member-actions">
+        ${self||isAdmin
+          ? `<span class="site-access-self">ГОЛОВНИЙ ADMIN</span>`
+          : `
+            ${status!=="approved"?`<button type="button" class="gold-btn compact" data-access-approve="${p.user_id}">ДОЗВОЛИТИ</button>`:""}
+            ${status!=="blocked"?`<button type="button" class="dark-btn compact" data-access-block="${p.user_id}">ЗАБЛОКУВАТИ</button>`:""}
+            <button type="button" class="danger-btn compact" data-access-delete="${p.user_id}">ВИДАЛИТИ</button>
+          `}
+      </div>
+    </div>`;
+  }).join("");
+
+  box.querySelectorAll("[data-access-approve]").forEach(btn=>{
+    btn.addEventListener("click",()=>setMemberAccessV629(btn.dataset.accessApprove,"approved"));
+  });
+  box.querySelectorAll("[data-access-block]").forEach(btn=>{
+    btn.addEventListener("click",()=>setMemberAccessV629(btn.dataset.accessBlock,"blocked"));
+  });
+  box.querySelectorAll("[data-access-delete]").forEach(btn=>{
+    btn.addEventListener("click",()=>deleteMemberAccountV629(btn.dataset.accessDelete));
+  });
+}
+
+async function setMemberAccessV629(userId,status){
+  if(!sb||authRole!=="admin")return;
+  const p=adminSiteAccessProfilesV629.find(x=>x.user_id===userId);
+  const verb=status==="approved"?"дозволити доступ":"заблокувати доступ";
+  if(!confirm(`${verb.charAt(0).toUpperCase()+verb.slice(1)} для ${p?.display_name||"цього акаунта"}?`))return;
+
+  const {error}=await sb.rpc("admin_set_member_access",{target_user:userId,new_status:status});
+  if(error){
+    console.error(error);
+    alert("Не вдалося змінити доступ: "+error.message);
+    return;
+  }
+  showToast(status==="approved"?"Доступ дозволено":"Доступ заблоковано");
+  await loadAdminSiteAccessV629();
+  await loadTeamProfiles();
+  renderMembersList();
+}
+
+async function deleteMemberAccountV629(userId){
+  if(!sb||authRole!=="admin")return;
+  const p=adminSiteAccessProfilesV629.find(x=>x.user_id===userId);
+  const name=p?.display_name||"цей акаунт";
+  if(!confirm(`Повністю видалити ${name} із сайту?\n\nАкаунт, його повідомлення, голосування та прив’язки буде видалено. Цю дію не можна скасувати.`))return;
+
+  const {error}=await sb.rpc("admin_delete_member",{target_user:userId});
+  if(error){
+    console.error(error);
+    alert("Не вдалося видалити акаунт: "+error.message);
+    return;
+  }
+  showToast("Акаунт видалено");
+  await loadAdminSiteAccessV629();
+  await loadTeamProfiles();
+  renderMembersList();
+}
+
 async function refreshAuth(){
   if(!sb){
     applyPermissions();
@@ -381,13 +574,26 @@ async function refreshAuth(){
 
   if(authUser){
     const {data:profile}=await sb.from("profiles")
-      .select("user_id,display_name,avatar_url,role,player_id")
+      .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
       .eq("user_id",authUser.id)
       .maybeSingle();
     authProfile=profile||null;
     if(profile?.role) authRole=profile.role;
+    authAccessStatus=profile?.access_status||"pending";
+  }else{
+    authAccessStatus="guest";
   }
+
+  renderSiteAccessGateV629();
   applyPermissions();
+
+  if(!currentHasSiteAccessV629()){
+    try{ await stopChatPresence(); }catch(_e){}
+    if(authRole==="admin")await loadAdminSiteAccessV629();
+    return;
+  }
+
+  if(authRole==="admin")await loadAdminSiteAccessV629();
   await refreshPushSettings();
   await refreshChatAuthState();
   await refreshGatheringsAuthState();
@@ -2319,7 +2525,7 @@ async function loadTeamProfiles(){
     return;
   }
   const {data,error}=await sb.from("profiles")
-    .select("user_id,display_name,avatar_url,role,player_id");
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at");
   if(error){
     console.error("Profiles load error",error);
     return;
@@ -2732,7 +2938,7 @@ function renderMembersList(){
   if(!list)return;
 
   const profiles=[...teamProfiles.values()]
-    .filter(p=>p?.user_id)
+    .filter(p=>p?.user_id && (p.access_status==="approved" || p.role==="admin"))
     .sort((a,b)=>(a.display_name||"").localeCompare(b.display_name||"","uk"));
 
   const onlineIds=getOnlineUserIds();
@@ -4721,10 +4927,10 @@ $("signUpBtn")?.addEventListener("click",async()=>{
   }
   if(data?.session){
     await refreshAuth();
-    authStatus.textContent="Акаунт створено.";
+    authStatus.textContent="Акаунт створено. Очікуй підтвердження ADMIN.";
     setTimeout(closeAuthModal,350);
   }else{
-    authStatus.textContent="Акаунт створено. Перевір пошту для підтвердження.";
+    authStatus.textContent="Акаунт створено. Підтвердь пошту, потім ADMIN має дозволити доступ.";
   }
 });
 
@@ -5773,7 +5979,7 @@ async function loadPlayerAccountSystemV589(){
     renderPlayerAccountSettingsV589();return;
   }
 
-  const profileQuery=sb.from("profiles").select("user_id,display_name,avatar_url,role,player_id").order("display_name",{ascending:true});
+  const profileQuery=sb.from("profiles").select("user_id,display_name,avatar_url,role,player_id,access_status,created_at").order("display_name",{ascending:true});
   const awardsQuery=sb.from("player_awards").select("*").order("award_date",{ascending:false});
   const tasks=[profileQuery,awardsQuery];
 
@@ -6126,7 +6332,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 async function getAccountProfilesV590(){
   if(!sb||!authUser)return [];
   const {data,error}=await sb.from("profiles")
-    .select("user_id,display_name,avatar_url,role,player_id")
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
     .order("display_name",{ascending:true});
   if(error){
     console.error("v5.90 profiles",error);
@@ -6198,7 +6404,7 @@ async function savePlayerAccountLinkV590(playerId,userId){
     const {data:linked,error:linkError}=await sb.from("profiles")
       .update({player_id:playerId})
       .eq("user_id",userId)
-      .select("user_id,display_name,role,player_id")
+      .select("user_id,display_name,role,player_id,access_status")
       .maybeSingle();
 
     if(linkError){
@@ -6349,4 +6555,26 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.28");
+});
+
+
+/* ==========================================================
+   v6.29 — private site gate events
+   ========================================================== */
+$("siteAccessLoginBtn")?.addEventListener("click",()=>openAuthModal());
+$("siteAccessCheckBtn")?.addEventListener("click",async()=>{
+  await refreshSiteAccessOnlyV629();
+  if(!currentHasSiteAccessV629())showToast("Доступ ще не підтверджено");
+});
+$("siteAccessLogoutBtn")?.addEventListener("click",async()=>{
+  if(sb)await sb.auth.signOut();
+  await refreshAuth();
+});
+
+setInterval(()=>{
+  if(sb&&authUser)refreshSiteAccessOnlyV629().catch(()=>{});
+},12000);
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.29");
 });

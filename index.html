@@ -15,7 +15,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=6.28-fixed-chat">
+<link rel="stylesheet" href="style.css?v=6.29-private-access">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#090909">
@@ -71,6 +71,22 @@
 
 </head>
 <body>
+
+<div id="siteAccessGate" class="site-access-gate">
+  <div class="site-access-panel">
+    <div class="site-access-logo">CA</div>
+    <div class="eyebrow">CENTURIA ATHLETICS</div>
+    <h1 id="siteAccessTitle">ЗАКРИТИЙ ДОСТУП</h1>
+    <p id="siteAccessText">Цей сайт доступний тільки учасникам, яких підтвердив адміністратор.</p>
+    <div id="siteAccessUser" class="site-access-user hidden"></div>
+    <div class="site-access-actions">
+      <button id="siteAccessLoginBtn" type="button" class="gold-btn" data-viewer-allowed="true">УВІЙТИ / ПОДАТИ ЗАЯВКУ</button>
+      <button id="siteAccessCheckBtn" type="button" class="dark-btn hidden" data-viewer-allowed="true">ПЕРЕВІРИТИ ДОСТУП</button>
+      <button id="siteAccessLogoutBtn" type="button" class="dark-btn hidden" data-viewer-allowed="true">ВИЙТИ З АКАУНТА</button>
+    </div>
+  </div>
+</div>
+
 <div id="app">
 
   <!-- HOME: exact user-approved artwork with clickable zones -->
@@ -521,6 +537,13 @@
       </label>
     </div>
 
+
+
+    <div id="adminSiteAccessCard" class="settings-card player-account-card hidden">
+      <h2>🔒 ДОСТУП ДО САЙТУ <span id="siteAccessPendingBadge" class="request-count-badge"></span></h2>
+      <p class="settings-hint">Нові акаунти спочатку очікують підтвердження. Тільки ADMIN може дозволити, заблокувати або повністю видалити акаунт.</p>
+      <div id="adminSiteAccessList" class="site-access-admin-list"></div>
+    </div>
 
     <div id="myPlayerSettingsCard" class="settings-card player-account-card hidden">
       <h2>👤 МІЙ ГРАВЕЦЬ</h2>
@@ -1184,7 +1207,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=6.28-fixed-chat"></script>
+<script src="app.js?v=6.29-private-access"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
