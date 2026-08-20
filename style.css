@@ -9063,3 +9063,130 @@ dialog .picker-item::before{
     display:none!important;
   }
 }
+
+/* ==========================================================
+   v6.24 — light home is physically cropped to dark dimensions
+   Both themes now use the exact same overlay geometry.
+   ========================================================== */
+#screen-home .home-art-wrap{
+  width:100%!important;
+  max-width:852px!important;
+  height:auto!important;
+  margin:0 auto!important;
+  padding:0!important;
+  overflow:visible!important;
+}
+#screen-home .home-art,
+#homeBackgroundImage{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center top!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap{
+  margin:0 auto!important;
+  padding:0!important;
+  width:100%!important;
+  max-width:852px!important;
+  overflow:visible!important;
+}
+
+/* Same positions as DARK artwork */
+html[data-site-theme="light"] #screen-home .hs-chat,
+html.light-theme #screen-home .hs-chat{
+  left:13.3%!important; top:34.267%!important; width:33.8%!important; height:7.558%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-gatherings,
+html.light-theme #screen-home .hs-gatherings{
+  left:49.0%!important; top:34.267%!important; width:37.5%!important; height:7.558%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-players,
+html.light-theme #screen-home .hs-players{
+  left:13.2%!important; top:42.413%!important; width:73.5%!important; height:10.047%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-tactics,
+html.light-theme #screen-home .hs-tactics{
+  left:13.1%!important; top:54.121%!important; width:73.7%!important; height:10.047%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-squads,
+html.light-theme #screen-home .hs-squads{
+  left:13.1%!important; top:65.507%!important; width:73.7%!important; height:10.381%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-calendar,
+html.light-theme #screen-home .hs-calendar{
+  left:5.6%!important; top:88.167%!important; width:16.3%!important; height:8.707%!important;
+}
+html[data-site-theme="light"] #screen-home .hs-settings,
+html.light-theme #screen-home .hs-settings{
+  right:4.9%!important; top:87.944%!important; width:16.5%!important; height:8.930%!important;
+}
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html.light-theme #screen-home .home-online-badge{
+  top:34.419%!important;
+}
+html[data-site-theme="light"] #screen-home .home-next-event,
+html.light-theme #screen-home .home-next-event{
+  left:8.7%!important;
+  top:20.633%!important;
+  width:55.0%!important;
+  height:11.163%!important;
+}
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html[data-site-theme="light"] #screen-home .home-mvp-card.hidden,
+html.light-theme #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-mvp-card.hidden{
+  left:65.2%!important;
+  top:20.633%!important;
+  width:25.8%!important;
+  height:11.163%!important;
+}
+
+/* v6.24 — guaranteed shine layer on cards already placed on tactics pitch */
+#screen-tactics #pitch .slot-card.filled{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+#screen-tactics #pitch .slot-card.filled img{
+  position:relative;
+  z-index:1;
+}
+#screen-tactics #pitch .slot-card-shine{
+  position:absolute!important;
+  z-index:5!important;
+  pointer-events:none!important;
+  top:-35%;
+  bottom:-35%;
+  left:-70%;
+  width:32%;
+  transform:skewX(-18deg);
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,238,175,.10) 20%,
+    rgba(255,255,255,.68) 48%,
+    rgba(255,217,108,.24) 66%,
+    transparent 100%
+  );
+  mix-blend-mode:screen;
+  animation:centuriaPlacedCardShine624 5.4s ease-in-out infinite;
+}
+#screen-tactics #pitch .slot:nth-child(2n) .slot-card-shine{animation-delay:-1.1s}
+#screen-tactics #pitch .slot:nth-child(3n) .slot-card-shine{animation-delay:-2.2s}
+#screen-tactics #pitch .slot:nth-child(4n) .slot-card-shine{animation-delay:-3.0s}
+
+@keyframes centuriaPlacedCardShine624{
+  0%,54%{left:-70%;opacity:0}
+  60%{opacity:.35}
+  72%{opacity:1}
+  84%{left:140%;opacity:.35}
+  85%,100%{left:140%;opacity:0}
+}
+@media(prefers-reduced-motion:reduce){
+  #screen-tactics #pitch .slot-card-shine{display:none!important}
+}
