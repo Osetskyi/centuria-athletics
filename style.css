@@ -8579,3 +8579,10 @@ html.light-theme .lineup-pitch{
     clip-path:polygon(2.5% 0%,97.5% 0%,100% 100%,0% 100%)!important;
   }
 }
+
+/* v6.17 global card shine */
+.centuria-card-shine{position:relative!important;display:inline-block;overflow:hidden!important;isolation:isolate;line-height:0}
+.centuria-card-shine::after{content:"";position:absolute;z-index:20;pointer-events:none;top:-35%;bottom:-35%;left:-70%;width:34%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,239,181,.12),rgba(255,255,255,.58),rgba(255,218,112,.22),transparent);mix-blend-mode:screen;animation:centuriaShine 5.8s ease-in-out infinite}
+@keyframes centuriaShine{0%,55%{left:-70%;opacity:0}60%{opacity:.3}72%{opacity:1}84%{left:140%;opacity:.3}85%,100%{left:140%;opacity:0}}
+.centuria-card-shine:nth-child(2n)::after{animation-delay:-1.4s}.centuria-card-shine:nth-child(3n)::after{animation-delay:-2.7s}
+@media(prefers-reduced-motion:reduce){.centuria-card-shine::after{display:none!important}}

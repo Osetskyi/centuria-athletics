@@ -6296,3 +6296,27 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.16");
 });
+
+/* v6.17 global player-card shine */
+(function(){
+ function eligible(img){
+  if(!img||img.dataset.cardShine==="1")return false;
+  const s=(img.getAttribute("src")||"").toLowerCase(), c=((img.className||"")+" "+(img.parentElement?.className||"")).toLowerCase();
+  if(/archetype-|platform-|icon-|home-screen|apple-touch|logo/.test(s))return false;
+  return /player|slot-card|gathering-lineup-card|player-card/.test(c);
+ }
+ function scan(root=document){
+  root.querySelectorAll?.("img").forEach(img=>{
+   if(!eligible(img))return;
+   const w=document.createElement("span"); w.className="centuria-card-shine";
+   const r=img.getBoundingClientRect();
+   if(r.width)w.style.width=r.width+"px"; if(r.height)w.style.height=r.height+"px";
+   img.parentNode.insertBefore(w,img); w.appendChild(img); img.dataset.cardShine="1";
+  });
+ }
+ document.addEventListener("DOMContentLoaded",()=>{
+  scan();
+  new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType===1)scan(n)}))).observe(document.body,{childList:true,subtree:true});
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.17");
+ });
+})();
