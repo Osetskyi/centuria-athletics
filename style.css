@@ -8586,3 +8586,77 @@ html.light-theme .lineup-pitch{
 @keyframes centuriaShine{0%,55%{left:-70%;opacity:0}60%{opacity:.3}72%{opacity:1}84%{left:140%;opacity:.3}85%,100%{left:140%;opacity:0}}
 .centuria-card-shine:nth-child(2n)::after{animation-delay:-1.4s}.centuria-card-shine:nth-child(3n)::after{animation-delay:-2.7s}
 @media(prefers-reduced-motion:reduce){.centuria-card-shine::after{display:none!important}}
+
+/* ==========================================================
+   v6.18 — shine on Players grid + identical home bg framing
+   ========================================================== */
+
+/* Player-list cards: shine only over visual/card area */
+#screen-players .player-card,
+#screen-players .player-card-image,
+#screen-players .player-image,
+#screen-players .card-image,
+.players-grid .player-card,
+.players-list .player-card{
+  position:relative;
+}
+
+/* Dedicated overlay class added by JS */
+.centuria-player-grid-shine{
+  position:absolute!important;
+  inset:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+  z-index:12!important;
+  border-radius:inherit!important;
+}
+.centuria-player-grid-shine::after{
+  content:"";
+  position:absolute;
+  top:-30%;
+  bottom:-30%;
+  left:-55%;
+  width:27%;
+  transform:skewX(-18deg);
+  background:linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,236,170,.10) 22%,
+    rgba(255,255,255,.56) 49%,
+    rgba(255,215,100,.20) 67%,
+    transparent 100%);
+  mix-blend-mode:screen;
+  animation:centuriaPlayersGridShine 5.6s ease-in-out infinite;
+}
+@keyframes centuriaPlayersGridShine{
+  0%,55%{left:-55%;opacity:0}
+  61%{opacity:.35}
+  72%{opacity:1}
+  84%{left:135%;opacity:.3}
+  85%,100%{left:135%;opacity:0}
+}
+
+/* Home screen: light theme uses exactly same crop/position as dark */
+#screen-home,
+.home-screen,
+.home-hero,
+.main-screen{
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+}
+html[data-site-theme="light"] #screen-home,
+html[data-site-theme="light"] .home-screen,
+html[data-site-theme="light"] .home-hero,
+html[data-site-theme="light"] .main-screen,
+html.light-theme #screen-home,
+html.light-theme .home-screen,
+html.light-theme .home-hero,
+html.light-theme .main-screen{
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+}
+
+@media(prefers-reduced-motion:reduce){
+  .centuria-player-grid-shine::after{display:none!important}
+}

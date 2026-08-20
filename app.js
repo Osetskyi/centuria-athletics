@@ -6320,3 +6320,35 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.17");
  });
 })();
+
+/* v6.18 — guaranteed shine on large cards in Players tab */
+(function(){
+ function installPlayerGridShine(root=document){
+   const screen=document.getElementById("screen-players")||document;
+   const candidates=screen.querySelectorAll(
+     ".player-card, .player-item, .player-tile, .players-grid > *, [data-player-id]"
+   );
+   candidates.forEach(card=>{
+     if(card.querySelector(":scope > .centuria-player-grid-shine")) return;
+     const img=card.querySelector("img");
+     if(!img) return;
+     const src=(img.getAttribute("src")||"").toLowerCase();
+     if(/archetype-|platform-|icon-|logo/.test(src)) return;
+
+     let target=img.parentElement;
+     if(!target) return;
+     const st=getComputedStyle(target);
+     if(st.position==="static") target.style.position="relative";
+     target.style.overflow="hidden";
+
+     const shine=document.createElement("span");
+     shine.className="centuria-player-grid-shine";
+     target.appendChild(shine);
+   });
+ }
+ document.addEventListener("DOMContentLoaded",()=>{
+   installPlayerGridShine();
+   new MutationObserver(()=>installPlayerGridShine()).observe(document.body,{childList:true,subtree:true});
+   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.18");
+ });
+})();
