@@ -8931,31 +8931,42 @@ body.light .main-screen{
 
 
 /* ==========================================================
-   v6.23-clean — based strictly on stable v6.22
-   HOME ONLY:
-   1) remove page/status safe-area whitespace above home artwork
-   2) prevent vertical scrolling on the home screen
-   No artwork scaling/positioning or UI geometry is changed.
+   v6.23 FULL HOME — from untouched stable v6.22
+   Fix previous mistake: NEVER crop/clip the bottom artwork.
    ========================================================== */
 
-html, body {
-  margin-top: 0;
+/* Remove browser/page whitespace only. */
+html,
+body{
+  margin:0!important;
+  padding:0!important;
 }
 
-#screen-home.active,
-#screen-home:not(.hidden) {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  max-height: 100dvh !important;
-  overflow: hidden !important;
-  overscroll-behavior-y: none !important;
+/* Home starts at the very first document pixel.
+   IMPORTANT: no 100dvh height/max-height and no overflow:hidden here. */
+#screen-home{
+  margin-top:0!important;
+  padding-top:0!important;
 }
 
-/* When HOME is the visible screen, lock document scrolling. */
-html:has(#screen-home.active),
-body:has(#screen-home.active),
-html:has(#screen-home:not(.hidden)),
-body:has(#screen-home:not(.hidden)) {
-  overflow: hidden !important;
-  overscroll-behavior: none !important;
+/* Preserve the original v6.22 artwork dimensions/ratio completely. */
+#screen-home .home-art-wrap{
+  margin-top:0!important;
+  padding-top:0!important;
+}
+
+/* Never crop the home image itself. */
+#screen-home .home-art,
+#homeBackgroundImage{
+  display:block!important;
+  margin-top:0!important;
+  padding-top:0!important;
+  height:auto!important;
+  max-height:none!important;
+}
+
+/* Prevent rubber-band blank space above the page without clipping content. */
+html,
+body{
+  overscroll-behavior-y:none!important;
 }
