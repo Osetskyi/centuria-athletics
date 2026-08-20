@@ -9013,3 +9013,56 @@ body.light .main-screen{
   72%{left:135%;opacity:.65}
   73%,100%{left:135%;opacity:0}
 }
+
+/* v6.26 — definitive visible shine for cards already standing on TACTICS pitch */
+#screen-tactics #pitch .slot-card.filled{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+
+#screen-tactics #pitch .slot-card.filled::after{
+  content:""!important;
+  display:block!important;
+  visibility:visible!important;
+  position:absolute!important;
+  z-index:2147483000!important;
+  pointer-events:none!important;
+  top:-30%!important;
+  left:-80%!important;
+  width:38%!important;
+  height:160%!important;
+  opacity:1!important;
+  transform:translate3d(0,0,0) skewX(-18deg)!important;
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.25) 22%,
+    rgba(255,255,255,.92) 48%,
+    rgba(255,232,160,.68) 58%,
+    rgba(255,255,255,.18) 76%,
+    rgba(255,255,255,0) 100%
+  )!important;
+  mix-blend-mode:normal!important;
+  filter:none!important;
+  animation:centuriaTacticsVisibleSweep 2.8s linear infinite!important;
+  will-change:transform!important;
+}
+
+@keyframes centuriaTacticsVisibleSweep{
+  0%,25%{
+    transform:translate3d(0,0,0) skewX(-18deg);
+    opacity:0;
+  }
+  30%{opacity:1}
+  70%{opacity:1}
+  78%,100%{
+    transform:translate3d(560%,0,0) skewX(-18deg);
+    opacity:0;
+  }
+}
+
+/* The explicit child from prior attempts is unnecessary; hide it to avoid conflicts. */
+#screen-tactics #pitch .slot-card-shine{
+  display:none!important;
+}

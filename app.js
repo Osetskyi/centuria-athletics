@@ -6335,3 +6335,5 @@ document.addEventListener("DOMContentLoaded",()=>{
     obs.observe(document.body,{childList:true,subtree:true});
   });
 })();
+
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.26");});
