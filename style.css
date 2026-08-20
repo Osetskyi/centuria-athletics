@@ -8580,13 +8580,6 @@ html.light-theme .lineup-pitch{
   }
 }
 
-/* v6.17 global card shine */
-.centuria-card-shine{position:relative!important;display:inline-block;overflow:hidden!important;isolation:isolate;line-height:0}
-.centuria-card-shine::after{content:"";position:absolute;z-index:20;pointer-events:none;top:-35%;bottom:-35%;left:-70%;width:34%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,239,181,.12),rgba(255,255,255,.58),rgba(255,218,112,.22),transparent);mix-blend-mode:screen;animation:centuriaShine 5.8s ease-in-out infinite}
-@keyframes centuriaShine{0%,55%{left:-70%;opacity:0}60%{opacity:.3}72%{opacity:1}84%{left:140%;opacity:.3}85%,100%{left:140%;opacity:0}}
-.centuria-card-shine:nth-child(2n)::after{animation-delay:-1.4s}.centuria-card-shine:nth-child(3n)::after{animation-delay:-2.7s}
-@media(prefers-reduced-motion:reduce){.centuria-card-shine::after{display:none!important}}
-
 /* ==========================================================
    v6.18 — shine on Players grid + identical home bg framing
    ========================================================== */
@@ -8659,4 +8652,83 @@ html.light-theme .main-screen{
 
 @media(prefers-reduced-motion:reduce){
   .centuria-player-grid-shine::after{display:none!important}
+}
+
+/* ==========================================================
+   v6.19 — SAFE shine without wrapping images / blocking taps
+   ========================================================== */
+
+#screen-players .player-card .img-wrap,
+#screen-players .player-card-image,
+#screen-tactics .slot-card.filled,
+.gathering-lineup-card.filled,
+.view-card-image,
+.card-preview,
+.chat-avatar.linked-player-avatar{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate;
+}
+
+#screen-players .player-card .img-wrap::after,
+#screen-players .player-card-image::after,
+#screen-tactics .slot-card.filled::after,
+.gathering-lineup-card.filled::after,
+.view-card-image::after,
+.card-preview::after,
+.chat-avatar.linked-player-avatar::after{
+  content:"";
+  position:absolute;
+  z-index:30;
+  pointer-events:none!important;
+  top:-35%;
+  bottom:-35%;
+  left:-65%;
+  width:30%;
+  transform:skewX(-18deg);
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,238,175,.10) 20%,
+    rgba(255,255,255,.55) 48%,
+    rgba(255,217,108,.20) 66%,
+    transparent 100%
+  );
+  mix-blend-mode:screen;
+  animation:centuriaSafeShine 5.8s ease-in-out infinite;
+}
+
+@keyframes centuriaSafeShine{
+  0%,55%{left:-65%;opacity:0}
+  60%{opacity:.3}
+  72%{opacity:1}
+  84%{left:135%;opacity:.3}
+  85%,100%{left:135%;opacity:0}
+}
+
+/* Keep all interaction layers above/below correctly */
+button,
+[data-nav],
+[data-player-id],
+.slot-card,
+.gathering-lineup-card{
+  pointer-events:auto;
+}
+
+/* v6.18 extra overlay must never catch taps either */
+.centuria-player-grid-shine,
+.centuria-player-grid-shine::after{
+  pointer-events:none!important;
+}
+
+@media(prefers-reduced-motion:reduce){
+  #screen-players .player-card .img-wrap::after,
+  #screen-players .player-card-image::after,
+  #screen-tactics .slot-card.filled::after,
+  .gathering-lineup-card.filled::after,
+  .view-card-image::after,
+  .card-preview::after,
+  .chat-avatar.linked-player-avatar::after{
+    display:none!important;
+  }
 }
