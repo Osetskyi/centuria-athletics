@@ -6317,3 +6317,21 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.22");
 });
+
+(function(){
+  function ensureTacticsShine(){
+    document.querySelectorAll('.slot-card.filled').forEach(card=>{
+      if(!card.querySelector('.slot-card-shine')){
+        const s=document.createElement('span');
+        s.className='slot-card-shine';
+        s.setAttribute('aria-hidden','true');
+        card.appendChild(s);
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    ensureTacticsShine();
+    const obs=new MutationObserver(()=>ensureTacticsShine());
+    obs.observe(document.body,{childList:true,subtree:true});
+  });
+})();

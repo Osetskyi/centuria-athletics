@@ -8972,3 +8972,44 @@ body.light .main-screen{
   80%{left:138%;opacity:.45}
   81%,100%{left:138%;opacity:0}
 }
+
+/* v6.25 — robust tactics shine fix */
+.slot-card.filled{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+.slot-card.filled img{
+  position:relative!important;
+  z-index:1!important;
+}
+.slot-card.filled .slot-card-shine{
+  content:""!important;
+  display:block!important;
+  visibility:visible!important;
+  position:absolute!important;
+  z-index:999!important;
+  pointer-events:none!important;
+  top:-45%!important;
+  height:190%!important;
+  left:-65%!important;
+  width:42%!important;
+  opacity:0;
+  transform:skewX(-20deg)!important;
+  background:linear-gradient(90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.18) 22%,
+    rgba(255,255,255,.95) 50%,
+    rgba(255,224,128,.40) 68%,
+    rgba(255,255,255,0) 100%)!important;
+  filter:blur(.3px);
+  mix-blend-mode:screen!important;
+  animation:centuriaShineFix 3.2s linear infinite!important;
+}
+@keyframes centuriaShineFix{
+  0%,35%{left:-65%;opacity:0}
+  40%{opacity:.55}
+  55%{opacity:1}
+  72%{left:135%;opacity:.65}
+  73%,100%{left:135%;opacity:0}
+}
