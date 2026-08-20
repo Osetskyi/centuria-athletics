@@ -8928,3 +8928,34 @@ body.light .main-screen{
     background-position:50% 50%!important;
   }
 }
+
+
+/* ==========================================================
+   v6.23-clean — based strictly on stable v6.22
+   HOME ONLY:
+   1) remove page/status safe-area whitespace above home artwork
+   2) prevent vertical scrolling on the home screen
+   No artwork scaling/positioning or UI geometry is changed.
+   ========================================================== */
+
+html, body {
+  margin-top: 0;
+}
+
+#screen-home.active,
+#screen-home:not(.hidden) {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
+  overscroll-behavior-y: none !important;
+}
+
+/* When HOME is the visible screen, lock document scrolling. */
+html:has(#screen-home.active),
+body:has(#screen-home.active),
+html:has(#screen-home:not(.hidden)),
+body:has(#screen-home:not(.hidden)) {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
