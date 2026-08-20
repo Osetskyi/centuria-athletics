@@ -4872,7 +4872,7 @@ function applyHomeBackgroundForTheme(theme){
   const img=document.getElementById("homeBackgroundImage");
   if(!img)return;
   const light=theme==="light";
-  const wanted=light?"home-screen-light.png":"home-screen.jpg";
+  const wanted=light?"home-screen-light.jpg":"home-screen.jpg";
   if(!img.src.endsWith(wanted)) img.src=wanted;
   img.dataset.themeBackground=light?"light":"dark";
 }
@@ -6335,3 +6335,5 @@ document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".se
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.27");});
 
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.28");});
+
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.29");});

@@ -9439,3 +9439,93 @@ body:has(#screen-home:not(.hidden)){
   overflow:hidden!important;
   overscroll-behavior:none!important;
 }
+
+/* ==========================================================
+   v6.29 — clean light artwork + real UI only
+   ========================================================== */
+#screen-home{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+#screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  aspect-ratio:auto!important;
+}
+
+html[data-site-theme="light"] #homeBackgroundImage,
+html.light-theme #homeBackgroundImage,
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art{
+  content:url("home-screen-light.jpg")!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  object-fit:fill!important;
+  object-position:center center!important;
+}
+
+/* Real live panels: lower than title */
+#screen-home .home-next-event{
+  top:33.1%!important;
+  left:7.7%!important;
+  width:55.5%!important;
+  height:10.8%!important;
+}
+#screen-home .home-mvp-card,
+#screen-home .home-mvp-card.hidden{
+  top:33.1%!important;
+  left:65.1%!important;
+  width:26.4%!important;
+  height:10.8%!important;
+}
+
+/* Online indicator sits on CHAT */
+#screen-home .home-online-badge{
+  top:47.2%!important;
+  left:45.0%!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:35!important;
+}
+
+/* Real clickable areas aligned with the lower composition */
+#screen-home .hs-chat{left:12%!important;top:47%!important;width:34%!important;height:7.3%!important}
+#screen-home .hs-gatherings{left:49%!important;top:47%!important;width:38%!important;height:7.3%!important}
+#screen-home .hs-players{left:12%!important;top:55%!important;width:75%!important;height:9.3%!important}
+#screen-home .hs-tactics{left:12%!important;top:65.8%!important;width:75%!important;height:9.3%!important}
+#screen-home .hs-squads{left:12%!important;top:76.3%!important;width:75%!important;height:9.3%!important}
+#screen-home .hs-calendar{left:5%!important;top:90.1%!important;width:17%!important;height:8%!important}
+#screen-home .hs-settings{right:4.8%!important;top:90.1%!important;width:17%!important;height:8%!important}
+
+#screen-home .hotspot,
+#screen-home .home-next-event,
+#screen-home .home-mvp-card,
+#screen-home .home-online-badge{
+  z-index:20!important;
+}
+#screen-home .home-online-badge{z-index:35!important}
+
+body:has(#screen-home:not(.hidden)){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
