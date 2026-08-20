@@ -6337,3 +6337,5 @@ document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".se
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.28");});
 
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.29");});
+
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.30");});

@@ -9529,3 +9529,21 @@ body:has(#screen-home:not(.hidden)){
   overflow:hidden!important;
   overscroll-behavior:none!important;
 }
+
+/* v6.30 — ONLY requested home corrections:
+   lower Event + MVP panels and put online badge on CHAT. */
+#screen-home .home-next-event{
+  top:36.6%!important;
+}
+#screen-home .home-mvp-card,
+#screen-home .home-mvp-card.hidden{
+  top:36.6%!important;
+}
+
+/* online badge attached to upper-right edge of CHAT button */
+#screen-home .home-online-badge{
+  left:44.2%!important;
+  top:47.4%!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:40!important;
+}
