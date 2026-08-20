@@ -8930,43 +8930,45 @@ body.light .main-screen{
 }
 
 
-/* ==========================================================
-   v6.23 FULL HOME — from untouched stable v6.22
-   Fix previous mistake: NEVER crop/clip the bottom artwork.
-   ========================================================== */
-
-/* Remove browser/page whitespace only. */
-html,
-body{
-  margin:0!important;
-  padding:0!important;
+/* v6.24 — moving shine on FILLED player cards in Тактика only */
+#screen-tactics .slot-card.filled{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
 }
 
-/* Home starts at the very first document pixel.
-   IMPORTANT: no 100dvh height/max-height and no overflow:hidden here. */
-#screen-home{
-  margin-top:0!important;
-  padding-top:0!important;
+#screen-tactics .slot-card.filled > img{
+  position:relative!important;
+  z-index:1!important;
 }
 
-/* Preserve the original v6.22 artwork dimensions/ratio completely. */
-#screen-home .home-art-wrap{
-  margin-top:0!important;
-  padding-top:0!important;
-}
-
-/* Never crop the home image itself. */
-#screen-home .home-art,
-#homeBackgroundImage{
+#screen-tactics .slot-card.filled > .slot-card-shine{
+  position:absolute!important;
+  z-index:6!important;
+  pointer-events:none!important;
   display:block!important;
-  margin-top:0!important;
-  padding-top:0!important;
-  height:auto!important;
-  max-height:none!important;
+  top:-35%!important;
+  bottom:-35%!important;
+  left:-70%!important;
+  width:32%!important;
+  opacity:0;
+  transform:skewX(-18deg);
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.08) 18%,
+    rgba(255,255,255,.82) 50%,
+    rgba(255,225,140,.32) 68%,
+    transparent 100%
+  )!important;
+  mix-blend-mode:screen;
+  animation:centuriaTacticsShine 4.2s ease-in-out infinite!important;
 }
 
-/* Prevent rubber-band blank space above the page without clipping content. */
-html,
-body{
-  overscroll-behavior-y:none!important;
+@keyframes centuriaTacticsShine{
+  0%,48%{left:-70%;opacity:0}
+  54%{opacity:.35}
+  66%{opacity:1}
+  80%{left:138%;opacity:.45}
+  81%,100%{left:138%;opacity:0}
 }
