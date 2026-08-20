@@ -9190,3 +9190,40 @@ html.light-theme #screen-home .home-mvp-card.hidden{
 @media(prefers-reduced-motion:reduce){
   #screen-tactics #pitch .slot-card-shine{display:none!important}
 }
+
+/* v6.25 — restore full-width light artwork; hide ONLY its blank top strip */
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap{
+  position:relative!important;
+  width:100%!important;
+  max-width:852px!important;
+  margin:0 auto!important;
+  padding:0!important;
+  overflow:hidden!important;
+  aspect-ratio:709 / 1376!important;
+}
+html[data-site-theme="light"] #homeBackgroundImage,
+html.light-theme #homeBackgroundImage,
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art{
+  position:absolute!important;
+  left:0!important;
+  top:-11.6279%!important;
+  width:100%!important;
+  max-width:none!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center top!important;
+}
+html[data-site-theme="light"] #screen-home .hotspot,
+html.light-theme #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html.light-theme #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-mvp-card,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html.light-theme #screen-home .home-online-badge{
+  z-index:10!important;
+}
