@@ -9353,3 +9353,89 @@ html.light-theme #screen-home .home-art{
   z-index:20!important;
   pointer-events:auto!important;
 }
+
+/* ==========================================================
+   v6.28 — approved full-screen light home composition
+   ========================================================== */
+#screen-home{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  overflow:hidden!important;
+}
+#screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  aspect-ratio:auto!important;
+}
+#screen-home .home-art,
+#homeBackgroundImage{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:fill!important;
+  object-position:center!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+}
+
+/* Approved composition: move the two live panels lower, clear the CENTURIA TEAM title */
+#screen-home .home-next-event{
+  top:33.1%!important;
+  left:7.7%!important;
+  width:55.5%!important;
+  height:10.8%!important;
+}
+#screen-home .home-mvp-card,
+#screen-home .home-mvp-card.hidden{
+  top:33.1%!important;
+  left:65.1%!important;
+  width:26.4%!important;
+  height:10.8%!important;
+}
+
+/* Chat online badge belongs ON the chat button, not above it */
+#screen-home .home-online-badge{
+  top:47.2%!important;
+  left:45.8%!important;
+  transform:translate(-50%,-50%)!important;
+  z-index:35!important;
+}
+
+/* Hotspots aligned to the approved lower-button composition */
+#screen-home .hs-chat{
+  left:12.0%!important; top:47.0%!important; width:34.0%!important; height:7.3%!important;
+}
+#screen-home .hs-gatherings{
+  left:49.0%!important; top:47.0%!important; width:38.0%!important; height:7.3%!important;
+}
+#screen-home .hs-players{
+  left:12.0%!important; top:55.0%!important; width:75.0%!important; height:9.3%!important;
+}
+#screen-home .hs-tactics{
+  left:12.0%!important; top:65.8%!important; width:75.0%!important; height:9.3%!important;
+}
+#screen-home .hs-squads{
+  left:12.0%!important; top:76.3%!important; width:75.0%!important; height:9.3%!important;
+}
+#screen-home .hs-calendar{
+  left:5.0%!important; top:90.1%!important; width:17.0%!important; height:8.0%!important;
+}
+#screen-home .hs-settings{
+  right:4.8%!important; top:90.1%!important; width:17.0%!important; height:8.0%!important;
+}
+
+/* No home scrolling */
+body:has(#screen-home:not(.hidden)){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
