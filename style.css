@@ -8449,3 +8449,133 @@ html.light-theme #screen-tactics #pitch{
     animation:none!important;
   }
 }
+
+/* ==========================================================
+   v6.16 — unified premium 3D football field
+   Tactics / Gatherings / Saved squads
+   ========================================================== */
+
+/* Common perspective wrappers */
+#screen-tactics .pitch-shell,
+.gathering-lineup-wrap,
+.saved-lineup-wrap,
+.saved-squad-wrap,
+.squad-field-wrap,
+.lineup-field-wrap{
+  perspective:1200px!important;
+  perspective-origin:50% 18%!important;
+}
+
+/* Common field geometry */
+#screen-tactics #pitch,
+.gathering-lineup-pitch,
+.saved-lineup-pitch,
+.saved-squad-pitch,
+.squad-pitch,
+.lineup-pitch{
+  position:relative!important;
+  transform:perspective(1200px) rotateX(5deg) scaleX(.988) scaleY(.997)!important;
+  transform-origin:50% 8%!important;
+  clip-path:polygon(3% 0%,97% 0%,100% 100%,0% 100%)!important;
+  border-radius:12px!important;
+  overflow:hidden!important;
+  border:2px solid rgba(213,177,83,.62)!important;
+  box-shadow:
+    0 16px 24px rgba(0,0,0,.20),
+    0 5px 10px rgba(0,0,0,.12),
+    inset 0 1px 0 rgba(255,255,255,.15),
+    inset 0 -18px 30px rgba(0,0,0,.10)!important;
+  background-color:#19763f!important;
+  background-image:
+    radial-gradient(ellipse at 50% 10%, rgba(255,255,255,.11) 0%, rgba(255,255,255,0) 42%),
+    linear-gradient(90deg,
+      rgba(255,255,255,.025) 0 12.5%,
+      rgba(0,0,0,.025) 12.5% 25%,
+      rgba(255,255,255,.025) 25% 37.5%,
+      rgba(0,0,0,.025) 37.5% 50%,
+      rgba(255,255,255,.025) 50% 62.5%,
+      rgba(0,0,0,.025) 62.5% 75%,
+      rgba(255,255,255,.025) 75% 87.5%,
+      rgba(0,0,0,.025) 87.5% 100%),
+    linear-gradient(180deg,#26804b 0%,#197441 48%,#126536 100%)!important;
+}
+
+/* Soft stadium-like light/glow on the grass */
+#screen-tactics #pitch::after,
+.gathering-lineup-pitch::after,
+.saved-lineup-pitch::after,
+.saved-squad-pitch::after,
+.squad-pitch::after,
+.lineup-pitch::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  background:
+    radial-gradient(ellipse at 50% 2%,rgba(255,238,174,.14),transparent 35%),
+    radial-gradient(ellipse at 50% 58%,rgba(255,255,255,.055),transparent 48%),
+    linear-gradient(180deg,rgba(255,255,255,.04),transparent 25%,rgba(0,0,0,.06))!important;
+  mix-blend-mode:screen;
+}
+
+/* Thin darker board edge */
+#screen-tactics .pitch-shell::after,
+.gathering-lineup-wrap::after,
+.saved-lineup-wrap::after,
+.saved-squad-wrap::after,
+.squad-field-wrap::after,
+.lineup-field-wrap::after{
+  content:"";
+  display:block;
+  width:84%;
+  height:9px;
+  margin:-7px auto 0;
+  border-radius:50%;
+  background:rgba(0,0,0,.20);
+  filter:blur(6px);
+  pointer-events:none;
+}
+
+/* Ensure all player slots/cards remain above field lighting */
+#screen-tactics #pitch .slot,
+.gathering-lineup-pitch .gathering-lineup-slot,
+.saved-lineup-pitch .slot,
+.saved-squad-pitch .slot,
+.squad-pitch .slot,
+.lineup-pitch .slot{
+  z-index:3!important;
+}
+
+/* Light theme: same green pitch, softer external shadow */
+html[data-site-theme="light"] #screen-tactics #pitch,
+html[data-site-theme="light"] .gathering-lineup-pitch,
+html[data-site-theme="light"] .saved-lineup-pitch,
+html[data-site-theme="light"] .saved-squad-pitch,
+html[data-site-theme="light"] .squad-pitch,
+html[data-site-theme="light"] .lineup-pitch,
+html.light-theme #screen-tactics #pitch,
+html.light-theme .gathering-lineup-pitch,
+html.light-theme .saved-lineup-pitch,
+html.light-theme .saved-squad-pitch,
+html.light-theme .squad-pitch,
+html.light-theme .lineup-pitch{
+  box-shadow:
+    0 14px 22px rgba(74,53,16,.14),
+    0 4px 8px rgba(74,53,16,.08),
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 -18px 28px rgba(0,0,0,.08)!important;
+}
+
+/* Mobile keeps the same restrained geometry everywhere */
+@media(max-width:560px){
+  #screen-tactics #pitch,
+  .gathering-lineup-pitch,
+  .saved-lineup-pitch,
+  .saved-squad-pitch,
+  .squad-pitch,
+  .lineup-pitch{
+    transform:perspective(1200px) rotateX(4deg) scaleX(.99) scaleY(.998)!important;
+    clip-path:polygon(2.5% 0%,97.5% 0%,100% 100%,0% 100%)!important;
+  }
+}
