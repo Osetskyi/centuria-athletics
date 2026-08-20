@@ -1113,7 +1113,7 @@ function renderPitch(){
     const slot=document.createElement("div");slot.className="slot";slot.style.left=x+"%";slot.style.top=y+"%";
     slot.innerHTML=`
       ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
-      <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="slot-card-shine" aria-hidden="true"></span>`:"＋"}</button>
+      <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"＋"}</button>
       <div class="slot-name">${p?esc(p.name):"Порожньо"}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
     slot.querySelector(".slot-card").addEventListener("click",()=>openPicker(key,pos));
@@ -6317,25 +6317,3 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.22");
 });
-
-/* v6.23 — settings version */
-document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.23");
-});
-
-/* v6.24 — settings version */
-document.addEventListener("DOMContentLoaded",()=>{
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.24");
-});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.25");});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.26");});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.27");});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.28");});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.29");});
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.30");});
