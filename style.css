@@ -8929,67 +8929,44 @@ body.light .main-screen{
   }
 }
 
+
 /* ==========================================================
-   v6.23 FIXED VIEWPORT — stable v6.22 base
-   Full image visible + no top page strip + no home scrolling.
+   v6.23 FULL HOME — from untouched stable v6.22
+   Fix previous mistake: NEVER crop/clip the bottom artwork.
    ========================================================== */
-html,body{
+
+/* Remove browser/page whitespace only. */
+html,
+body{
   margin:0!important;
   padding:0!important;
-  width:100%!important;
-  height:100%!important;
-  overflow:hidden!important;
-  overscroll-behavior:none!important;
-  background:transparent!important;
 }
 
-#screen-home:not(.hidden),
-#screen-home.active{
-  position:fixed!important;
-  inset:0!important;
-  width:100vw!important;
-  height:100dvh!important;
-  min-height:100dvh!important;
-  max-height:100dvh!important;
-  margin:0!important;
-  padding:0!important;
-  overflow:hidden!important;
-  overscroll-behavior:none!important;
+/* Home starts at the very first document pixel.
+   IMPORTANT: no 100dvh height/max-height and no overflow:hidden here. */
+#screen-home{
+  margin-top:0!important;
+  padding-top:0!important;
 }
 
-/* Keep full original artwork, but scale it to the viewport instead of clipping it. */
+/* Preserve the original v6.22 artwork dimensions/ratio completely. */
 #screen-home .home-art-wrap{
-  position:absolute!important;
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  max-width:none!important;
-  margin:0!important;
-  padding:0!important;
-  overflow:hidden!important;
+  margin-top:0!important;
+  padding-top:0!important;
 }
 
+/* Never crop the home image itself. */
 #screen-home .home-art,
 #homeBackgroundImage{
-  position:absolute!important;
-  inset:0!important;
   display:block!important;
-  width:100%!important;
-  height:100%!important;
-  max-width:none!important;
+  margin-top:0!important;
+  padding-top:0!important;
+  height:auto!important;
   max-height:none!important;
-  margin:0!important;
-  padding:0!important;
-  object-fit:fill!important;
-  object-position:center!important;
-  transform:none!important;
 }
 
-/* iOS standalone/browser safe-area must not create a layout spacer above HOME. */
-@supports(padding:max(0px)){
-  #screen-home:not(.hidden),
-  #screen-home.active{
-    padding-top:0!important;
-    padding-bottom:0!important;
-  }
+/* Prevent rubber-band blank space above the page without clipping content. */
+html,
+body{
+  overscroll-behavior-y:none!important;
 }
