@@ -9267,3 +9267,89 @@ html.light-theme #screen-home{
   padding:0!important;
   border:0!important;
 }
+
+/* ==========================================================
+   v6.27 — HOME: original image as-is + fixed single-screen view
+   No cropping, no shifting, no scrolling.
+   ========================================================== */
+#screen-home{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+#screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  aspect-ratio:auto!important;
+}
+
+#screen-home .home-art,
+#homeBackgroundImage{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  object-fit:fill!important;
+  object-position:center center!important;
+}
+
+/* Explicitly cancel all previous light-theme crop/offset rules */
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  aspect-ratio:auto!important;
+}
+html[data-site-theme="light"] #homeBackgroundImage,
+html.light-theme #homeBackgroundImage,
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art{
+  position:absolute!important;
+  inset:0!important;
+  left:0!important;
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  transform:none!important;
+  object-fit:fill!important;
+  object-position:center center!important;
+}
+
+/* Home controls remain usable over the artwork */
+#screen-home .hotspot,
+#screen-home .home-next-event,
+#screen-home .home-mvp-card,
+#screen-home .home-online-badge{
+  z-index:20!important;
+  pointer-events:auto!important;
+}
