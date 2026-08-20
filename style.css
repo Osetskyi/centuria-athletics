@@ -8928,3 +8928,138 @@ body.light .main-screen{
     background-position:50% 50%!important;
   }
 }
+
+/* ==========================================================
+   v6.23 — tactics card shine + light-home top-gap fix
+   ========================================================== */
+
+/* 1) Main Tactics pitch — force the shine over every real card */
+#screen-tactics #pitch .slot-card.filled{
+  position:relative!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+
+#screen-tactics #pitch .slot-card.filled::before{
+  content:"";
+  position:absolute;
+  z-index:40;
+  pointer-events:none!important;
+  top:-30%;
+  bottom:-30%;
+  left:-70%;
+  width:32%;
+  transform:skewX(-18deg);
+  background:linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,236,168,.10) 20%,
+    rgba(255,255,255,.62) 49%,
+    rgba(255,216,105,.22) 67%,
+    transparent 100%
+  );
+  mix-blend-mode:screen;
+  animation:centuriaTacticsShineV623 5.6s ease-in-out infinite;
+}
+
+#screen-tactics #pitch .slot:nth-child(2n) .slot-card.filled::before{animation-delay:-1.2s}
+#screen-tactics #pitch .slot:nth-child(3n) .slot-card.filled::before{animation-delay:-2.4s}
+#screen-tactics #pitch .slot:nth-child(4n) .slot-card.filled::before{animation-delay:-3.3s}
+
+@keyframes centuriaTacticsShineV623{
+  0%,54%{left:-70%;opacity:0}
+  60%{opacity:.3}
+  72%{opacity:1}
+  84%{left:140%;opacity:.35}
+  85%,100%{left:140%;opacity:0}
+}
+
+/* Player picker in Tactics — shine exactly over the 58x76 card area */
+#playerPickerDialog .picker-item,
+dialog .picker-item{
+  position:relative!important;
+  overflow:hidden!important;
+}
+#playerPickerDialog .picker-item::before,
+dialog .picker-item::before{
+  content:"";
+  position:absolute;
+  z-index:15;
+  pointer-events:none!important;
+  left:-38px;
+  top:7px;
+  width:18px;
+  height:82px;
+  transform:skewX(-17deg);
+  background:linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,.58),
+    rgba(255,218,110,.18),
+    transparent
+  );
+  mix-blend-mode:screen;
+  animation:centuriaPickerShineV623 5.9s ease-in-out infinite;
+}
+@keyframes centuriaPickerShineV623{
+  0%,58%{left:-38px;opacity:0}
+  64%{opacity:.4}
+  77%{left:72px;opacity:1}
+  88%{left:92px;opacity:0}
+  100%{left:92px;opacity:0}
+}
+
+/* 2) Light home — artwork starts at the very top, no blank white strip */
+html[data-site-theme="light"],
+html.light-theme,
+html[data-site-theme="light"] body,
+html.light-theme body,
+html[data-site-theme="light"] #app,
+html.light-theme #app{
+  background:#f8f3e8!important;
+}
+
+html[data-site-theme="light"] #screen-home,
+html.light-theme #screen-home{
+  margin-top:0!important;
+  padding-top:0!important;
+  top:0!important;
+  min-height:0!important;
+  background:#f8f3e8!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap{
+  margin-top:calc(-1 * env(safe-area-inset-top, 0px))!important;
+  padding-top:0!important;
+  width:100%!important;
+  overflow:visible!important;
+}
+
+html[data-site-theme="light"] #homeBackgroundImage,
+html.light-theme #homeBackgroundImage,
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  object-fit:contain!important;
+  object-position:center top!important;
+}
+
+/* No decorative layer can block interactions */
+#screen-tactics #pitch .slot-card.filled::before,
+#playerPickerDialog .picker-item::before,
+dialog .picker-item::before{
+  pointer-events:none!important;
+}
+
+@media(prefers-reduced-motion:reduce){
+  #screen-tactics #pitch .slot-card.filled::before,
+  #playerPickerDialog .picker-item::before,
+  dialog .picker-item::before{
+    display:none!important;
+  }
+}
