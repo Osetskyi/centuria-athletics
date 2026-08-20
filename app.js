@@ -1103,6 +1103,30 @@ function compatibility(p,slotPos){
   if((p.extraPositions||[]).includes(slotPos))return "alt";
   return "bad";
 }
+
+function startTacticsRuntimeShine(){
+  const shines=[...document.querySelectorAll("#screen-tactics #pitch .slot-card.filled .tactics-runtime-shine")];
+  shines.forEach((shine,index)=>{
+    try{
+      if(shine._centuriaAnim) shine._centuriaAnim.cancel();
+      if(typeof shine.animate==="function"){
+        shine._centuriaAnim=shine.animate(
+          [
+            {transform:"translate3d(-230%,0,0) skewX(-18deg)",opacity:0,offset:0},
+            {transform:"translate3d(-230%,0,0) skewX(-18deg)",opacity:0,offset:.32},
+            {transform:"translate3d(-120%,0,0) skewX(-18deg)",opacity:.9,offset:.40},
+            {transform:"translate3d(80%,0,0) skewX(-18deg)",opacity:1,offset:.58},
+            {transform:"translate3d(330%,0,0) skewX(-18deg)",opacity:.85,offset:.76},
+            {transform:"translate3d(330%,0,0) skewX(-18deg)",opacity:0,offset:.80},
+            {transform:"translate3d(330%,0,0) skewX(-18deg)",opacity:0,offset:1}
+          ],
+          {duration:3200,iterations:Infinity,easing:"linear",delay:index*95}
+        );
+      }
+    }catch(e){ console.warn("Tactics shine animation fallback",e); }
+  });
+}
+
 function renderPitch(){
   document.querySelectorAll(".formation").forEach(b=>b.classList.toggle("active",b.dataset.formation===currentFormation));
   const pitch=$("pitch");pitch.innerHTML="";
@@ -1113,12 +1137,13 @@ function renderPitch(){
     const slot=document.createElement("div");slot.className="slot";slot.style.left=x+"%";slot.style.top=y+"%";
     slot.innerHTML=`
       ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
-      <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="slot-card-shine" aria-hidden="true"></span>`:"＋"}</button>
+      <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="tactics-runtime-shine" aria-hidden="true"></span>`:"＋"}</button>
       <div class="slot-name">${p?esc(p.name):"Порожньо"}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
     slot.querySelector(".slot-card").addEventListener("click",()=>openPicker(key,pos));
     pitch.appendChild(slot);
   });
+  startTacticsRuntimeShine();
 }
 document.querySelectorAll(".formation").forEach(b=>b.addEventListener("click",()=>{
   currentFormation=b.dataset.formation;
@@ -6318,22 +6343,6 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.22");
 });
 
-(function(){
-  function ensureTacticsShine(){
-    document.querySelectorAll('.slot-card.filled').forEach(card=>{
-      if(!card.querySelector('.slot-card-shine')){
-        const s=document.createElement('span');
-        s.className='slot-card-shine';
-        s.setAttribute('aria-hidden','true');
-        card.appendChild(s);
-      }
-    });
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    ensureTacticsShine();
-    const obs=new MutationObserver(()=>ensureTacticsShine());
-    obs.observe(document.body,{childList:true,subtree:true});
-  });
-})();
-
-document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.26");});
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.27");
+});

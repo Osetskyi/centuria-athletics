@@ -8930,139 +8930,58 @@ body.light .main-screen{
 }
 
 
-/* v6.24 — moving shine on FILLED player cards in Тактика only */
-#screen-tactics .slot-card.filled{
-  position:relative!important;
-  overflow:hidden!important;
-  isolation:isolate!important;
-}
-
-#screen-tactics .slot-card.filled > img{
-  position:relative!important;
-  z-index:1!important;
-}
-
-#screen-tactics .slot-card.filled > .slot-card-shine{
-  position:absolute!important;
-  z-index:6!important;
-  pointer-events:none!important;
-  display:block!important;
-  top:-35%!important;
-  bottom:-35%!important;
-  left:-70%!important;
-  width:32%!important;
-  opacity:0;
-  transform:skewX(-18deg);
-  background:linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255,255,255,.08) 18%,
-    rgba(255,255,255,.82) 50%,
-    rgba(255,225,140,.32) 68%,
-    transparent 100%
-  )!important;
-  mix-blend-mode:screen;
-  animation:centuriaTacticsShine 4.2s ease-in-out infinite!important;
-}
-
-@keyframes centuriaTacticsShine{
-  0%,48%{left:-70%;opacity:0}
-  54%{opacity:.35}
-  66%{opacity:1}
-  80%{left:138%;opacity:.45}
-  81%,100%{left:138%;opacity:0}
-}
-
-/* v6.25 — robust tactics shine fix */
-.slot-card.filled{
-  position:relative!important;
-  overflow:hidden!important;
-  isolation:isolate!important;
-}
-.slot-card.filled img{
-  position:relative!important;
-  z-index:1!important;
-}
-.slot-card.filled .slot-card-shine{
-  content:""!important;
-  display:block!important;
-  visibility:visible!important;
-  position:absolute!important;
-  z-index:999!important;
-  pointer-events:none!important;
-  top:-45%!important;
-  height:190%!important;
-  left:-65%!important;
-  width:42%!important;
-  opacity:0;
-  transform:skewX(-20deg)!important;
-  background:linear-gradient(90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,.18) 22%,
-    rgba(255,255,255,.95) 50%,
-    rgba(255,224,128,.40) 68%,
-    rgba(255,255,255,0) 100%)!important;
-  filter:blur(.3px);
-  mix-blend-mode:screen!important;
-  animation:centuriaShineFix 3.2s linear infinite!important;
-}
-@keyframes centuriaShineFix{
-  0%,35%{left:-65%;opacity:0}
-  40%{opacity:.55}
-  55%{opacity:1}
-  72%{left:135%;opacity:.65}
-  73%,100%{left:135%;opacity:0}
-}
-
-/* v6.26 — definitive visible shine for cards already standing on TACTICS pitch */
+/* ==========================================================
+   v6.27 — TACTICS RUNTIME SHINE
+   Real DOM overlay. No ::before/::after, so old v3.1 rules
+   cannot disable this effect.
+   ========================================================== */
 #screen-tactics #pitch .slot-card.filled{
   position:relative!important;
   overflow:hidden!important;
   isolation:isolate!important;
 }
 
-#screen-tactics #pitch .slot-card.filled::after{
-  content:""!important;
+#screen-tactics #pitch .slot-card.filled > img{
+  position:relative!important;
+  z-index:1!important;
+}
+
+#screen-tactics #pitch .slot-card.filled > .tactics-runtime-shine{
   display:block!important;
   visibility:visible!important;
   position:absolute!important;
-  z-index:2147483000!important;
+  z-index:9999!important;
   pointer-events:none!important;
-  top:-30%!important;
-  left:-80%!important;
-  width:38%!important;
-  height:160%!important;
-  opacity:1!important;
-  transform:translate3d(0,0,0) skewX(-18deg)!important;
-  background:linear-gradient(
-    90deg,
-    rgba(255,255,255,0) 0%,
-    rgba(255,255,255,.25) 22%,
-    rgba(255,255,255,.92) 48%,
-    rgba(255,232,160,.68) 58%,
-    rgba(255,255,255,.18) 76%,
-    rgba(255,255,255,0) 100%
-  )!important;
-  mix-blend-mode:normal!important;
-  filter:none!important;
-  animation:centuriaTacticsVisibleSweep 2.8s linear infinite!important;
-  will-change:transform!important;
+  top:-20%!important;
+  left:0!important;
+  width:34%!important;
+  height:140%!important;
+  opacity:0;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,.30) 18%,
+      rgba(255,255,255,.98) 47%,
+      rgba(255,226,133,.72) 60%,
+      rgba(255,255,255,.22) 76%,
+      rgba(255,255,255,0) 100%
+    )!important;
+  box-shadow:0 0 12px rgba(255,239,185,.45)!important;
+  transform:translate3d(-230%,0,0) skewX(-18deg);
+  will-change:transform,opacity!important;
 }
 
-@keyframes centuriaTacticsVisibleSweep{
-  0%,25%{
-    transform:translate3d(0,0,0) skewX(-18deg);
-    opacity:0;
-  }
-  30%{opacity:1}
-  70%{opacity:1}
-  78%,100%{
-    transform:translate3d(560%,0,0) skewX(-18deg);
-    opacity:0;
+/* CSS fallback if Web Animations API is unavailable */
+@supports not (offset-path: path("M0 0")){
+  #screen-tactics #pitch .slot-card.filled > .tactics-runtime-shine{
+    animation:centuriaRuntimeShineFallback 3.2s linear infinite!important;
   }
 }
-
-/* The explicit child from prior attempts is unnecessary; hide it to avoid conflicts. */
-#screen-tactics #pitch .slot-card-shine{
-  display:none!important;
+@keyframes centuriaRuntimeShineFallback{
+  0%,32%{transform:translate3d(-230%,0,0) skewX(-18deg);opacity:0}
+  40%{transform:translate3d(-120%,0,0) skewX(-18deg);opacity:.9}
+  58%{transform:translate3d(80%,0,0) skewX(-18deg);opacity:1}
+  76%{transform:translate3d(330%,0,0) skewX(-18deg);opacity:.85}
+  80%,100%{transform:translate3d(330%,0,0) skewX(-18deg);opacity:0}
 }
