@@ -8985,3 +8985,99 @@ body.light .main-screen{
   76%{transform:translate3d(330%,0,0) skewX(-18deg);opacity:.85}
   80%,100%{transform:translate3d(330%,0,0) skewX(-18deg);opacity:0}
 }
+
+
+/* ==========================================================
+   v6.28 — FIXED CHAT VIEW
+   The whole Chat screen stays fixed.
+   Only the messages area scrolls vertically.
+   ========================================================== */
+
+#screen-chat.active{
+  display:flex!important;
+  flex-direction:column!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+#screen-chat .chat-topbar{
+  flex:0 0 auto!important;
+}
+
+#screen-chat #chatGate{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow:hidden!important;
+}
+
+#screen-chat #chatPanel{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  width:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+}
+
+#screen-chat #chatPanel.hidden{
+  display:none!important;
+}
+
+#screen-chat .chat-tabs{
+  flex:0 0 auto!important;
+}
+
+#screen-chat #chatTabPane{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  overflow:hidden!important;
+}
+
+#screen-chat #chatTabPane.hidden{
+  display:none!important;
+}
+
+#screen-chat #onlinePeople{
+  flex:0 0 auto!important;
+}
+
+#screen-chat #chatMessages{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+}
+
+#screen-chat #chatAttachmentPreview,
+#screen-chat .chat-composer,
+#screen-chat #chatHint{
+  flex:0 0 auto!important;
+}
+
+#screen-chat #membersTabPane{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+}
+
+/* Mobile: remove the old fixed chat-message height calculation,
+   because flex now fills exactly the available area. */
+@media(max-width:520px){
+  #screen-chat #chatMessages{
+    height:auto!important;
+    min-height:0!important;
+  }
+}
