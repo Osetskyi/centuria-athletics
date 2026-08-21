@@ -6710,3 +6710,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.34");
 });
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.35");
+});
