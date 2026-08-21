@@ -769,9 +769,17 @@ async function put(store,obj){
   if(!canEditSite()) throw new Error("Потрібні права редактора");
 
   if(store==="players"){
+    const previousPlayer=players.find(p=>p.id===obj.id);
+    const previousCardUrl=previousPlayer?.cardImage || "";
     let cardUrl=obj.cardImage || "";
+
+    /* v6.30: never overwrite the same Storage URL for a replaced card.
+       iPhone/Safari and the Supabase CDN can keep the old image cached
+       when the path stays players/{id}.png. A unique path guarantees
+       that the new card appears immediately everywhere. */
     if(cardUrl.startsWith("data:")){
-      cardUrl=await uploadDataImage(`players/${obj.id}.png`,cardUrl);
+      const stamp=Date.now();
+      cardUrl=await uploadDataImage(`players/${obj.id}-${stamp}.png`,cardUrl);
     }
     const payload={
       id:obj.id,
@@ -788,6 +796,18 @@ async function put(store,obj){
     };
     const {error}=await sb.from("players").upsert(payload,{onConflict:"id"});
     if(error) throw error;
+
+    /* Remove the previous generated player-card file after the DB update.
+       Old legacy players/{id}.png files and versioned files are both handled. */
+    if(previousCardUrl && previousCardUrl!==cardUrl && previousCardUrl.includes("/storage/v1/object/public/centuria-assets/players/")){
+      try{
+        const marker="/storage/v1/object/public/centuria-assets/";
+        const oldPath=decodeURIComponent(previousCardUrl.split(marker)[1]?.split("?")[0]||"");
+        if(oldPath) await sb.storage.from("centuria-assets").remove([oldPath]);
+      }catch(cleanErr){
+        console.warn("Old player card cleanup skipped",cleanErr);
+      }
+    }
     return;
   }
 
@@ -6577,4 +6597,8 @@ setInterval(()=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.29");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.30");
 });
