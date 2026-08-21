@@ -1282,6 +1282,23 @@ $("cardImageInput").addEventListener("change",async e=>{
 $("savePlayerBtn").addEventListener("click",async()=>{
   const name=$("nameInput").value.trim();
   if(!name){showToast("Введи нік або ім’я");return}
+
+  const numberRaw=$("numberInput").value.trim();
+  if(numberRaw){
+    const requestedNumber=Number(numberRaw);
+    if(!Number.isInteger(requestedNumber) || requestedNumber<0 || requestedNumber>99){
+      showToast("Номер має бути від 0 до 99");
+      $("numberInput").focus();
+      return;
+    }
+    const occupied=occupiedShirtNumberV631(requestedNumber,editPlayerId);
+    if(occupied){
+      showToast(`Номер #${requestedNumber} вже зайнятий — ${occupied.name}`);
+      $("numberInput").focus();
+      return;
+    }
+  }
+
   const ageRaw=$("ageInput").value.trim();
   if(ageRaw){
     const age=Number(ageRaw);
@@ -6223,10 +6240,40 @@ function openMyPlayerModalV589(){
   $("myPlayerRequestForm")?.addEventListener("submit",submitMyPlayerRequestV589);
 }
 
+
+function occupiedShirtNumberV631(number,excludePlayerId=null){
+  if(number===null || number==="" || Number.isNaN(Number(number)))return null;
+  const n=Number(number);
+  return players.find(p=>
+    p.id!==excludePlayerId &&
+    p.number!=="" &&
+    p.number!==null &&
+    p.number!==undefined &&
+    Number(p.number)===n
+  ) || null;
+}
+
 async function submitMyPlayerRequestV589(e){
   e.preventDefault();
   const p=myLinkedPlayerV589();if(!p)return;
   const fd=new FormData(e.currentTarget);
+
+  const numberRaw=String(fd.get("shirt_number")??"").trim();
+  const requestedNumber=numberRaw===""?null:Number(numberRaw);
+  if(requestedNumber!==null){
+    if(!Number.isInteger(requestedNumber) || requestedNumber<0 || requestedNumber>99){
+      showToast("Номер має бути від 0 до 99");
+      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      return;
+    }
+    const occupied=occupiedShirtNumberV631(requestedNumber,p.id);
+    if(occupied){
+      showToast(`Номер #${requestedNumber} вже зайнятий — ${occupied.name}`);
+      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      return;
+    }
+  }
+
   let cardUrl=p.cardImage||null;
   const file=$("myPlayerCardFile")?.files?.[0];
   if(file){
@@ -6238,7 +6285,7 @@ async function submitMyPlayerRequestV589(e){
   const rawStatus=String(fd.get("status")||"");
   const proposed={
     name:String(fd.get("name")||"").trim(),
-    shirt_number:fd.get("shirt_number")===""?null:Number(fd.get("shirt_number")),
+    shirt_number:requestedNumber,
     age:fd.get("age")===""?null:Number(fd.get("age")),
     platform:String(fd.get("platform")||"")||null,
     primary_position:String(fd.get("primary_position")||""),
@@ -6249,7 +6296,16 @@ async function submitMyPlayerRequestV589(e){
     card_image_url:cardUrl
   };
   const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
-  if(error){console.error(error);showToast("Не вдалося надіслати зміни");return;}
+  if(error){
+    console.error(error);
+    if(String(error.message||"").includes("вже зайнятий")){
+      showToast(error.message);
+      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+    }else{
+      showToast("Не вдалося надіслати зміни");
+    }
+    return;
+  }
   showToast("Зміни надіслано адміністратору");
   await loadPlayerAccountSystemV589();
   openMyPlayerModalV589();
@@ -6324,7 +6380,16 @@ async function reviewPlayerRequestV589(id,approve){
       updated_at:new Date().toISOString()
     };
     const {error}=await sb.from("players").update(payload).eq("id",r.player_id);
-    if(error){console.error(error);showToast("Не вдалося застосувати зміни");return;}
+    if(error){
+      console.error(error);
+      if(error.code==="23505" || String(error.message||"").toLowerCase().includes("shirt")){
+        const occupied=occupiedShirtNumberV631(d.shirt_number,r.player_id);
+        showToast(occupied?`Номер #${d.shirt_number} вже зайнятий — ${occupied.name}`:"Цей номер уже зайнятий");
+      }else{
+        showToast("Не вдалося застосувати зміни");
+      }
+      return;
+    }
   }
   const {error}=await sb.from("player_change_requests").update({
     status:approve?"approved":"rejected",reviewed_by:authUser.id,reviewed_at:new Date().toISOString()
@@ -6601,4 +6666,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.30");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.31");
 });
