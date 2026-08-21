@@ -1293,7 +1293,7 @@ $("savePlayerBtn").addEventListener("click",async()=>{
     }
     const occupied=occupiedShirtNumberV631(requestedNumber,editPlayerId);
     if(occupied){
-      showToast(`Номер #${requestedNumber} вже зайнятий — ${occupied.name}`);
+      showToast(`Номер #${requestedNumber} вже зайнятий`);
       $("numberInput").focus();
       return;
     }
@@ -1326,9 +1326,16 @@ $("savePlayerBtn").addEventListener("click",async()=>{
     showToast(editPlayerId?"Гравця оновлено":"Гравця додано");
   }catch(err){
     console.error(err);
+
+    if(isOccupiedNumberErrorV632(err)){
+      showOccupiedNumberMessageV632($("numberInput")?.value?.trim()||null);
+      $("numberInput")?.focus();
+      return;
+    }
+
     const msg=err?.message||"Невідома помилка";
-    showToast("Не вдалося зберегти: "+msg);
-    alert("Помилка збереження / прив’язки:\n\n"+msg);
+    showToast("Не вдалося зберегти зміни");
+    alert("Не вдалося зберегти зміни.\n\n"+msg);
   }
 });
 $("deletePlayerBtn").addEventListener("click",async()=>{
@@ -6241,6 +6248,27 @@ function openMyPlayerModalV589(){
 }
 
 
+
+function isOccupiedNumberErrorV632(err){
+  const msg=String(err?.message||"").toLowerCase();
+  const details=String(err?.details||"").toLowerCase();
+  const hint=String(err?.hint||"").toLowerCase();
+  return err?.code==="23505" ||
+    msg.includes("shirt_number") ||
+    msg.includes("players_shirt") ||
+    details.includes("shirt_number") ||
+    hint.includes("shirt_number");
+}
+
+function showOccupiedNumberMessageV632(number=null){
+  const n=number===null||number===""?null:Number(number);
+  if(n!==null && !Number.isNaN(n)){
+    showToast(`Номер #${n} вже зайнятий`);
+  }else{
+    showToast("Цей номер уже зайнятий");
+  }
+}
+
 function occupiedShirtNumberV631(number,excludePlayerId=null){
   if(number===null || number==="" || Number.isNaN(Number(number)))return null;
   const n=Number(number);
@@ -6268,7 +6296,7 @@ async function submitMyPlayerRequestV589(e){
     }
     const occupied=occupiedShirtNumberV631(requestedNumber,p.id);
     if(occupied){
-      showToast(`Номер #${requestedNumber} вже зайнятий — ${occupied.name}`);
+      showToast(`Номер #${requestedNumber} вже зайнятий`);
       e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
       return;
     }
@@ -6298,8 +6326,8 @@ async function submitMyPlayerRequestV589(e){
   const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
   if(error){
     console.error(error);
-    if(String(error.message||"").includes("вже зайнятий")){
-      showToast(error.message);
+    if(isOccupiedNumberErrorV632(error) || String(error.message||"").toLowerCase().includes("зайнятий")){
+      showOccupiedNumberMessageV632(requestedNumber);
       e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
     }else{
       showToast("Не вдалося надіслати зміни");
@@ -6382,9 +6410,8 @@ async function reviewPlayerRequestV589(id,approve){
     const {error}=await sb.from("players").update(payload).eq("id",r.player_id);
     if(error){
       console.error(error);
-      if(error.code==="23505" || String(error.message||"").toLowerCase().includes("shirt")){
-        const occupied=occupiedShirtNumberV631(d.shirt_number,r.player_id);
-        showToast(occupied?`Номер #${d.shirt_number} вже зайнятий — ${occupied.name}`:"Цей номер уже зайнятий");
+      if(isOccupiedNumberErrorV632(error)){
+        showOccupiedNumberMessageV632(d.shirt_number);
       }else{
         showToast("Не вдалося застосувати зміни");
       }
@@ -6670,4 +6697,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.31");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.32");
 });
