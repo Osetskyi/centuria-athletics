@@ -9248,3 +9248,81 @@ html[data-site-theme="light"] .site-access-panel p,
 html.light-theme .site-access-panel p{color:#6d6255}
 html[data-site-theme="light"] .site-access-user,
 html.light-theme .site-access-user{color:#6a5128;background:#faf6ee}
+
+
+/* ==========================================================
+   v6.33 — LIGHT HOME: CLEAN BASE ONLY
+   User-supplied artwork, no home controls yet.
+   Dark theme is untouched.
+   ========================================================== */
+
+html[data-site-theme="light"] #screen-home.active,
+html.light-theme #screen-home.active,
+body.light #screen-home.active{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  background:#f7f1e4!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap,
+body.light #screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art,
+body.light #screen-home .home-art{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  pointer-events:none!important;
+  user-select:none!important;
+}
+
+/* Step 1: artwork only. All light-home interactive overlays stay hidden. */
+html[data-site-theme="light"] #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .hotspot,
+html.light-theme #screen-home .home-online-badge,
+html.light-theme #screen-home .home-next-event,
+html.light-theme #screen-home .home-mvp-card,
+body.light #screen-home .hotspot,
+body.light #screen-home .home-online-badge,
+body.light #screen-home .home-next-event,
+body.light #screen-home .home-mvp-card{
+  display:none!important;
+}
+
+/* Prevent page-level scrolling while the light home is open. */
+html[data-site-theme="light"]:has(#screen-home.active),
+html.light-theme:has(#screen-home.active),
+body.light:has(#screen-home.active){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
