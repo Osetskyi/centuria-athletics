@@ -9716,8 +9716,15 @@ body.light #screen-home .home-mvp-card{
   display:none!important;
 }
 
-/* v6.41 — multi VIP carousel */
+
+/* v6.42 — VIP visible in both themes; other clean-home widgets remain unchanged */
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html[data-site-theme="light"] #screen-home .home-mvp-card.hidden,
+html.light-theme #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-mvp-card.hidden,
+body.light #screen-home .home-mvp-card,
+body.light #screen-home .home-mvp-card.hidden{display:flex!important;}
 #homeMvpCard{touch-action:pan-y;}
 #homeMvpCard .home-vip-dots{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);display:flex;gap:4px;z-index:8;pointer-events:none;}
-#homeMvpCard .home-vip-dots i{display:block;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.38);box-shadow:0 0 4px rgba(0,0,0,.35);}
+#homeMvpCard .home-vip-dots i{display:block;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.38);}
 #homeMvpCard .home-vip-dots i.active{background:#fff;transform:scale(1.25);}
