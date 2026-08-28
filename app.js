@@ -3687,15 +3687,19 @@ function renderTrainingView(day){
   const rows=statsForTraining(day.id).sort((a,b)=>Number(b.rating)-Number(a.rating));
   const avg=averageRating(rows);
   const mvp=trainingMvp(day);
-  $("trainingViewMvp").textContent=mvp?.player?.name||"—";
-  $("trainingViewMvpRating").textContent=mvp?fmtRating(mvp.rating):"—";
+  const topRating=rows.length?Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
+  const mvpRows=topRating==null?[]:rows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
+  const mvpNames=mvpRows.map(r=>players.find(p=>p.id===r.player_id)?.name).filter(Boolean);
+  $("trainingViewMvp").textContent=mvpNames.length?mvpNames.join(" • "):"—";
+  $("trainingViewMvpRating").textContent=topRating!=null?fmtRating(topRating):"—";
   $("trainingViewTeamAvg").textContent=fmtRating(avg);
 
   $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
-    return `<div class="training-rank-row ${i===0?"mvp":""}">
+    const isMvp=topRating!=null && Math.abs(Number(r.rating)-topRating)<0.000001;
+    return `<div class="training-rank-row ${isMvp?"mvp":""}">
       <span class="rank-place">${i+1}</span>
-      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${i===0?`<small>🏆 MVP</small>`:""}</span>
+      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${isMvp?`<small>🏆 MVP</small>`:""}</span>
       <small class="rank-extra">🎮 ${r.matches_played??day.matches_played??0} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
       <strong>${fmtRating(Number(r.rating))}</strong>
     </div>`;
@@ -6725,7 +6729,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 });
 
 
-/* v6.42 — MULTI VIP CAROUSEL (calendar logic untouched) */
+/* v6.43 — MULTI VIP + MULTI MVP FIX */
 let homeVipPlayers=[];
 let homeVipIndex=0;
 let homeVipTimer=null;
@@ -6813,3 +6817,6 @@ function loadLatestMvp(){
 })();
 
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.42");});
+
+
+document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.43");});
