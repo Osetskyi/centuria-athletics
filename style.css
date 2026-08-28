@@ -9686,3 +9686,32 @@ body.light #screen-home .home-mvp-card{
   z-index:8;
   pointer-events:none;
 }
+
+
+/* v6.40 — LIGHT HOME INTERACTION FIX
+   Keep the light artwork, but restore the same invisible navigation hotspots
+   used by the dark home screen. */
+html[data-site-theme="light"] #screen-home .hotspot,
+html.light-theme #screen-home .hotspot,
+body.light #screen-home .hotspot{
+  display:block!important;
+  visibility:visible!important;
+  opacity:0!important;
+  pointer-events:auto!important;
+  z-index:20!important;
+  background:transparent!important;
+  border:0!important;
+}
+
+/* Keep informational widgets hidden on the clean light-home artwork. */
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .home-online-badge,
+html.light-theme #screen-home .home-next-event,
+html.light-theme #screen-home .home-mvp-card,
+body.light #screen-home .home-online-badge,
+body.light #screen-home .home-next-event,
+body.light #screen-home .home-mvp-card{
+  display:none!important;
+}
