@@ -9248,3 +9248,353 @@ html[data-site-theme="light"] .site-access-panel p,
 html.light-theme .site-access-panel p{color:#6d6255}
 html[data-site-theme="light"] .site-access-user,
 html.light-theme .site-access-user{color:#6a5128;background:#faf6ee}
+
+
+/* ==========================================================
+   v6.33 — LIGHT HOME: CLEAN BASE ONLY
+   User-supplied artwork, no home controls yet.
+   Dark theme is untouched.
+   ========================================================== */
+
+html[data-site-theme="light"] #screen-home.active,
+html.light-theme #screen-home.active,
+body.light #screen-home.active{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:0!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+  background:#f7f1e4!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap,
+body.light #screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art,
+body.light #screen-home .home-art{
+  display:block!important;
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  pointer-events:none!important;
+  user-select:none!important;
+}
+
+/* Step 1: artwork only. All light-home interactive overlays stay hidden. */
+html[data-site-theme="light"] #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .hotspot,
+html.light-theme #screen-home .home-online-badge,
+html.light-theme #screen-home .home-next-event,
+html.light-theme #screen-home .home-mvp-card,
+body.light #screen-home .hotspot,
+body.light #screen-home .home-online-badge,
+body.light #screen-home .home-next-event,
+body.light #screen-home .home-mvp-card{
+  display:none!important;
+}
+
+/* Prevent page-level scrolling while the light home is open. */
+html[data-site-theme="light"]:has(#screen-home.active),
+html.light-theme:has(#screen-home.active),
+body.light:has(#screen-home.active){
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+}
+
+
+/* ==========================================================
+   v6.34 — iPhone top safe-area/status-bar strip fix
+   Light home only. No buttons/widgets added.
+   ========================================================== */
+
+html[data-site-theme="light"]:has(#screen-home.active),
+html.light-theme:has(#screen-home.active),
+body.light:has(#screen-home.active),
+html[data-site-theme="light"] body:has(#screen-home.active){
+  margin:0!important;
+  padding:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  max-height:100%!important;
+  overflow:hidden!important;
+  background:#eee7d9!important;
+}
+
+html[data-site-theme="light"] body:has(#screen-home.active) #app,
+html.light-theme body:has(#screen-home.active) #app,
+body.light:has(#screen-home.active) #app{
+  position:fixed!important;
+  inset:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-width:none!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#eee7d9!important;
+}
+
+html[data-site-theme="light"] #screen-home.active,
+html.light-theme #screen-home.active,
+body.light #screen-home.active{
+  position:fixed!important;
+  z-index:999!important;
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  left:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#eee7d9!important;
+}
+
+/* Extend artwork slightly beyond all viewport edges so iOS cannot reveal
+   an unpainted safe-area line during viewport/safe-area rounding. */
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap,
+body.light #screen-home .home-art-wrap{
+  position:absolute!important;
+  top:-3px!important;
+  right:-3px!important;
+  bottom:-3px!important;
+  left:-3px!important;
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+
+html[data-site-theme="light"] #screen-home .home-art,
+html.light-theme #screen-home .home-art,
+body.light #screen-home .home-art{
+  position:absolute!important;
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  left:0!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+}
+
+/* Hide any inherited pseudo-element that could paint a line above home. */
+html[data-site-theme="light"] #screen-home::before,
+html[data-site-theme="light"] #screen-home::after,
+html.light-theme #screen-home::before,
+html.light-theme #screen-home::after,
+body.light #screen-home::before,
+body.light #screen-home::after{
+  content:none!important;
+  display:none!important;
+}
+
+
+/* ==========================================================
+   v6.35 — TRUE FULLSCREEN LIGHT HOME ON iPHONE
+   Pulls the artwork through the iOS top safe-area/status-bar zone.
+   The light home is still artwork only — no controls/widgets.
+   ========================================================== */
+
+html[data-site-theme="light"] #screen-home.active,
+html.light-theme #screen-home.active,
+body.light #screen-home.active{
+  position:fixed!important;
+  z-index:99999!important;
+
+  /* iOS standalone can place 0 below the status-bar safe area.
+     Pull the home upward by exactly that inset. */
+  top:calc(-1 * env(safe-area-inset-top))!important;
+  right:0!important;
+  bottom:auto!important;
+  left:0!important;
+
+  width:100vw!important;
+  height:calc(100dvh + env(safe-area-inset-top))!important;
+  min-height:calc(100dvh + env(safe-area-inset-top))!important;
+  max-height:none!important;
+
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  overscroll-behavior:none!important;
+
+  /* Use the supplied artwork as the actual screen background.
+     This avoids any seam between a safe-area and an <img>. */
+  background-image:url("home-screen-light.jpg")!important;
+  background-position:center center!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
+  background-color:#eee7d9!important;
+}
+
+/* The light home now comes directly from #screen-home background. */
+html[data-site-theme="light"] #screen-home .home-art-wrap,
+html.light-theme #screen-home .home-art-wrap,
+body.light #screen-home .home-art-wrap{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  background:transparent!important;
+  overflow:hidden!important;
+}
+
+html[data-site-theme="light"] #screen-home #homeBackgroundImage,
+html.light-theme #screen-home #homeBackgroundImage,
+body.light #screen-home #homeBackgroundImage{
+  display:none!important;
+}
+
+/* Step-by-step mode: hide every floating home element, including
+   the ADMIN account badge visible in the previous screenshot. */
+html[data-site-theme="light"]:has(#screen-home.active) #authBtn,
+html.light-theme:has(#screen-home.active) #authBtn,
+body.light:has(#screen-home.active) #authBtn,
+html[data-site-theme="light"] #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .hotspot,
+html.light-theme #screen-home .home-online-badge,
+html.light-theme #screen-home .home-next-event,
+html.light-theme #screen-home .home-mvp-card,
+body.light #screen-home .hotspot,
+body.light #screen-home .home-online-badge,
+body.light #screen-home .home-next-event,
+body.light #screen-home .home-mvp-card{
+  display:none!important;
+}
+
+/* Paint the page underneath with the same top tone as a fallback,
+   so iOS never exposes a white canvas during viewport changes. */
+html[data-site-theme="light"],
+html.light-theme,
+html[data-site-theme="light"] body,
+html.light-theme body,
+body.light{
+  background:#eee7d9!important;
+}
+
+
+/* ==========================================================
+   v6.36 — LIGHT HOME: seamless iPhone top bar
+   Important: iOS standalone status bar is an opaque system area.
+   Dark theme looks seamless because that area is black.
+   For light theme we match it exactly and softly blend the top
+   of the artwork into the same tone. No buttons/widgets added.
+   ========================================================== */
+
+html[data-site-theme="light"],
+html.light-theme,
+html[data-site-theme="light"] body,
+html.light-theme body,
+body.light{
+  background:#efe7da!important;
+}
+
+html[data-site-theme="light"] #screen-home.active,
+html.light-theme #screen-home.active,
+body.light #screen-home.active{
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  left:0!important;
+  width:100vw!important;
+  height:100dvh!important;
+  min-height:100dvh!important;
+  max-height:100dvh!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background-image:url("home-screen-light.jpg")!important;
+  background-size:cover!important;
+  background-position:center center!important;
+  background-repeat:no-repeat!important;
+  background-color:#efe7da!important;
+}
+
+/* The opaque iOS status bar above the page is #efe7da.
+   Blend the first visible pixels of the artwork into that exact
+   same shade so there is no horizontal "white strip" seam. */
+html[data-site-theme="light"] #screen-home.active::before,
+html.light-theme #screen-home.active::before,
+body.light #screen-home.active::before{
+  content:""!important;
+  display:block!important;
+  position:absolute!important;
+  z-index:2!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  height:92px!important;
+  pointer-events:none!important;
+  background:linear-gradient(
+    180deg,
+    #efe7da 0px,
+    rgba(239,231,218,.98) 18px,
+    rgba(239,231,218,.78) 43px,
+    rgba(239,231,218,.38) 68px,
+    rgba(239,231,218,0) 92px
+  )!important;
+}
+
+/* Keep the clean step-1 screen: image only. */
+html[data-site-theme="light"] #screen-home #homeBackgroundImage,
+html.light-theme #screen-home #homeBackgroundImage,
+body.light #screen-home #homeBackgroundImage{
+  display:none!important;
+}
+
+html[data-site-theme="light"]:has(#screen-home.active) #authBtn,
+html.light-theme:has(#screen-home.active) #authBtn,
+body.light:has(#screen-home.active) #authBtn,
+html[data-site-theme="light"] #screen-home .hotspot,
+html[data-site-theme="light"] #screen-home .home-online-badge,
+html[data-site-theme="light"] #screen-home .home-next-event,
+html[data-site-theme="light"] #screen-home .home-mvp-card,
+html.light-theme #screen-home .hotspot,
+html.light-theme #screen-home .home-online-badge,
+html.light-theme #screen-home .home-next-event,
+html.light-theme #screen-home .home-mvp-card,
+body.light #screen-home .hotspot,
+body.light #screen-home .home-online-badge,
+body.light #screen-home .home-next-event,
+body.light #screen-home .home-mvp-card{
+  display:none!important;
+}

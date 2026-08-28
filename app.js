@@ -2158,7 +2158,9 @@ function yesLinkedPlayersForGathering(id){
     const prof=teamProfiles.get(uid);
     if(prof?.player_id)playerIds.add(prof.player_id);
   });
-  return players.filter(p=>playerIds.has(p.id));
+
+  // «Перегляд» завжди доступний у складі на збір без голосування/акаунта.
+  return players.filter(p=>playerIds.has(p.id) || p.status==="Перегляд");
 }
 
 function gatheringLineupSlotHtml(g,slot,index){
@@ -2178,7 +2180,7 @@ function gatheringLineupSlotHtml(g,slot,index){
 function gatheringLineupHtml(g){
   return `<div class="gathering-lineup-wrap">
     <div class="gathering-lineup-head">
-      <div><strong>⚽ СКЛАД НА ЗБІР</strong><span>${gatheringIsPast(g)?"Фінальний склад збережено в історії":"Показуються тільки ті, хто проголосував «Буду»"}</span></div>
+      <div><strong>⚽ СКЛАД НА ЗБІР</strong><span>${gatheringIsPast(g)?"Фінальний склад збережено в історії":"Доступні ті, хто проголосував «Буду», та гравці зі статусом «Перегляд»"}</span></div>
       ${!gatheringIsPast(g)&&canEditSite()?`<small>Натисни +, щоб поставити гравця</small>`:""}
     </div>
     <div class="gathering-lineup-pitch">
@@ -2214,7 +2216,7 @@ async function openGatheringLineupPickerV599(gatheringId,slotKey,position){
         <div><strong>${esc(p.name)}</strong><small>${POS_LABEL[p.primaryPos]||p.primaryPos}${p.archetype?" • "+esc(p.archetype):""}</small></div>
         <span class="compat ${comp}">${label}</span>
       </button>`;
-    }).join(""):`<div class="empty-state"><strong>НЕМАЄ ДОСТУПНИХ ГРАВЦІВ</strong><span>Спочатку гравець має проголосувати «Буду» та мати прив’язаний акаунт.</span></div>`}`;
+    }).join(""):`<div class="empty-state"><strong>НЕМАЄ ДОСТУПНИХ ГРАВЦІВ</strong><span>Гравець має проголосувати «Буду» або мати статус «Перегляд».</span></div>`}`;
 
   list.querySelectorAll("[data-gathering-player]").forEach(btn=>{
     btn.addEventListener("click",()=>saveGatheringLineupSlotV599(btn.dataset.gatheringPlayer||null));
@@ -2234,7 +2236,7 @@ async function saveGatheringLineupSlotV599(playerId){
   if(playerId){
     const eligible=yesLinkedPlayersForGathering(gatheringId).some(p=>p.id===playerId);
     if(!eligible){
-      showToast("Цей гравець не проголосував «Буду»");
+      showToast("Гравець недоступний: потрібен голос «Буду» або статус «Перегляд»");
       return;
     }
     const duplicate=lineupForGathering(gatheringId).find(s=>s.player_id===playerId && s.slot_key!==slotKey);
@@ -6701,4 +6703,20 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.32");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.33");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.34");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.35");
+});
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.36");
 });

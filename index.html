@@ -2,8 +2,12 @@
 <html lang="uk">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#090909">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
   <title>Centuria Athletics</title>
   <script>
 (function(){
@@ -12,13 +16,15 @@
     document.documentElement.dataset.siteTheme=t;
     document.documentElement.classList.toggle("light-theme",t==="light");
     document.documentElement.classList.toggle("dark-theme",t==="dark");
+    /* v6.36 theme-color */
+    var tm=document.querySelector('meta[name="theme-color"]');
+    if(tm) tm.setAttribute("content",t==="light"?"#efe7da":"#090909");
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=6.32-number-message">
+<link rel="stylesheet" href="style.css?v=6.36-seamless-top">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#090909">
 
 <script>
 (function(){
@@ -1207,7 +1213,7 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=6.32-number-message"></script>
+<script src="app.js?v=6.36-seamless-top"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
