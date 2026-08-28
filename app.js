@@ -6721,3 +6721,107 @@ document.addEventListener("DOMContentLoaded",()=>{
 document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.36");
 });
+
+/* v6.41 — MULTI VIP HOME CAROUSEL */
+let homeVipPlayers=[];
+let homeVipIndex=0;
+let homeVipTimer=null;
+let homeVipTouchX=null;
+
+function homeVipLatestEvent(){
+  const events=[];
+  if(Array.isArray(trainingDays)&&Array.isArray(trainingStats)){
+    trainingDays.forEach(day=>{
+      const rows=trainingStats.filter(r=>r.training_day_id===day.id&&Number.isFinite(Number(r.rating)));
+      if(!rows.length)return;
+      const max=Math.max(...rows.map(r=>Number(r.rating)));
+      const winners=rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001);
+      events.push({date:day.training_date||day.date||"",rating:max,winners,type:"training"});
+    });
+  }
+  if(Array.isArray(calendarMatches)&&Array.isArray(officialMatchStats)){
+    calendarMatches.forEach(match=>{
+      const rows=officialMatchStats.filter(r=>r.match_id===match.id&&Number.isFinite(Number(r.rating)));
+      if(!rows.length)return;
+      const max=Math.max(...rows.map(r=>Number(r.rating)));
+      const winners=rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001);
+      events.push({date:match.match_date||match.date||"",rating:max,winners,type:"official"});
+    });
+  }
+  events.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+  return events[0]||null;
+}
+
+function paintHomeVip(){
+  const card=document.getElementById("homeMvpCard");
+  if(!card||!homeVipPlayers.length)return;
+  homeVipIndex=((homeVipIndex%homeVipPlayers.length)+homeVipPlayers.length)%homeVipPlayers.length;
+  const item=homeVipPlayers[homeVipIndex];
+  const p=item.player;
+  const img=document.getElementById("homeMvpPhoto");
+  const name=document.getElementById("homeMvpName");
+  const rating=document.getElementById("homeMvpRating");
+  const meta=document.getElementById("homeMvpMeta");
+  const ribbon=card.querySelector(".home-mvp-ribbon");
+  if(ribbon)ribbon.textContent="VIP";
+  if(name)name.textContent=p.name||"VIP ДНЯ";
+  if(rating)rating.textContent=Number(item.rating).toFixed(2);
+  if(meta)meta.textContent=`${String(item.date||"").split("-").reverse().join(".")} • ${item.type==="training"?"збір":"матч"}`;
+  if(img){img.src=p.cardImage||p.card_image||PLAYER_PLACEHOLDER;img.alt=p.name||"VIP дня";}
+  card.dataset.playerId=p.id;
+  card.dataset.eventType=item.type;
+  card.dataset.eventDate=item.date||"";
+  card.classList.remove("hidden");
+  let dots=card.querySelector(".home-vip-dots");
+  if(!dots){dots=document.createElement("span");dots.className="home-vip-dots";card.appendChild(dots);}
+  dots.innerHTML=homeVipPlayers.length>1?homeVipPlayers.map((_,i)=>`<i class="${i===homeVipIndex?"active":""}"></i>`).join(""):"";
+}
+
+function restartHomeVipTimer(){
+  clearInterval(homeVipTimer);
+  if(homeVipPlayers.length>1){
+    homeVipTimer=setInterval(()=>{homeVipIndex=(homeVipIndex+1)%homeVipPlayers.length;paintHomeVip();},5000);
+  }
+}
+
+function renderHomeVip(){
+  const card=document.getElementById("homeMvpCard");
+  if(!card)return;
+  const latest=homeVipLatestEvent();
+  homeVipPlayers=[];
+  if(latest){
+    latest.winners.forEach(w=>{
+      const p=Array.isArray(players)?players.find(x=>x.id===w.player_id):null;
+      if(p)homeVipPlayers.push({player:p,rating:Number(w.rating),date:latest.date,type:latest.type});
+    });
+  }
+  if(!homeVipPlayers.length){
+    card.classList.remove("hidden");
+    card.dataset.playerId="";
+    const ribbon=card.querySelector(".home-mvp-ribbon");if(ribbon)ribbon.textContent="VIP";
+    const name=document.getElementById("homeMvpName");if(name)name.textContent="VIP ДНЯ";
+    const rating=document.getElementById("homeMvpRating");if(rating)rating.textContent="—";
+    const img=document.getElementById("homeMvpPhoto");if(img)img.src=PLAYER_PLACEHOLDER;
+    clearInterval(homeVipTimer);return;
+  }
+  if(homeVipIndex>=homeVipPlayers.length)homeVipIndex=0;
+  paintHomeVip();restartHomeVipTimer();
+}
+
+(function initHomeVipSwipe(){
+  const bind=()=>{
+    const card=document.getElementById("homeMvpCard");
+    if(!card||card.dataset.vipSwipeBound)return;
+    card.dataset.vipSwipeBound="1";
+    card.addEventListener("touchstart",e=>{homeVipTouchX=e.changedTouches?.[0]?.clientX??null;},{passive:true});
+    card.addEventListener("touchend",e=>{
+      if(homeVipTouchX===null||homeVipPlayers.length<2)return;
+      const x=e.changedTouches?.[0]?.clientX??homeVipTouchX;
+      const dx=x-homeVipTouchX;homeVipTouchX=null;
+      if(Math.abs(dx)<35)return;
+      homeVipIndex=(homeVipIndex+(dx<0?1:-1)+homeVipPlayers.length)%homeVipPlayers.length;
+      paintHomeVip();restartHomeVipTimer();
+    },{passive:true});
+  };
+  document.addEventListener("DOMContentLoaded",bind);setTimeout(bind,300);
+})();
