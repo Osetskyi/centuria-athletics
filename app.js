@@ -2169,6 +2169,7 @@ function gatheringLineupSlotHtml(g,slot,index){
   const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
   const editable=canEditSite()&&!gatheringIsPast(g);
   return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
+    ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
     <button type="button" class="gathering-lineup-card ${p?"filled live-player-card":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
       ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
     </button>

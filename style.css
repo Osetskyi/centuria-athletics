@@ -9678,3 +9678,11 @@ body.light #screen-home .home-mvp-card{
     margin-bottom:10px;
   }
 }
+
+
+/* v6.39 — show player status on Gathering lineup exactly like normal tactics */
+.gathering-lineup-slot .gathering-slot-status{
+  bottom:calc(100% - 4px);
+  z-index:8;
+  pointer-events:none;
+}
