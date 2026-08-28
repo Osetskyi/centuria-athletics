@@ -9598,3 +9598,83 @@ body.light #screen-home .home-next-event,
 body.light #screen-home .home-mvp-card{
   display:none!important;
 }
+
+
+/* v6.38 — mobile player status picker: keep «Перегляд» reachable */
+#playerDialog{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+#playerDialog > .modal{
+  overflow:visible;
+}
+#playerDialog .status-menu{
+  max-height:min(230px,42dvh);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  scrollbar-width:thin;
+}
+#playerDialog .status-option{
+  min-height:44px;
+  flex:0 0 auto;
+}
+@media(max-width:700px){
+  #playerDialog{
+    max-height:calc(100dvh - 16px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  #playerDialog .modal{
+    padding-bottom:max(26px,env(safe-area-inset-bottom));
+  }
+  #playerDialog .status-menu{
+    position:relative;
+    left:auto;
+    right:auto;
+    z-index:60;
+    max-height:190px;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+  }
+}
+
+
+/* v6.38 — mobile player status picker: keep all statuses reachable by touch */
+#playerDialog .status-menu{
+  max-height:min(220px,42dvh);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+  z-index:200;
+}
+#playerDialog .status-option{
+  min-height:44px;
+  flex:0 0 auto;
+}
+@media(max-width:700px){
+  #playerDialog{
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  #playerDialog > .modal{
+    max-height:calc(100dvh - 20px);
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:max(28px,env(safe-area-inset-bottom));
+  }
+  #playerDialog .player-select-columns label{
+    min-width:0;
+  }
+  #playerDialog .status-menu{
+    position:relative;
+    left:auto;
+    right:auto;
+    max-height:190px;
+    margin-bottom:10px;
+  }
+}
