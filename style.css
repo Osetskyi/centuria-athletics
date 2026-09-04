@@ -19700,3 +19700,34 @@ html[data-site-theme="light"] .portrait-only-guard__eyebrow{color:#a97917}
   .portrait-only-guard{display:flex}
   body{overflow:hidden!important}
 }
+
+
+/* v8.46 MVP participation indicator */
+.training-rank-row.mvp-ineligible{
+  opacity:.68;
+  border-color:rgba(188,166,105,.22);
+}
+.training-rank-row.mvp-ineligible .rank-place{color:#777!important}
+.training-rank-row .mvp-ineligible-note{
+  display:block;
+  color:#b9a66b!important;
+  font-size:7px!important;
+  font-weight:800;
+  line-height:1.2;
+  white-space:normal;
+}
+.training-rank-row .mvp-eligible-note{
+  display:block;
+  color:#dabe65!important;
+  font-size:7px!important;
+  font-weight:800;
+}
+html[data-site-theme="light"] .training-rank-row.mvp-ineligible,
+html.light-theme .training-rank-row.mvp-ineligible{
+  opacity:.72;
+  border-color:rgba(137,108,38,.22);
+}
+html[data-site-theme="light"] .training-rank-row .mvp-ineligible-note,
+html.light-theme .training-rank-row .mvp-ineligible-note{
+  color:#8b6f2b!important;
+}

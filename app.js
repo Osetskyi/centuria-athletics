@@ -5122,12 +5122,20 @@ function trainingForGathering(gatheringId){return trainingDays.find(t=>t.gatheri
 function statsForTraining(id){return trainingStats.filter(s=>s.training_day_id===id && s.rating!=null);}
 function statsForMatch(id){return officialMatchStats.filter(s=>s.match_id===id);}
 
-/* MVP збору: претендент має зіграти щонайменше 50% матчів збору. */
+/* MVP збору: з 01.09.2026 претендент має зіграти щонайменше 50% матчів збору.
+   Правило застосовується ретроактивно до всіх вересневих зборів і до всіх наступних. */
+const FAIR_TRAINING_MVP_FROM_DATE="2026-09-01";
+function fairTrainingMvpRuleApplies(day){
+  const resolvedDate=day?.training_date||trainingDays.find(d=>d.id===day?.id)?.training_date||"";
+  return Boolean(resolvedDate)&&String(resolvedDate)>=FAIR_TRAINING_MVP_FROM_DATE;
+}
 function trainingMvpEligibleRows(day,rows=statsForTraining(day?.id)){
-  const total=Math.max(0,Number(day?.matches_played)||0);
-  if(!total)return rows||[];
+  const source=rows||[];
+  if(!fairTrainingMvpRuleApplies(day))return source;
+  const total=Math.max(0,Number(day?.matches_played)||Number(trainingDays.find(d=>d.id===day?.id)?.matches_played)||0);
+  if(!total)return source;
   const minimum=Math.ceil(total/2);
-  return (rows||[]).filter(r=>{
+  return source.filter(r=>{
     const raw=r?.matches_played;
     const played=(raw===null||raw===undefined||raw==='')?total:Number(raw);
     return Number.isFinite(played)&&played>=minimum;
@@ -5288,13 +5296,22 @@ function renderTrainingView(day){
   $("trainingViewMvpRating").textContent=topRating!=null?fmtRating(topRating):"—";
   $("trainingViewTeamAvg").textContent=fmtRating(avg);
 
+  const totalMatches=Math.max(0,Number(day.matches_played)||0);
+  const minimumMvpMatches=totalMatches?Math.ceil(totalMatches/2):0;
+  const fairMvpRule=fairTrainingMvpRuleApplies(day);
   $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
-    const isMvp=topRating!=null && eligibleMvpRows.includes(r) && Math.abs(Number(r.rating)-topRating)<0.000001;
-    return `<div class="training-rank-row ${isMvp?"mvp":""}">
+    const rawPlayed=r?.matches_played;
+    const played=(rawPlayed===null||rawPlayed===undefined||rawPlayed==='')?totalMatches:Number(rawPlayed);
+    const mvpEligible=!fairMvpRule || !totalMatches || (Number.isFinite(played)&&played>=minimumMvpMatches);
+    const isMvp=topRating!=null && mvpEligible && Math.abs(Number(r.rating)-topRating)<0.000001;
+    const eligibilityNote=fairMvpRule&&!mvpEligible
+      ?`<small class="mvp-ineligible-note">⏱️ Недостатньо матчів · ${Number.isFinite(played)?played:0}/${totalMatches} · мін. ${minimumMvpMatches}</small>`
+      :(isMvp?`<small class="mvp-eligible-note">🏆 MVP</small>`:"");
+    return `<div class="training-rank-row ${isMvp?"mvp":""} ${!mvpEligible?"mvp-ineligible":""}">
       <span class="rank-place">${i+1}</span>
-      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${isMvp?`<small>🏆 MVP</small>`:""}</span>
-      <small class="rank-extra">🎮 ${r.matches_played??day.matches_played??0} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
+      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${eligibilityNote}</span>
+      <small class="rank-extra">🎮 ${Number.isFinite(played)?played:(day.matches_played||0)} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
       <strong>${fmtRating(Number(r.rating))}</strong>
     </div>`;
   }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор може внести оцінки.</span></div>`;
