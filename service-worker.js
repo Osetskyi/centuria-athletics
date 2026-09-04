@@ -1,6 +1,11 @@
-const CACHE_VERSION="centuria-push-v1";
+// v7.55 Bottom navigation lowered globally
+const CACHE_VERSION="centuria-pwa-v846-main-arena-locked";
 self.addEventListener("install",()=>self.skipWaiting());
-self.addEventListener("activate",event=>event.waitUntil(self.clients.claim()));
+self.addEventListener("activate",event=>event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.filter(key=>key!==CACHE_VERSION).map(key=>caches.delete(key)));
+  await self.clients.claim();
+})()));
 
 self.addEventListener("push",event=>{
   let data={};
@@ -30,5 +35,28 @@ self.addEventListener("notificationclick",event=>{
       }
     }
     return clients.openWindow(target);
+  })());
+});
+
+
+// v6.52: keep navigation fresh; cache only successful same-origin static responses as fallback.
+self.addEventListener("fetch",event=>{
+  if(event.request.method!=="GET") return;
+  const url=new URL(event.request.url);
+  if(url.origin!==self.location.origin) return;
+  event.respondWith((async()=>{
+    try{
+      const response=await fetch(event.request,{cache:"no-store"});
+      if(response && response.ok){
+        const cache=await caches.open(CACHE_VERSION);
+        cache.put(event.request,response.clone()).catch(()=>{});
+      }
+      return response;
+    }catch(_e){
+      const cached=await caches.match(event.request);
+      if(cached) return cached;
+      if(event.request.mode==="navigate") return caches.match("/");
+      throw _e;
+    }
   })());
 });

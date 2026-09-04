@@ -36,16 +36,23 @@ function platformIcon(platform){
   const src=platform==="PS5"
     ? "platform-ps5.png"
     : platform==="XBOX"
-      ? "platform-xbox.jpg"
+      ? "platform-xbox.png"
       : "platform-pc.png";
   return `<img src="${src}" alt="${platform}" class="platform-logo-img">`;
 }
 
 function selectPlatform(value){
+  const normalized=PLAYER_PLATFORMS.includes(value)?value:"";
   const hidden=$("platformValue");
-  if(hidden)hidden.value=value||"";
-  document.querySelectorAll(".platform-option").forEach(btn=>{
-    btn.classList.toggle("selected",btn.dataset.value===value);
+  if(hidden)hidden.value=normalized;
+  const picker=$("platformPicker");
+  const buttons=picker?picker.querySelectorAll(".platform-option"):document.querySelectorAll(".platform-option");
+  buttons.forEach(btn=>{
+    const isSelected=btn.dataset.value===normalized;
+    btn.classList.remove("active");
+    btn.classList.toggle("selected",isSelected);
+    btn.setAttribute("aria-pressed",isSelected?"true":"false");
+    btn.setAttribute("aria-checked",isSelected?"true":"false");
   });
 }
 
@@ -58,11 +65,18 @@ const FORMATIONS = {
     ["LB",15,73],["CB",38,78],["CB",62,78],["RB",85,73],
     ["GK",50,91]
   ],
-  "3421":[
-    ["ST",50,12],
-    ["CAM",35,31],["CAM",65,31],
-    ["LM",13,51],["CM",39,55],["CM",61,55],["RM",87,51],
-    ["CB",25,77],["CB",50,82],["CB",75,77],
+  "352":[
+    ["ST",36,14],["ST",64,14],
+    ["CAM",50,36],
+    ["LM",13,49],["CM",36,53],["CM",64,53],["RM",87,49],
+    ["CB",25,72],["CB",50,74],["CB",75,72],
+    ["GK",50,92]
+  ],
+  "4411":[
+    ["ST",50,13],
+    ["CAM",50,31],
+    ["LM",15,48],["CM",39,52],["CM",61,52],["RM",85,48],
+    ["LB",15,74],["CB",38,79],["CB",62,79],["RB",85,74],
     ["GK",50,92]
   ]
 };
@@ -70,7 +84,56 @@ const FORMATIONS = {
 let db;
 let players = [];
 let squads = [];
-let currentFormation = localStorage.getItem("ca_formation") || "451";
+
+const LOCAL_SQUADS_FALLBACK_KEY="ca_saved_squads_fallback_v780";
+
+function getLocalFallbackSquads(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(LOCAL_SQUADS_FALLBACK_KEY)||"[]");
+    return Array.isArray(raw)?raw:[];
+  }catch{
+    return [];
+  }
+}
+
+function setLocalFallbackSquads(items){
+  try{
+    localStorage.setItem(LOCAL_SQUADS_FALLBACK_KEY,JSON.stringify(items||[]));
+  }catch(err){
+    console.warn("Local saved-lineup fallback write failed",err);
+  }
+}
+
+function upsertLocalFallbackSquad(s){
+  const arr=getLocalFallbackSquads();
+  const next={...s,_localOnly:true};
+  const idx=arr.findIndex(v=>v.id===next.id);
+  if(idx>=0)arr[idx]=next;
+  else arr.unshift(next);
+  setLocalFallbackSquads(arr);
+  return next;
+}
+
+function removeLocalFallbackSquad(id){
+  const arr=getLocalFallbackSquads().filter(v=>v.id!==id);
+  setLocalFallbackSquads(arr);
+}
+
+function mergeSavedSquads(cloud,local){
+  const byId=new Map();
+  [...(local||[]),...(cloud||[])].forEach(s=>{
+    if(s?.id)byId.set(s.id,s);
+  });
+  return [...byId.values()].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+}
+
+function isSavedLineupFormationConstraintError(err){
+  const msg=String(err?.message||"");
+  return err?.code==="23514" || msg.includes("saved_lineups_formation_check");
+}
+const storedFormation = localStorage.getItem("ca_formation");
+let currentFormation = storedFormation === "3421" ? "352" : (FORMATIONS[storedFormation] ? storedFormation : "451");
+if(storedFormation !== currentFormation) localStorage.setItem("ca_formation", currentFormation);
 let lineup = JSON.parse(localStorage.getItem("ca_lineup") || "{}");
 let filter = "ALL";
 let editPlayerId = null;
@@ -102,7 +165,7 @@ function pushSupported(){
 async function registerPushServiceWorker(){
   if(!pushSupported())return null;
   try{
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js",{scope:"/"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -259,6 +322,23 @@ let chatAttachment = null;
 let chatPresenceChannel = null;
 let chatPollTimer = null;
 let chatLastSignature = "";
+
+/* v8.03 chat state */
+let chatReplyTarget = null;
+let chatEditingMessageId = null;
+let chatEditingReplyLine = "";
+let chatTypingTimer = null;
+let chatIsTyping = false;
+let chatUnreadBoundaryId = null;
+let chatMessageMenuEl = null;
+let chatReactionsV808 = new Map();
+let chatReadsV817 = new Map();
+let chatMentionsMineV817 = new Map();
+let chatMentionMenuElV817 = null;
+
+const CHAT_META_SEP = "\u2063\u2063";
+const CHAT_META_NIBBLE_BASE = 0xFE00;
+const CHAT_REACTION_EMOJIS = ["👍","🔥","😂","⚽","❤️"];
 let voiceRecorder=null;
 let voiceStream=null;
 let voiceChunks=[];
@@ -424,12 +504,15 @@ function renderSiteAccessGateV629(){
 async function refreshSiteAccessOnlyV629(){
   if(!sb||!authUser)return;
   const {data,error}=await sb.from("profiles")
-    .select("user_id,display_name,role,player_id,access_status")
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
     .eq("user_id",authUser.id)
     .maybeSingle();
   if(error)return;
   const previous=authAccessStatus;
-  authProfile=data||authProfile;
+  // v6.64: never replace a complete profile with a partial access-check row.
+  // avatar_url is selected explicitly and we merge defensively so the avatar
+  // cannot disappear during the 12-second access refresh.
+  if(data) authProfile={...(authProfile||{}),...data};
   if(data?.role)authRole=data.role;
   authAccessStatus=data?.access_status||"pending";
   renderSiteAccessGateV629();
@@ -446,7 +529,11 @@ async function refreshSiteAccessOnlyV629(){
 
 async function loadAdminSiteAccessV629(){
   const card=$("adminSiteAccessCard");
-  if(card)card.classList.toggle("hidden",authRole!=="admin");
+  // v6.62: never force this accordion open while refreshing admin data.
+  if(card){
+    if(authRole!=="admin") setSiteAccessPanelV662(false);
+    else setSiteAccessPanelV662(card.dataset.expanded==="true");
+  }
   if(!sb||!authUser||authRole!=="admin"){
     adminSiteAccessProfilesV629=[];
     return;
@@ -586,6 +673,10 @@ async function refreshAuth(){
 
   renderSiteAccessGateV629();
   applyPermissions();
+  // v6.63: authProfile arrives asynchronously, so refresh the visible
+  // Settings profile card only after the real profile has been loaded.
+  try{ if(typeof syncSettingsV659==="function") syncSettingsV659(); }catch(_e){}
+  try{ if(typeof syncHomeGreeting==="function") syncHomeGreeting(); }catch(_e){}
 
   if(!currentHasSiteAccessV629()){
     try{ await stopChatPresence(); }catch(_e){}
@@ -593,29 +684,57 @@ async function refreshAuth(){
     return;
   }
 
-  if(authRole==="admin")await loadAdminSiteAccessV629();
-  await refreshPushSettings();
-  await refreshChatAuthState();
-  await refreshGatheringsAuthState();
-  await loadStatisticsData();
-  await loadHomeNextEvent();
+  const adminAccessPromise=authRole==="admin" ? loadAdminSiteAccessV629() : Promise.resolve();
+
+  // v6.63: Home is the first screen, so its data must not wait behind chat,
+  // push settings and other secondary requests. Start the critical requests
+  // together to eliminate the several-second Home layout/content jump.
+  const homeEventPromise=loadHomeNextEvent();
+  const playersPromise=getAll("players").then(data=>{
+    players=data||[];
+    renderPlayers();
+    renderPitch();
+    return players;
+  });
+  const statsPromise=loadStatisticsData();
+  const squadsPromise=getAll("squads").then(data=>{
+    squads=data||[];
+    renderSquads();
+    return squads;
+  });
+
+  const secondaryPromise=Promise.allSettled([
+    adminAccessPromise,
+    refreshPushSettings(),
+    refreshChatAuthState(),
+    refreshGatheringsAuthState()
+  ]);
+
+  const critical=await Promise.allSettled([playersPromise,statsPromise,homeEventPromise]);
+  critical.forEach(r=>{if(r.status==="rejected")console.error("Home critical refresh error",r.reason);});
+
+  /* v7.54: once players + statistics are ready, an ADMIN/EDITOR can safely
+     finalize any completed month. The routine is idempotent and skips awards
+     that already exist. */
+  try{
+    if(typeof autoIssueCompletedMonthlyAwardsV754==="function") await autoIssueCompletedMonthlyAwardsV754();
+  }catch(err){ console.warn("v7.54 automatic monthly awards",err); }
+
+  // Statistics can finish before the players query. Repaint MVP once both
+  // critical datasets have settled so the player ID can always resolve.
+  try{ await loadLatestMvp(); }catch(err){ console.warn("Home MVP refresh error",err); }
+
   refreshTacticalBoardPermissions();
   if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
   if(authUser && $("screen-chat")?.classList.contains("active")){
     await maybeWeeklyChatCleanup();
   }
-  try{
-    players=await getAll("players");
-    squads=await getAll("squads");
-    renderPlayers();
-    renderPitch();
-    renderSquads();
-    // v6.42: players are now loaded, so VIP can be resolved against player IDs.
-    await loadLatestMvp();
-  }catch(err){
-    console.error("Cloud refresh error",err);
-  }
+
+  const rest=await Promise.allSettled([squadsPromise,secondaryPromise]);
+  rest.forEach(r=>{if(r.status==="rejected")console.error("Cloud refresh error",r.reason);});
+  try{ if(typeof syncSettingsV659==="function") syncSettingsV659(); }catch(_e){}
 }
+
 
 
 window.addEventListener("error",e=>{
@@ -729,8 +848,11 @@ function squadFromDb(s){
     id:s.id,
     name:s.name || "Склад",
     formation:s.formation,
+    formationKey:s.formation_key || null,
+    lineupSnapshot:s.lineup_snapshot || null,
     createdAt:s.created_at ? new Date(s.created_at).getTime() : Date.now(),
-    image:s.image_url || ""
+    image:s.image_url || "",
+    _localOnly:false
   };
 }
 
@@ -757,11 +879,16 @@ async function getAll(store){
     return (data||[]).map(playerFromDb);
   }
   if(store==="squads"){
+    const local=getLocalFallbackSquads();
     const {data,error}=await sb.from("saved_lineups")
       .select("*")
       .order("created_at",{ascending:false});
-    if(error){console.error(error);showToast("Не вдалося завантажити склади");return []}
-    return (data||[]).map(squadFromDb);
+    if(error){
+      console.error(error);
+      showToast("Не вдалося завантажити хмарні склади");
+      return mergeSavedSquads([],local);
+    }
+    return mergeSavedSquads((data||[]).map(squadFromDb),local);
   }
   return [];
 }
@@ -850,9 +977,26 @@ async function put(store,obj){
       .select("*")
       .single();
 
-    if(error) throw error;
+    if(error){
+      if(isSavedLineupFormationConstraintError(error)){
+        /* Current production DB still accepts only the historical formation set.
+           Keep update-build testing functional without mutating production schema. */
+        return upsertLocalFallbackSquad({
+          ...obj,
+          image:imageUrl,
+          _localOnly:true
+        });
+      }
+      throw error;
+    }
+
     if(!data?.id) throw new Error("Supabase не підтвердив збереження складу");
-    return squadFromDb(data);
+    removeLocalFallbackSquad(obj.id);
+    return {
+      ...squadFromDb(data),
+      formationKey:obj.formationKey||null,
+      lineupSnapshot:obj.lineupSnapshot||null
+    };
   }
 }
 
@@ -867,6 +1011,13 @@ async function del(store,id){
     return;
   }
   if(store==="squads"){
+    const local=getLocalFallbackSquads();
+    const isLocal=local.some(s=>s.id===id);
+    if(isLocal){
+      removeLocalFallbackSquad(id);
+      try{await sb.storage.from("centuria-assets").remove([`lineups/${id}.jpg`])}catch{}
+      return;
+    }
     const {error}=await sb.from("saved_lineups").delete().eq("id",id);
     if(error) throw error;
     await sb.storage.from("centuria-assets").remove([`lineups/${id}.jpg`]);
@@ -887,6 +1038,7 @@ async function clearStore(store){
   }
   if(store==="squads"){
     const ids=squads.map(s=>s.id);
+    setLocalFallbackSquads([]);
     const {error}=await sb.from("saved_lineups").delete().not("id","is",null);
     if(error) throw error;
     if(ids.length) await sb.storage.from("centuria-assets").remove(ids.map(id=>`lineups/${id}.jpg`));
@@ -899,13 +1051,23 @@ function showToast(text){
   const t=$("toast");t.textContent=text;t.classList.add("show");
   clearTimeout(showToast._t);showToast._t=setTimeout(()=>t.classList.remove("show"),2500);
 }
-function formationName(k){return k==="451"?"4-5-1":"3-4-2-1"}
+function formationName(k){return ({"451":"4-5-1","352":"3-5-2","4411":"4-4-1-1"})[k] || "4-5-1"}
+
+function openArenaV664(mode=""){
+  // Production v8.46: Arena is intentionally closed until the section is finished.
+  showToast('Розділ «Арена» поки недоступний');
+}
+window.openArenaV664=openArenaV664;
 
 function navigate(name){
+  if(name==="arena"){
+    openArenaV664();
+    return;
+  }
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   $("screen-"+name).classList.add("active");
   const nav=$("bottomNav");
-  nav.classList.toggle("hidden-nav",name==="home" || name==="calendar");
+  nav.classList.toggle("hidden-nav",name==="home" || name==="calendar" || name==="settings" || name==="tactical-board" || name==="squads");
   nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===(name==="tactical-board"?"tactics":name)));
   if(name==="home") loadHomeNextEvent();
   if(name==="players") renderPlayers();
@@ -917,6 +1079,7 @@ function navigate(name){
   if(name==="tactical-board") openTacticalBoardScreen();
   if(name==="settings"){
     setTimeout(refreshPlayerLinkSettingsV590,0);
+    setTimeout(syncSettingsV659,0);
   }
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
@@ -963,13 +1126,48 @@ function setupFormOptions(){
 
   const platformPicker=$("platformPicker");
   if(platformPicker){
+    // v7.47: keep a press animation, but drive it with an explicit class on
+    // the element that was actually touched. This avoids iOS/PWA showing a
+    // phantom :active state on PS5 while Xbox or PC is being pressed.
+    platformPicker.setAttribute("role","radiogroup");
     platformPicker.innerHTML=PLAYER_PLATFORMS.map(platform=>`
-      <button type="button" class="platform-option" data-value="${platform}">
+      <div class="platform-option" data-value="${platform}" role="radio" aria-checked="false" tabindex="0">
         <span class="platform-icon">${platformIcon(platform)}</span>
         <span>${platform}</span>
-      </button>`).join("");
+      </div>`).join("");
+
+    const clearPlatformPress=()=>{
+      platformPicker.querySelectorAll(".platform-option.is-pressing").forEach(el=>el.classList.remove("is-pressing"));
+    };
+
     platformPicker.querySelectorAll(".platform-option").forEach(btn=>{
-      btn.addEventListener("click",()=>selectPlatform(btn.dataset.value));
+      const pressStart=(e)=>{
+        clearPlatformPress();
+        btn.classList.add("is-pressing");
+        if(e?.type==="pointerdown") e.preventDefault();
+        selectPlatform(btn.dataset.value);
+      };
+      const pressEnd=()=>{
+        window.setTimeout(()=>btn.classList.remove("is-pressing"),70);
+      };
+
+      btn.addEventListener("pointerdown",pressStart,{passive:false});
+      btn.addEventListener("pointerup",pressEnd);
+      btn.addEventListener("pointercancel",pressEnd);
+      btn.addEventListener("pointerleave",pressEnd);
+      btn.addEventListener("click",e=>{
+        // Keyboard/legacy click fallback. Pointer taps already select on down.
+        if(e.detail===0) selectPlatform(btn.dataset.value);
+      });
+      btn.addEventListener("keydown",e=>{
+        if(e.key==="Enter" || e.key===" "){
+          e.preventDefault();
+          clearPlatformPress();
+          btn.classList.add("is-pressing");
+          selectPlatform(btn.dataset.value);
+          window.setTimeout(()=>btn.classList.remove("is-pressing"),120);
+        }
+      });
     });
   }
 }
@@ -1015,6 +1213,12 @@ function playerGroup(pos){
   return "ATT";
 }
 
+/* v7.54 — current Player of the Month visual title */
+let currentPlayerOfMonthV754={playerId:null,awardDate:null,monthLabel:""};
+function isCurrentPlayerOfMonthV754(playerId){
+  return !!playerId && currentPlayerOfMonthV754.playerId===playerId;
+}
+
 function renderPlayers(){
   const q=$("playerSearch").value.trim().toLowerCase();
   let arr=players.filter(p=>(filter==="ALL"||playerGroup(p.primaryPos)===filter));
@@ -1027,11 +1231,12 @@ function renderPlayers(){
   }
   grid.innerHTML="";
   arr.forEach(p=>{
-    const card=document.createElement("article");card.className="player-card";
+    const isPom=isCurrentPlayerOfMonthV754(p.id);
+    const card=document.createElement("article");card.className=`player-card${isPom?" current-player-of-month":""}`;
     card.innerHTML=`
-      <div class="img-wrap"><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"></div>
+      <div class="img-wrap"><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">${isPom?`<span class="player-of-month-badge">👑 ГРАВЕЦЬ МІСЯЦЯ</span>`:""}</div>
       <button class="edit-mini" aria-label="Редагувати">✎</button>
-      <div class="player-meta"><strong>${esc(p.name)}</strong><span>#${esc(p.number||"—")} • ${POS_LABEL[p.primaryPos]||""}</span></div>`;
+      <div class="player-meta"><strong>${esc(p.name)}</strong><span>#${esc(p.number||"—")} • ${POS_LABEL[p.primaryPos]||""}</span>${isPom&&currentPlayerOfMonthV754.monthLabel?`<em class="player-of-month-month">${esc(currentPlayerOfMonthV754.monthLabel)}</em>`:""}</div>`;
     card.querySelector(".edit-mini").addEventListener("click",()=>openPlayerModal(p.id));
     card.querySelector(".img-wrap").addEventListener("click",()=>openPlayerModal(p.id));
     grid.appendChild(card);
@@ -1054,7 +1259,27 @@ async function playerViewSlide(index){
   slider.style.transform=`translateX(-${index*(100/3)}%)`;
   $("playerInfoTab")?.classList.toggle("active",index===0);
   $("playerStatsTab")?.classList.toggle("active",index===1);
+  if(index===1) setTimeout(()=>setPlayerStatsMode("training"),0);
   $("playerAwardsTab")?.classList.toggle("active",index===2);
+
+  // v7.28: only the active subpage determines modal height.
+  // Statistics can be large; Information/Awards return to their compact size.
+  const dialog=$("playerDialog");
+  dialog?.classList.toggle("player-stats-open",index===1);
+  const slides=[
+    $("playerInfoSlide"),
+    $("playerStatsSlide"),
+    $("playerAwardsPane")
+  ];
+  const activeSlide=slides[index];
+  const syncPlayerSliderHeight=()=>{
+    if(!slider || !activeSlide)return;
+    slider.style.height=`${activeSlide.scrollHeight}px`;
+  };
+  requestAnimationFrame(()=>{
+    syncPlayerSliderHeight();
+    setTimeout(syncPlayerSliderHeight,80);
+  });
 
   if(index===2 && editPlayerId){
     await renderAwardsIntoPlayerModalV589(editPlayerId);
@@ -1069,6 +1294,124 @@ function fmtRating(v){return Number.isFinite(v)?v.toFixed(1):"—";}
 function statFormHtml(values){
   return values.length?values.map(v=>`<span class="${v>=9?"excellent":v>=8?"good":v<7?"low":""}">${Number(v).toFixed(1)}</span>`).join(""):`<em>Немає даних</em>`;
 }
+
+function formatShortStatDate(value){
+  const s=String(value||"").slice(0,10);
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?`${m[3]}.${m[2]}`:s||"—";
+}
+function formatLongStatDate(value){
+  const s=String(value||"").slice(0,10);
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m?`${m[3]}.${m[2]}.${m[1].slice(2)}`:s||"—";
+}
+function ratingHistoryChartHtml(rows,dateGetter){
+  const points=(rows||[])
+    .filter(r=>Number.isFinite(Number(r.rating)))
+    .slice()
+    .sort((a,b)=>String(dateGetter(a)||"").localeCompare(String(dateGetter(b)||"")));
+
+  if(!points.length)return `<div class="rating-history-empty">Немає даних</div>`;
+
+  const ratings=points.map(r=>Number(r.rating));
+  const minRating=Math.min(...ratings);
+  const maxRating=Math.max(...ratings);
+
+  // Clear whole-number levels around the player's actual range.
+  const yMin=Math.max(0,Math.floor(minRating)-1);
+  const yMax=Math.min(10,Math.max(yMin+3,Math.ceil(maxRating)+1));
+
+  const left=12, right=18, top=18, bottom=42;
+  const plotH=148;
+  const step=72;
+  const width=Math.max(360,left+right+Math.max(0,points.length-1)*step);
+  const svgH=top+plotH+bottom;
+  const x=i=>left+i*step;
+  const y=v=>top+((yMax-v)/(yMax-yMin))*plotH;
+
+  const ticks=[];
+  for(let v=Math.ceil(yMin);v<=Math.floor(yMax);v+=1)ticks.push(v);
+
+  const coords=points.map((r,i)=>[x(i),y(Number(r.rating))]);
+  const linePath=coords.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const areaPath=`M ${coords[0][0].toFixed(1)} ${(top+plotH).toFixed(1)} `+
+    coords.map(p=>`L${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ")+
+    ` L ${coords[coords.length-1][0].toFixed(1)} ${(top+plotH).toFixed(1)} Z`;
+
+  const grid=ticks.map(v=>{
+    const yy=y(v).toFixed(1);
+    return `<line class="rating-history-grid" x1="0" x2="${width}" y1="${yy}" y2="${yy}"></line>`;
+  }).join("");
+
+  // Fixed Y-axis labels live OUTSIDE the horizontal scroll container.
+  const axisLabels=ticks.map(v=>{
+    const topPct=((y(v)-top)/plotH)*100;
+    return `<span class="rating-history-fixed-label" style="top:${topPct}%">${v.toFixed(1)}</span>`;
+  }).join("");
+
+  const circles=points.map((r,i)=>{
+    const rating=Number(r.rating).toFixed(1);
+    const date=String(dateGetter(r)||"");
+    return `<g>
+      <circle class="rating-history-point" cx="${x(i)}" cy="${y(Number(r.rating)).toFixed(1)}" r="5.2"
+        data-rating="${rating}" data-date="${date}"></circle>
+      <text class="rating-history-date" x="${x(i)}" y="${svgH-14}" text-anchor="middle">${formatShortStatDate(date)}</text>
+    </g>`;
+  }).join("");
+
+  const latest=points[points.length-1];
+  return `<div class="rating-history-card">
+    <div class="rating-history-selected" data-rating-history-selected>
+      ${formatLongStatDate(dateGetter(latest))} • ${Number(latest.rating).toFixed(1)}
+    </div>
+
+    <div class="rating-history-chart-shell">
+      <div class="rating-history-fixed-axis" aria-hidden="true">
+        <div class="rating-history-fixed-axis-inner">${axisLabels}</div>
+      </div>
+
+      <div class="rating-history-scroll" data-rating-history-scroll>
+        <svg class="rating-history-svg" width="${width}" height="${svgH}" viewBox="0 0 ${width} ${svgH}" aria-label="Динаміка оцінок">
+          ${grid}
+          <path class="rating-history-area" d="${areaPath}"></path>
+          <path class="rating-history-line" d="${linePath}"></path>
+          ${circles}
+        </svg>
+      </div>
+    </div>
+  </div>`;
+}
+
+function trainingRatingChartHtml(rows){
+  return ratingHistoryChartHtml(rows,r=>r.training_days?.training_date);
+}
+function officialRatingChartHtml(rows){
+  return ratingHistoryChartHtml(rows,r=>r.calendar_matches?.match_date);
+}
+
+function bindRatingHistoryChart(hostId){
+  const host=$(hostId);
+  if(!host)return;
+  const selected=host.querySelector("[data-rating-history-selected]");
+  const scroll=host.querySelector("[data-rating-history-scroll]");
+  const points=[...host.querySelectorAll(".rating-history-point")];
+  if(!selected||!points.length)return;
+
+  points.forEach(point=>{
+    point.addEventListener("click",()=>{
+      points.forEach(p=>p.classList.remove("is-selected"));
+      point.classList.add("is-selected");
+      selected.textContent=`${formatLongStatDate(point.dataset.date)} • ${Number(point.dataset.rating).toFixed(1)}`;
+    });
+  });
+
+  if(scroll){
+    // newest values are shown first on open; user can freely swipe through history
+    requestAnimationFrame(()=>{ scroll.scrollLeft=scroll.scrollWidth-scroll.clientWidth; });
+  }
+}
+function bindTrainingRatingChart(){ bindRatingHistoryChart("statTrainingForm"); }
+function bindOfficialRatingChart(){ bindRatingHistoryChart("statOfficialForm"); }
 
 async function loadPlayerStatistics(playerId){
   if(!sb||!playerId)return;
@@ -1130,7 +1473,8 @@ async function loadPlayerStatistics(playerId){
   $("statOfficialBest").textContent=fmtRating(offBest);
   $("statOfficialWorst").textContent=fmtRating(offWorst);
   $("statOfficialMvp").innerHTML=`<em>MVP</em> ${officialMvp}`;
-  $("statOfficialForm").innerHTML=statFormHtml(official.slice(0,5).map(r=>r.rating));
+  $("statOfficialForm").innerHTML=officialRatingChartHtml(official);
+  bindOfficialRatingChart();
 
   $("statTrainingMatches").textContent=trMatches;
   $("statTrainingGoals").textContent=training.reduce((s,r)=>s+(Number(r.goals)||0),0);
@@ -1139,7 +1483,8 @@ async function loadPlayerStatistics(playerId){
   $("statTrainingBest").textContent=fmtRating(trBest);
   $("statTrainingWorst").textContent=fmtRating(trWorst);
   $("statTrainingMvp").innerHTML=`<em>MVP</em> ${trainingMvp}`;
-  $("statTrainingForm").innerHTML=statFormHtml(training.slice(0,5).map(r=>r.rating));
+  $("statTrainingForm").innerHTML=trainingRatingChartHtml(training);
+  bindTrainingRatingChart();
 }
 
 function resetPlayerModal(){
@@ -1161,7 +1506,9 @@ function fillViewMode(p){
   $("playerViewMode").classList.remove("hidden");
   $("playerEditMode").classList.add("hidden");
 
-  $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
+  const isPom=isCurrentPlayerOfMonthV754(p.id);
+  $("viewCardImage").classList.toggle("current-player-of-month",isPom);
+  $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">${isPom?`<span class="player-of-month-badge modal-badge">👑 ГРАВЕЦЬ МІСЯЦЯ</span>`:""}`;
   $("statsPlayerMiniCard").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
   $("statsPlayerName").textContent=p.name||"—";
   playerViewSlide(0);
@@ -1221,6 +1568,23 @@ function openPlayerModal(id=null){
 
 $("playerInfoTab")?.addEventListener("click",()=>playerViewSlide(0));
 $("playerStatsTab")?.addEventListener("click",()=>playerViewSlide(1));
+function setPlayerStatsMode(mode){
+  const official=mode==="official";
+  $("officialStatsPanel")?.classList.toggle("hidden",!official);
+  $("trainingStatsPanel")?.classList.toggle("hidden",official);
+  $("showOfficialStatsBtn")?.classList.toggle("active",official);
+  $("showTrainingStatsBtn")?.classList.toggle("active",!official);
+
+  // Keep the dialog fitted to the currently visible stats panel.
+  requestAnimationFrame(()=>{
+    const slider=$("playerViewSlider");
+    const slide=$("playerStatsSlide");
+    if(slider&&slide)slider.style.height=`${slide.scrollHeight}px`;
+  });
+}
+$("showOfficialStatsBtn")?.addEventListener("click",()=>setPlayerStatsMode("official"));
+$("showTrainingStatsBtn")?.addEventListener("click",()=>setPlayerStatsMode("training"));
+
 let playerSwipeStartX=null;
 let playerSwipeStartY=null;
 
@@ -1232,7 +1596,7 @@ function currentPlayerSlideV598(){
 }
 
 $("playerViewSlider")?.addEventListener("touchstart",e=>{
-  if(e.target.closest?.("input,textarea,select,button"))return;
+  if(e.target.closest?.("input,textarea,select,button,.rating-history-scroll"))return;
   const t=e.touches?.[0];
   playerSwipeStartX=t?.clientX??null;
   playerSwipeStartY=t?.clientY??null;
@@ -1390,7 +1754,7 @@ function renderPitch(){
     slot.innerHTML=`
       ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
       <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="tactics-runtime-shine" aria-hidden="true"></span>`:"＋"}</button>
-      <div class="slot-name">${p?esc(p.name):"Порожньо"}</div>
+      <div class="slot-name">${p?esc(p.name):""}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
     slot.querySelector(".slot-card").addEventListener("click",()=>openPicker(key,pos));
     pitch.appendChild(slot);
@@ -1477,14 +1841,17 @@ $("saveLineupBtn").addEventListener("click",async()=>{
       renderSquads();
     }
 
-    const cloudSquads=await getAll("squads");
-    if(!cloudSquads.some(s=>s.id===obj.id)){
-      throw new Error("Склад не знайдено в Supabase після збереження");
+    const refreshedSquads=await getAll("squads");
+    if(!refreshedSquads.some(s=>s.id===obj.id)){
+      throw new Error("Склад не знайдено після збереження");
     }
 
-    squads=cloudSquads;
+    squads=refreshedSquads;
     renderSquads();
-    showToast("Склад збережено ✓");
+    const justSaved=squads.find(s=>s.id===obj.id);
+    showToast(justSaved?._localOnly
+      ?"Склад збережено на цьому пристрої ✓"
+      :"Склад збережено ✓");
   }catch(err){
     console.error("Save lineup failed:",err);
     showToast(`Не вдалося зберегти склад${err?.message?": "+err.message:""}`);
@@ -1493,10 +1860,152 @@ $("saveLineupBtn").addEventListener("click",async()=>{
   }
 });
 
+const SAVED_LINEUP_LAYOUT_V780={
+  W:720,H:1080,
+  /* Keep the pitch large, but start it below the title/schema line. */
+  px:18,py:132,pw:684,ph:898,
+  cw:72,ch:102
+};
+
+/* v7.85 — saved lineup pitch uses the same restrained 3D geometry
+   as the live Tactics pitch: top edge is slightly narrower, the lower
+   edge is full width, and field contents follow that perspective. */
+function savedPitchPoint(localX,localY){
+  const {px,py,pw,ph}=SAVED_LINEUP_LAYOUT_V780;
+  const yy=Math.max(0,Math.min(ph,Number(localY)||0));
+  const xx=Math.max(0,Math.min(pw,Number(localX)||0));
+  const t=ph?yy/ph:0;
+  const topInset=pw*.028;
+  const inset=topInset*(1-t);
+  const rowWidth=pw-(inset*2);
+  return {
+    x:px+inset+(xx/pw)*rowWidth,
+    y:py+yy
+  };
+}
+
+function savedPitchPointPct(xPct,yPct){
+  const {pw,ph}=SAVED_LINEUP_LAYOUT_V780;
+  return savedPitchPoint((Number(xPct)||0)/100*pw,(Number(yPct)||0)/100*ph);
+}
+
+function savedPitchQuadPath(ctx){
+  const {pw,ph}=SAVED_LINEUP_LAYOUT_V780;
+  const a=savedPitchPoint(0,0);
+  const b=savedPitchPoint(pw,0);
+  const c=savedPitchPoint(pw,ph);
+  const d=savedPitchPoint(0,ph);
+  ctx.beginPath();
+  ctx.moveTo(a.x,a.y);
+  ctx.lineTo(b.x,b.y);
+  ctx.lineTo(c.x,c.y);
+  ctx.lineTo(d.x,d.y);
+  ctx.closePath();
+}
+
+function drawSaved3DPitch(ctx){
+  const {pw,ph}=SAVED_LINEUP_LAYOUT_V780;
+
+  /* Ground shadow gives the same lifted-board feel as the live pitch. */
+  ctx.save();
+  ctx.shadowColor="rgba(0,0,0,.30)";
+  ctx.shadowBlur=18;
+  ctx.shadowOffsetY=12;
+  ctx.fillStyle="#17663a";
+  savedPitchQuadPath(ctx);
+  ctx.fill();
+  ctx.restore();
+
+  /* Clip all grass lighting/stripes to the perspective trapezoid. */
+  ctx.save();
+  savedPitchQuadPath(ctx);
+  ctx.clip();
+
+  const grass=ctx.createLinearGradient(0,SAVED_LINEUP_LAYOUT_V780.py,0,SAVED_LINEUP_LAYOUT_V780.py+ph);
+  grass.addColorStop(0,"#26804b");
+  grass.addColorStop(.48,"#197441");
+  grass.addColorStop(1,"#126536");
+  ctx.fillStyle=grass;
+  savedPitchQuadPath(ctx);
+  ctx.fill();
+
+  for(let i=0;i<8;i++){
+    const x0=(i/8)*pw;
+    const x1=((i+1)/8)*pw;
+    const p1=savedPitchPoint(x0,0);
+    const p2=savedPitchPoint(x1,0);
+    const p3=savedPitchPoint(x1,ph);
+    const p4=savedPitchPoint(x0,ph);
+    ctx.beginPath();
+    ctx.moveTo(p1.x,p1.y);
+    ctx.lineTo(p2.x,p2.y);
+    ctx.lineTo(p3.x,p3.y);
+    ctx.lineTo(p4.x,p4.y);
+    ctx.closePath();
+    ctx.fillStyle=i%2?"rgba(0,0,0,.032)":"rgba(255,255,255,.028)";
+    ctx.fill();
+  }
+
+  /* Soft stadium light from the top of the field. */
+  const glow=ctx.createRadialGradient(
+    SAVED_LINEUP_LAYOUT_V780.px+pw/2,
+    SAVED_LINEUP_LAYOUT_V780.py,
+    0,
+    SAVED_LINEUP_LAYOUT_V780.px+pw/2,
+    SAVED_LINEUP_LAYOUT_V780.py,
+    pw*.62
+  );
+  glow.addColorStop(0,"rgba(255,240,180,.12)");
+  glow.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=glow;
+  ctx.fillRect(SAVED_LINEUP_LAYOUT_V780.px,SAVED_LINEUP_LAYOUT_V780.py,pw,ph);
+  ctx.restore();
+
+  /* Gold outer edge, matching the live Tactics pitch shell. */
+  ctx.save();
+  ctx.strokeStyle="rgba(213,177,83,.70)";
+  ctx.lineWidth=2;
+  savedPitchQuadPath(ctx);
+  ctx.stroke();
+  ctx.restore();
+
+  /* Inner white field boundary in the same perspective plane. */
+  const m=20;
+  const tl=savedPitchPoint(m,m);
+  const tr=savedPitchPoint(pw-m,m);
+  const br=savedPitchPoint(pw-m,ph-m);
+  const bl=savedPitchPoint(m,ph-m);
+  ctx.strokeStyle="rgba(255,255,255,.62)";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(tl.x,tl.y);
+  ctx.lineTo(tr.x,tr.y);
+  ctx.lineTo(br.x,br.y);
+  ctx.lineTo(bl.x,bl.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  /* Halfway line. */
+  const hl=savedPitchPoint(m,ph/2);
+  const hr=savedPitchPoint(pw-m,ph/2);
+  ctx.beginPath();
+  ctx.moveTo(hl.x,hl.y);
+  ctx.lineTo(hr.x,hr.y);
+  ctx.stroke();
+
+  /* Centre circle is slightly flattened by perspective. */
+  const centre=savedPitchPoint(pw/2,ph/2);
+  const midInset=pw*.028*.5;
+  const midScale=(pw-midInset*2)/pw;
+  ctx.beginPath();
+  ctx.ellipse(centre.x,centre.y,58*midScale,54,0,0,Math.PI*2);
+  ctx.stroke();
+}
+
 async function renderLineupImage(name){
   // 1.5x keeps the saved lineup sharp (1080x1620) while using much less
   // memory on iPhone/Safari than the previous 1440x2160 canvas.
-  const SCALE=1.5,W=720,H=1080,canvas=document.createElement("canvas");
+  const SCALE=2,{W,H,px,py,pw,ph,cw,ch}=SAVED_LINEUP_LAYOUT_V780,canvas=document.createElement("canvas");
   canvas.width=W*SCALE;
   canvas.height=H*SCALE;
   const ctx=canvas.getContext("2d");
@@ -1524,18 +2033,16 @@ async function renderLineupImage(name){
   ctx.fillStyle=lightSaved?"#28241e":"#f3e6cd";ctx.font="bold 30px Arial";ctx.fillText(name.toUpperCase(),38,82);
   ctx.fillStyle="#b9a98e";ctx.font="bold 14px Arial";ctx.fillText(`СХЕМА: ${formationName(currentFormation)}   •   ${new Date().toLocaleString("uk-UA")}`,38,108);
 
-  const px=56,py=135,pw=608,ph=850;
-  ctx.fillStyle="#1f7144";ctx.fillRect(px,py,pw,ph);
-  for(let i=0;i<8;i++){ctx.fillStyle=i%2?"rgba(0,0,0,.035)":"rgba(255,255,255,.025)";ctx.fillRect(px+i*pw/8,py,pw/8,ph)}
-  ctx.strokeStyle="rgba(255,255,255,.6)";ctx.lineWidth=2;ctx.strokeRect(px+20,py+20,pw-40,ph-40);
-  ctx.beginPath();ctx.moveTo(px+20,py+ph/2);ctx.lineTo(px+pw-20,py+ph/2);ctx.stroke();
-  ctx.beginPath();ctx.arc(px+pw/2,py+ph/2,58,0,Math.PI*2);ctx.stroke();
+  drawSaved3DPitch(ctx);
 
   const slots=FORMATIONS[currentFormation];
   for(let i=0;i<slots.length;i++){
     const [pos,x,y]=slots[i],key=`${currentFormation}-${i}`,p=players.find(v=>v.id===lineup[key]);
-    const cx=px+(x/100)*pw,cy=py+(y/100)*ph;
-    const cw=68,ch=96;
+    const projected=savedPitchPointPct(x,y);
+    const cx=projected.x;
+    const rawCy=projected.y;
+    /* In the saved image, keep GK card + position + nickname fully inside the pitch. */
+    const cy=pos==="GK" ? Math.min(rawCy,py+ph-(ch/2+52)) : rawCy;
     if(p){
       try{
         const img=await loadImg(p.cardImage||PLAYER_PLACEHOLDER);
@@ -1562,9 +2069,9 @@ async function renderLineupImage(name){
     }
   }
   ctx.textAlign="left";
-  ctx.fillStyle="#9d8d74";ctx.font="12px Arial";ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1040);
+  ctx.fillStyle="#9d8d74";ctx.font="12px Arial";ctx.fillText("Centuria Athletics • Daniil Osetskyi",28,1068);
   try{
-    return canvas.toDataURL("image/jpeg",.92);
+    return canvas.toDataURL("image/png");
   }catch(exportErr){
     console.error("Lineup canvas export failed",exportErr);
     throw new Error("Не вдалося створити картинку складу. Онови сторінку та спробуй ще раз.");
@@ -1658,6 +2165,7 @@ function renderSquads(){
   });
 }
 let currentSavedImage=null;
+let currentRenderedSavedImage="";
 
 function currentSiteThemeIsLight(){
   return document.documentElement.dataset.siteTheme==="light" ||
@@ -1678,7 +2186,7 @@ async function rebuildLegacySavedImageForTheme(s){
     const sx=im.naturalWidth/720;
     const sy=im.naturalHeight/1080;
 
-    const W=720,H=1080,SCALE=1.5;
+    const W=720,H=1080,SCALE=2;
     const c=document.createElement("canvas");
     c.width=W*SCALE;c.height=H*SCALE;
     const ctx=c.getContext("2d");
@@ -1715,17 +2223,18 @@ async function rebuildLegacySavedImageForTheme(s){
     ctx.fillText(`СХЕМА: ${formation}${dt?"   •   "+dt:""}`,38,108);
 
     /* Copy ONLY the green pitch from the old saved screenshot. */
+    const L=SAVED_LINEUP_LAYOUT_V780;
     ctx.drawImage(
       im,
       56*sx,135*sy,608*sx,850*sy,
-      56,135,608,850
+      L.px,L.py,L.pw,L.ph
     );
 
     ctx.fillStyle=light?"#8f826e":"#b9a98e";
     ctx.font="13px Arial";
-    ctx.fillText("Centuria Athletics • Daniil Osetskyi",38,1038);
+    ctx.fillText("Centuria Athletics • Daniil Osetskyi",28,1068);
 
-    return c.toDataURL("image/jpeg",0.94);
+    return c.toDataURL("image/png");
   }catch(err){
     console.warn("Legacy lineup theme adaptation failed",err);
     return src;
@@ -1768,6 +2277,7 @@ async function openSavedImage(s){
   dialog.classList.toggle("viewer-light",light);
   dialog.classList.toggle("viewer-dark",!light);
   dialog.classList.add("saved-image-loading");
+  currentRenderedSavedImage="";
 
   /* Never show the author's original image as an intermediate frame.
      Keep the image hidden until the viewer-theme render is completely ready. */
@@ -1781,6 +2291,7 @@ async function openSavedImage(s){
 
   const themedImage=await renderSavedLineupInViewerTheme(s);
   if(currentSavedImage?.id!==s.id || !themedImage)return;
+  currentRenderedSavedImage=themedImage;
 
   await new Promise(resolve=>{
     const done=()=>{
@@ -1844,7 +2355,7 @@ function savedSquadPlayerAtPoint(s,img,clientX,clientY){
   const x=(clientX-rect.left)/rect.width*720;
   const y=(clientY-rect.top)/rect.height*1080;
 
-  const px=56,py=135,pw=608,ph=850,cw=68,ch=96;
+  const {px,py,pw,ph,cw,ch}=SAVED_LINEUP_LAYOUT_V780;
   const slots=FORMATIONS[fk];
 
   let best=null;
@@ -1852,8 +2363,10 @@ function savedSquadPlayerAtPoint(s,img,clientX,clientY){
 
   slots.forEach((slot,i)=>{
     const [pos,sx,sy]=slot;
-    const cx=px+(sx/100)*pw;
-    const cy=py+(sy/100)*ph;
+    const projected=savedPitchPointPct(sx,sy);
+    const cx=projected.x;
+    const rawCy=projected.y;
+    const cy=pos==="GK" ? Math.min(rawCy,py+ph-(ch/2+52)) : rawCy;
 
     /* slightly larger than the visible card for easier finger tapping */
     const hitW=cw+34;
@@ -1887,9 +2400,28 @@ $("savedImageView")?.addEventListener("click",e=>{
   setTimeout(()=>openPlayerModal(p.id),60);
 });
 
-$("downloadImage").addEventListener("click",()=>{
+$("downloadImage").addEventListener("click",async()=>{
   if(!currentSavedImage)return;
-  const a=document.createElement("a");a.href=currentSavedImage.image;a.download=(currentSavedImage.name||"centuria-lineup").replace(/[^\wа-яіїєґ-]+/gi,"_")+".jpg";a.click();
+
+  let src=currentRenderedSavedImage;
+  if(!src){
+    try{
+      src=await renderSavedLineupInViewerTheme(currentSavedImage);
+      currentRenderedSavedImage=src||"";
+    }catch(err){
+      console.error("High quality PNG render failed",err);
+    }
+  }
+  if(!src){
+    showToast("Не вдалося підготувати PNG");
+    return;
+  }
+
+  const a=document.createElement("a");
+  a.href=src;
+  a.download=(currentSavedImage.name||"centuria-lineup")
+    .replace(/[^\wа-яіїєґ-]+/gi,"_")+".png";
+  a.click();
 });
 $("newLineupBtn").addEventListener("click",()=>navigate("tactics"));
 
@@ -1923,8 +2455,8 @@ $("clearSquadsBtn").addEventListener("click",async()=>{
   await clearStore("squads");squads=[];renderSquads();showToast("Усі склади видалено");
 });
 
-/* Music */
-const music=$("bgMusic"), toggle=$("musicToggle"), volume=$("volumeRange"), musicStartBtn=$("musicStartBtn");
+/* Music — v6.65: settings only, no home-screen start button */
+const music=$("bgMusic"), toggle=$("musicToggle"), volume=$("volumeRange");
 
 let audioCtx=null;
 let musicSourceNode=null;
@@ -1932,7 +2464,7 @@ let musicGainNode=null;
 
 async function initWebAudioVolume(){
   const AudioCtx=window.AudioContext||window.webkitAudioContext;
-  if(!AudioCtx) return false;
+  if(!AudioCtx || !music) return false;
 
   try{
     if(!audioCtx){
@@ -1956,84 +2488,6 @@ async function initWebAudioVolume(){
     return false;
   }
 }
-
-
-const savedMusic=localStorage.getItem("ca_music");
-toggle.checked=savedMusic!=="off";
-volume.value=localStorage.getItem("ca_volume")||"35";
-music.loop=true;
-music.volume=Math.max(0,Math.min(1,Number(volume.value)/100));
-music.muted=Number(volume.value)===0;
-
-
-
-let musicStarted=false;
-
-async function startMusicFromGesture(){
-  if(!toggle.checked)return false;
-  await initWebAudioVolume();
-  setBackgroundVolume(volume.value);
-  try{
-    await music.play();
-    setBackgroundVolume(volume.value);
-    setTimeout(()=>setBackgroundVolume(volume.value),60);
-    musicStarted=true;
-    musicStartBtn.classList.add("hidden");
-    return true;
-  }catch(err){
-    musicStarted=false;
-    musicStartBtn.classList.remove("hidden");
-    return false;
-  }
-}
-
-async function gestureStarter(){
-  if(!toggle.checked)return;
-  await initWebAudioVolume();
-  setBackgroundVolume(volume.value);
-  if(music.paused){
-    startMusicFromGesture();
-  }
-}
-
-/* Try once on load; browsers may reject this, which is normal. */
-music.play().then(()=>{
-  if(toggle.checked){
-    musicStarted=true;
-    musicStartBtn.classList.add("hidden");
-  }else{
-    music.pause();
-  }
-}).catch(()=>{
-  if(toggle.checked) musicStartBtn.classList.remove("hidden");
-});
-
-/* Keep listeners active until music actually starts. */
-document.addEventListener("pointerdown",gestureStarter);
-document.addEventListener("touchstart",gestureStarter,{passive:true});
-document.addEventListener("click",gestureStarter);
-document.addEventListener("keydown",gestureStarter);
-
-musicStartBtn.addEventListener("click",async e=>{
-  e.stopPropagation();
-  const ok=await startMusicFromGesture();
-  if(!ok)showToast("Браузер не дозволив запустити звук. Перевір гучність пристрою.");
-});
-
-toggle.addEventListener("change",async()=>{
-  localStorage.setItem("ca_music",toggle.checked?"on":"off");
-  if(toggle.checked){
-      const ok=await startMusicFromGesture();
-    if(!ok)musicStartBtn.classList.remove("hidden");
-  }else{
-    music.pause();
-    musicStarted=false;
-    musicStartBtn.classList.add("hidden");
-  }
-});
-
-
-
 
 function setBackgroundVolume(value){
   if(!music)return;
@@ -2065,12 +2519,70 @@ function setBackgroundVolume(value){
   localStorage.setItem("ca_volume",String(percent));
 }
 
+/*
+  v6.65 migration: music is OFF the first time this version is opened,
+  even if an older build left ca_music=on. After that, the Settings toggle
+  remains the only control and the user's choice can persist normally.
+*/
+const musicV665MigrationKey="ca_music_v665_default_off_done";
+if(localStorage.getItem(musicV665MigrationKey)!=="1"){
+  localStorage.setItem("ca_music","off");
+  localStorage.setItem(musicV665MigrationKey,"1");
+}
+
+if(toggle){
+  toggle.checked=localStorage.getItem("ca_music")==="on";
+}
 if(volume){
   volume.value=localStorage.getItem("ca_volume")||"35";
+}
+if(music){
+  music.loop=true;
+  setBackgroundVolume(volume?.value||35);
+  if(!toggle?.checked){
+    music.pause();
+  }else{
+    /* Best-effort restore for users who explicitly enabled music earlier. */
+    music.play().catch(()=>{});
+  }
+}
+
+async function startMusicFromSettings(){
+  if(!music || !toggle?.checked)return false;
+  await initWebAudioVolume();
+  setBackgroundVolume(volume?.value||35);
+  try{
+    await music.play();
+    setBackgroundVolume(volume?.value||35);
+    setTimeout(()=>setBackgroundVolume(volume?.value||35),60);
+    return true;
+  }catch(err){
+    console.warn("Music playback blocked",err);
+    return false;
+  }
+}
+
+if(toggle){
+  toggle.addEventListener("change",async()=>{
+    localStorage.setItem("ca_music",toggle.checked?"on":"off");
+    if(toggle.checked){
+      const ok=await startMusicFromSettings();
+      if(!ok){
+        toggle.checked=false;
+        localStorage.setItem("ca_music","off");
+        showToast("Не вдалося увімкнути музику. Перевір гучність пристрою.");
+      }
+    }else if(music){
+      music.pause();
+    }
+  });
+}
+
+if(volume){
   setBackgroundVolume(volume.value);
 
   const ensureAudioAndApply=async()=>{
-    await initWebAudioVolume();
+    if(toggle?.checked) await initWebAudioVolume();
     setBackgroundVolume(volume.value);
   };
 
@@ -2082,10 +2594,15 @@ if(volume){
   volume.addEventListener("pointerup",ensureAudioAndApply);
 }
 
-music.addEventListener("error",()=>{
-  musicStartBtn.classList.remove("hidden");
-  showToast("Не вдалося завантажити фонову музику");
-});
+if(music){
+  music.addEventListener("error",()=>{
+    if(toggle){
+      toggle.checked=false;
+      localStorage.setItem("ca_music","off");
+    }
+    showToast("Не вдалося завантажити фонову музику");
+  });
+}
 
 /* init */
 
@@ -2165,8 +2682,50 @@ function yesLinkedPlayersForGathering(id){
   return players.filter(p=>playerIds.has(p.id) || p.status==="Перегляд");
 }
 
-function gatheringLineupSlotHtml(g,slot,index){
-  const key=`451-${index}`;
+function gatheringFormationStorageKey(gatheringId){
+  return `ca_gathering_formation_${gatheringId}`;
+}
+
+function gatheringFormationFromSlotKey(slotKey){
+  const key=String(slotKey||"").split("-")[0];
+  return FORMATIONS[key] ? key : null;
+}
+
+function gatheringFormationKey(g){
+  try{
+    const stored=localStorage.getItem(gatheringFormationStorageKey(g.id));
+    if(FORMATIONS[stored])return stored;
+  }catch(_e){}
+
+  const latest=[...lineupForGathering(g.id)]
+    .filter(row=>gatheringFormationFromSlotKey(row.slot_key))
+    .sort((a,b)=>String(b.updated_at||"").localeCompare(String(a.updated_at||"")))[0];
+  return gatheringFormationFromSlotKey(latest?.slot_key) || "451";
+}
+
+async function setGatheringFormation(gatheringId,formationKey){
+  if(!FORMATIONS[formationKey])return;
+  const g=gatherings.find(x=>x.id===gatheringId);
+  if(!g || gatheringIsPast(g) || !canEditSite())return;
+
+  try{localStorage.setItem(gatheringFormationStorageKey(gatheringId),formationKey)}catch(_e){}
+
+  // If this formation already has saved players, refresh its timestamp so other
+  // devices can infer which gathering formation was selected most recently.
+  if(sb && authUser){
+    try{
+      await sb.from("gathering_lineup_slots")
+        .update({updated_at:new Date().toISOString(),updated_by:authUser.id})
+        .eq("gathering_id",gatheringId)
+        .like("slot_key",`${formationKey}-%`);
+    }catch(_e){}
+  }
+
+  renderGatherings();
+}
+
+function gatheringLineupSlotHtml(g,formationKey,slot,index){
+  const key=`${formationKey}-${index}`;
   const row=lineupForGathering(g.id).find(s=>s.slot_key===key);
   const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
   const editable=canEditSite()&&!gatheringIsPast(g);
@@ -2181,13 +2740,19 @@ function gatheringLineupSlotHtml(g,slot,index){
 }
 
 function gatheringLineupHtml(g){
+  const formationKey=gatheringFormationKey(g);
+  const closed=gatheringIsPast(g);
+  const editable=canEditSite()&&!closed;
   return `<div class="gathering-lineup-wrap">
     <div class="gathering-lineup-head">
-      <div><strong>⚽ СКЛАД НА ЗБІР</strong><span>${gatheringIsPast(g)?"Фінальний склад збережено в історії":"Доступні ті, хто проголосував «Буду», та гравці зі статусом «Перегляд»"}</span></div>
-      ${!gatheringIsPast(g)&&canEditSite()?`<small>Натисни +, щоб поставити гравця</small>`:""}
+      <div><strong>⚽ СКЛАД НА ЗБІР</strong><span>${closed?"Фінальний склад збережено в історії":"Доступні ті, хто проголосував «Буду», та гравці зі статусом «Перегляд»"}</span></div>
+      ${editable?`<small>Натисни +, щоб поставити гравця</small>`:""}
     </div>
-    <div class="gathering-lineup-pitch">
-      ${FORMATIONS["451"].map((slot,i)=>gatheringLineupSlotHtml(g,slot,i)).join("")}
+    <div class="gathering-formation-tabs" role="group" aria-label="Схема складу на збір">
+      ${["451","352","4411"].map(key=>`<button type="button" class="gathering-formation-btn ${formationKey===key?"active":""}" data-gathering-formation="${g.id}|${key}" ${editable?"":"disabled"}>${formationName(key)}</button>`).join("")}
+    </div>
+    <div class="gathering-lineup-pitch" data-gathering-formation-key="${formationKey}">
+      ${FORMATIONS[formationKey].map((slot,i)=>gatheringLineupSlotHtml(g,formationKey,slot,i)).join("")}
     </div>
   </div>`;
 }
@@ -2386,6 +2951,12 @@ function renderGatherings(){
   list.querySelectorAll("[data-vote]").forEach(btn=>{
     btn.addEventListener("click",()=>voteGathering(btn.dataset.gathering,btn.dataset.vote));
   });
+  list.querySelectorAll("[data-gathering-formation]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const [gatheringId,formationKey]=btn.dataset.gatheringFormation.split("|");
+      setGatheringFormation(gatheringId,formationKey);
+    });
+  });
   list.querySelectorAll("[data-gathering-lineup-slot]").forEach(btn=>{
     btn.addEventListener("click",()=>{
       const [gatheringId,slotKey,position]=btn.dataset.gatheringLineupSlot.split("|");
@@ -2583,84 +3154,912 @@ async function loadTeamProfiles(){
   renderMembersList();
 }
 
+function encodeChatMetaV803(meta){
+  try{
+    const clean={};
+    if(meta?.pinned)clean.pinned=true;
+    if(meta?.reactions && Object.keys(meta.reactions).length)clean.reactions=meta.reactions;
+    if(!Object.keys(clean).length)return "";
+
+    const bytes=new TextEncoder().encode(JSON.stringify(clean));
+    let out="";
+    for(const b of bytes){
+      out+=String.fromCharCode(CHAT_META_NIBBLE_BASE+(b>>4));
+      out+=String.fromCharCode(CHAT_META_NIBBLE_BASE+(b&15));
+    }
+    return out;
+  }catch(_e){
+    return "";
+  }
+}
+
+function decodeChatMetaV803(encoded){
+  try{
+    if(!encoded || encoded.length%2)return {};
+    const bytes=[];
+    for(let i=0;i<encoded.length;i+=2){
+      const hi=encoded.charCodeAt(i)-CHAT_META_NIBBLE_BASE;
+      const lo=encoded.charCodeAt(i+1)-CHAT_META_NIBBLE_BASE;
+      if(hi<0||hi>15||lo<0||lo>15)return {};
+      bytes.push((hi<<4)|lo);
+    }
+    const meta=JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
+    return meta && typeof meta==="object" ? meta : {};
+  }catch(_e){
+    return {};
+  }
+}
+
+function chatAuthorPartsV803(raw){
+  const value=String(raw||"");
+  const i=value.indexOf(CHAT_META_SEP);
+  if(i<0)return {nick:value,meta:{}};
+  return {
+    nick:value.slice(0,i),
+    meta:decodeChatMetaV803(value.slice(i+CHAT_META_SEP.length))
+  };
+}
+
+function buildChatAuthorNickV803(nick,meta={}){
+  const visible=String(nick||"Гравець").trim()||"Гравець";
+  const encoded=encodeChatMetaV803(meta);
+  return encoded ? visible+CHAT_META_SEP+encoded : visible;
+}
+
+function chatMetaV803(message){
+  const legacy=chatAuthorPartsV803(message?.author_nick).meta||{};
+  const liveReactions=message?.id ? chatReactionsV808.get(message.id) : null;
+  const pinned=typeof message?.is_pinned==="boolean" ? message.is_pinned : !!legacy.pinned;
+  return {
+    ...legacy,
+    pinned,
+    reactions:liveReactions || legacy.reactions || {}
+  };
+}
+
+function chatVisibleAuthorV803(message){
+  return chatAuthorPartsV803(message?.author_nick).nick||"Гравець";
+}
+
+function chatRoleLabelV803(profile){
+  if(profile?.role==="admin")return "ADMIN";
+  if(profile?.role==="editor")return "CAPTAIN";
+  return "PLAYER";
+}
+
+function chatRoleClassV803(profile){
+  if(profile?.role==="admin")return "admin";
+  if(profile?.role==="editor")return "captain";
+  return "player";
+}
+
+function parseChatStoredTextV803(raw){
+  const text=String(raw||"");
+  if(text.startsWith("↪ ")){
+    const split=text.indexOf("\\n\\n");
+    if(split>2){
+      return {
+        replyLine:text.slice(2,split).trim(),
+        body:text.slice(split+2)
+      };
+    }
+  }
+  return {replyLine:"",body:text};
+}
+
+function buildChatStoredTextV803(body,replyLine=""){
+  const cleanBody=String(body||"").trim();
+  const cleanReply=String(replyLine||"").trim();
+  return cleanReply ? `↪ ${cleanReply}\\n\\n${cleanBody}` : cleanBody;
+}
+
+function chatMessagePreviewV803(message,max=92){
+  if(!message)return "Повідомлення";
+  const parsed=parseChatStoredTextV803(message.text);
+  let text=(parsed.body||"").replace(/\\s+/g," ").trim();
+  if(!text){
+    if(message.media_type==="audio")text="🎙 Голосове повідомлення";
+    else if(message.media_type==="gif")text="GIF";
+    else if(message.media_url)text="📷 Фото";
+    else text="Повідомлення";
+  }
+  return text.length>max ? text.slice(0,max-1)+"…" : text;
+}
+
+function chatLastSeenKeyV803(){
+  return `ca_chat_last_seen_v803_${authUser?.id||"guest"}`;
+}
+
+function getChatLastSeenV803(){
+  try{return Number(localStorage.getItem(chatLastSeenKeyV803())||0)||0}
+  catch(_e){return 0}
+}
+
+function markChatSeenV803(){
+  if(!authUser || !chatMessages.length)return;
+  const last=chatMessages[chatMessages.length-1];
+  const ts=Math.max(Date.now(),new Date(last.created_at).getTime()||0);
+  try{localStorage.setItem(chatLastSeenKeyV803(),String(ts))}catch(_e){}
+  updateChatUnreadBadgeV803();
+}
+
+function ensureChatNavBadgeV803(){
+  const btn=document.querySelector('.bottom-nav button[data-nav="chat"]');
+  if(!btn)return null;
+  let badge=btn.querySelector(".chat-nav-unread-v803");
+  if(!badge){
+    badge=document.createElement("span");
+    badge.className="chat-nav-unread-v803 hidden";
+    btn.appendChild(badge);
+  }
+  return badge;
+}
+
+function updateChatUnreadBadgeV803(){
+  const badge=ensureChatNavBadgeV803();
+  if(!badge)return;
+
+  const seen=getChatLastSeenV803();
+  const active=$("screen-chat")?.classList.contains("active") &&
+    !$("chatTabPane")?.classList.contains("hidden");
+
+  const unread=chatMessages.filter(m=>
+    m.user_id!==authUser?.id &&
+    (new Date(m.created_at).getTime()||0)>seen
+  ).length;
+
+  if(active && unread){
+    /* Current active chat is considered read, but leave the "НОВІ"
+       divider already rendered in this frame. */
+    markChatSeenV803();
+    return;
+  }
+
+  badge.textContent="";
+  badge.setAttribute("aria-label",unread>0?`Непрочитаних повідомлень: ${unread}`:"");
+  badge.classList.toggle("hidden",unread<1);
+}
+
+
+function chatMentionTokenV817(name){
+  return String(name||"")
+    .trim()
+    .replace(/\s+/g,"_")
+    .replace(/[^\p{L}\p{N}_.-]/gu,"");
+}
+
+function chatEscapeRegExpV817(value){
+  return String(value||"").replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+}
+
+function chatMentionedProfilesV817(body){
+  const text=String(body||"");
+  const out=[];
+  teamProfiles.forEach(profile=>{
+    if(!profile?.user_id || profile.user_id===authUser?.id)return;
+    const token=chatMentionTokenV817(profile.display_name||"");
+    if(!token)return;
+    const re=new RegExp(`(^|\\s)@${chatEscapeRegExpV817(token)}(?=$|[\\s,.;:!?])`,"iu");
+    if(re.test(text))out.push(profile);
+  });
+  return out;
+}
+
+function renderChatTextV817(text){
+  const myToken=chatMentionTokenV817(authProfile?.display_name||"").toLocaleLowerCase("uk-UA");
+  return esc(String(text||""))
+    .replace(/(@[\p{L}\p{N}_.-]+)/gu,token=>{
+      const raw=token.slice(1).toLocaleLowerCase("uk-UA");
+      return `<span class="chat-mention-token ${raw===myToken?"me":""}">${token}</span>`;
+    })
+    .replace(/\n/g,"<br>");
+}
+
+function ensureChatMentionNavBadgeV817(){
+  const btn=document.querySelector('.bottom-nav button[data-nav="chat"]');
+  if(!btn)return null;
+  let badge=btn.querySelector('.chat-nav-mention-v817');
+  if(!badge){
+    badge=document.createElement('span');
+    badge.className='chat-nav-mention-v817 hidden';
+    badge.textContent='@';
+    btn.appendChild(badge);
+  }
+  return badge;
+}
+
+function updateChatMentionBadgeV817(){
+  const badge=ensureChatMentionNavBadgeV817();
+  if(!badge)return;
+  const active=$("screen-chat")?.classList.contains("active") && !$("chatTabPane")?.classList.contains("hidden");
+  const unread=[...chatMentionsMineV817.values()].filter(x=>!x?.read_at).length;
+  badge.classList.toggle('hidden',active || unread<1);
+  badge.setAttribute('aria-label',unread?`Непрочитаних згадок: ${unread}`:'');
+}
+
+function renderChatReadReceiptV817(message){
+  if(message?.user_id!==authUser?.id)return '';
+  const readers=[...(chatReadsV817.get(message.id)||new Set())].filter(id=>id!==authUser?.id);
+  if(!readers.length)return `<span class="chat-read-receipt sent" title="Надіслано">✓</span>`;
+  const names=readers.map(id=>teamProfiles.get(id)?.display_name).filter(Boolean);
+  const title=names.length?`Прочитали: ${names.join(', ')}`:`Прочитано: ${readers.length}`;
+  return `<span class="chat-read-receipt read" title="${esc(title)}">✓✓${readers.length>1?` <b>${readers.length}</b>`:''}</span>`;
+}
+
+async function markChatMessagesReadV817(){
+  if(!sb || !authUser)return;
+  const active=$("screen-chat")?.classList.contains("active") && !$("chatTabPane")?.classList.contains("hidden");
+  if(!active)return;
+
+  const unreadIds=chatMessages
+    .filter(m=>m.user_id!==authUser.id && !(chatReadsV817.get(m.id)||new Set()).has(authUser.id))
+    .map(m=>m.id);
+  if(unreadIds.length){
+    const rows=unreadIds.map(message_id=>({message_id,user_id:authUser.id,read_at:new Date().toISOString()}));
+    const {error}=await sb.from('message_reads').upsert(rows,{onConflict:'message_id,user_id'});
+    if(!error){
+      unreadIds.forEach(id=>{
+        if(!chatReadsV817.has(id))chatReadsV817.set(id,new Set());
+        chatReadsV817.get(id).add(authUser.id);
+      });
+    }else console.warn('Chat read receipt update failed',error);
+  }
+
+  const unreadMentionIds=[...chatMentionsMineV817.entries()].filter(([,v])=>!v?.read_at).map(([id])=>id);
+  if(unreadMentionIds.length){
+    const now=new Date().toISOString();
+    const {error}=await sb.from('message_mentions')
+      .update({read_at:now})
+      .eq('user_id',authUser.id)
+      .in('message_id',unreadMentionIds);
+    if(!error){
+      unreadMentionIds.forEach(id=>{
+        const prev=chatMentionsMineV817.get(id)||{};
+        chatMentionsMineV817.set(id,{...prev,read_at:now});
+      });
+    }else console.warn('Mention read update failed',error);
+  }
+  updateChatMentionBadgeV817();
+}
+
+async function syncMessageMentionsV817(messageId,body){
+  if(!sb || !authUser || !messageId)return;
+  const {error:deleteError}=await sb.from('message_mentions')
+    .delete()
+    .eq('message_id',messageId)
+    .eq('mentioned_by',authUser.id);
+  if(deleteError){
+    console.warn('Mention cleanup failed',deleteError);
+    return;
+  }
+  const profiles=chatMentionedProfilesV817(body);
+  if(!profiles.length)return;
+  const rows=profiles.map(p=>({message_id:messageId,user_id:p.user_id,mentioned_by:authUser.id}));
+  const {error}=await sb.from('message_mentions').insert(rows);
+  if(error)console.warn('Mention insert failed',error);
+}
+
+function closeChatMentionMenuV817(){
+  if(chatMentionMenuElV817){
+    chatMentionMenuElV817.classList.add('hidden');
+    chatMentionMenuElV817.innerHTML='';
+  }
+}
+
+function updateChatMentionMenuV817(){
+  const input=$("chatInput");
+  const menu=$("chatMentionMenu");
+  chatMentionMenuElV817=menu||null;
+  if(!input||!menu){return}
+  const caret=input.selectionStart??input.value.length;
+  const before=input.value.slice(0,caret);
+  const match=before.match(/(?:^|\s)@([\p{L}\p{N}_.-]*)$/u);
+  if(!match){closeChatMentionMenuV817();return}
+  const q=(match[1]||'').toLocaleLowerCase('uk-UA');
+  const profiles=[...teamProfiles.values()]
+    .filter(p=>p?.user_id && p.user_id!==authUser?.id && (p.access_status==='approved'||p.role==='admin'))
+    .filter(p=>{
+      const token=chatMentionTokenV817(p.display_name||'').toLocaleLowerCase('uk-UA');
+      return !q || token.includes(q);
+    })
+    .slice(0,6);
+  if(!profiles.length){closeChatMentionMenuV817();return}
+  menu.innerHTML=profiles.map(p=>`<button type="button" data-mention-user="${p.user_id}" data-viewer-allowed="true">${profileAvatarHtml(p,'chat-mention-avatar')}<span><b>${esc(p.display_name||'Гравець')}</b><small>@${esc(chatMentionTokenV817(p.display_name||''))}</small></span></button>`).join('');
+  menu.classList.remove('hidden');
+  menu.querySelectorAll('[data-mention-user]').forEach(btn=>btn.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    const p=teamProfiles.get(btn.dataset.mentionUser);
+    if(!p)return;
+    const token='@'+chatMentionTokenV817(p.display_name||'');
+    const start=before.lastIndexOf('@');
+    input.value=input.value.slice(0,start)+token+' '+input.value.slice(caret);
+    const pos=start+token.length+1;
+    input.setSelectionRange(pos,pos);
+    closeChatMentionMenuV817();
+    input.focus();
+    scheduleChatTypingV803();
+  }));
+}
+
+function getUnreadBoundaryIdV803(messages){
+  const seen=getChatLastSeenV803();
+  const found=messages.find(m=>
+    m.user_id!==authUser?.id &&
+    (new Date(m.created_at).getTime()||0)>seen
+  );
+  return found?.id||null;
+}
+
 async function loadChatMessages(forceScroll=false){
   if(!sb || !authUser)return;
+
   const {data,error}=await sb.from("messages")
-    .select("id,user_id,text,media_url,media_type,created_at,author_nick")
+    .select("id,user_id,text,media_url,media_type,created_at,author_nick,is_pinned,pinned_at,pinned_by")
     .order("created_at",{ascending:false})
     .limit(100);
+
   if(error){
     console.error("Chat load error",error);
     const box=$("chatMessages");
-    if(box) box.innerHTML=`<div class="chat-empty">Не вдалося завантажити чат.</div>`;
+    if(box)box.innerHTML=`<div class="chat-empty">Не вдалося завантажити чат.</div>`;
     return;
   }
 
   const next=(data||[]).reverse();
-  const signature=next.map(m=>m.id).join("|");
+  const ids=next.map(m=>m.id);
+  chatReactionsV808=new Map();
+  chatReadsV817=new Map();
+  chatMentionsMineV817=new Map();
+  let reactionSignature="";
+  let readSignature="";
+  let mentionSignature="";
+
+  if(ids.length){
+    const {data:reactionRows,error:reactionError}=await sb.from("message_reactions")
+      .select("message_id,user_id,emoji,created_at")
+      .in("message_id",ids);
+
+    if(reactionError){
+      console.error("Chat reactions load error",reactionError);
+    }else{
+      const sorted=[...(reactionRows||[])].sort((a,b)=>
+        String(a.message_id).localeCompare(String(b.message_id)) ||
+        String(a.emoji).localeCompare(String(b.emoji)) ||
+        String(a.user_id).localeCompare(String(b.user_id))
+      );
+      reactionSignature=sorted.map(r=>`${r.message_id}:${r.emoji}:${r.user_id}`).join("|");
+      for(const row of sorted){
+        if(!CHAT_REACTION_EMOJIS.includes(row.emoji))continue;
+        if(!chatReactionsV808.has(row.message_id))chatReactionsV808.set(row.message_id,{});
+        const grouped=chatReactionsV808.get(row.message_id);
+        if(!Array.isArray(grouped[row.emoji]))grouped[row.emoji]=[];
+        if(!grouped[row.emoji].includes(row.user_id))grouped[row.emoji].push(row.user_id);
+      }
+    }
+  }
+
+  if(ids.length){
+    const [{data:readRows,error:readError},{data:mentionRows,error:mentionError}]=await Promise.all([
+      sb.from("message_reads").select("message_id,user_id,read_at").in("message_id",ids),
+      sb.from("message_mentions").select("message_id,user_id,mentioned_by,created_at,read_at").eq("user_id",authUser.id).in("message_id",ids)
+    ]);
+    if(readError)console.warn("Chat reads load error",readError);
+    else{
+      const sorted=[...(readRows||[])].sort((a,b)=>String(a.message_id).localeCompare(String(b.message_id))||String(a.user_id).localeCompare(String(b.user_id)));
+      readSignature=sorted.map(r=>`${r.message_id}:${r.user_id}:${r.read_at||""}`).join("|");
+      sorted.forEach(r=>{
+        if(!chatReadsV817.has(r.message_id))chatReadsV817.set(r.message_id,new Set());
+        chatReadsV817.get(r.message_id).add(r.user_id);
+      });
+    }
+    if(mentionError)console.warn("Chat mentions load error",mentionError);
+    else{
+      const sorted=[...(mentionRows||[])].sort((a,b)=>String(a.message_id).localeCompare(String(b.message_id)));
+      mentionSignature=sorted.map(r=>`${r.message_id}:${r.read_at||""}`).join("|");
+      sorted.forEach(r=>chatMentionsMineV817.set(r.message_id,r));
+    }
+  }
+
+  const signature=next.map(m=>[
+    m.id,m.text||"",m.author_nick||"",m.media_url||"",m.is_pinned?"1":"0"
+  ].join("~")).join("|")+"#"+reactionSignature+"#"+readSignature+"#"+mentionSignature;
+
   const changed=signature!==chatLastSignature;
+  if(changed){
+    chatUnreadBoundaryId=getUnreadBoundaryIdV803(next);
+  }
+
   chatMessages=next;
   chatLastSignature=signature;
 
   if(changed || forceScroll){
     await loadTeamProfiles();
     renderChatMessages(forceScroll);
+  }else{
+    updateChatUnreadBadgeV803();
+    updateChatMentionBadgeV817();
   }
+
+  if($("screen-chat")?.classList.contains("active") && !$("chatTabPane")?.classList.contains("hidden")){
+    markChatMessagesReadV817();
+  }else{
+    updateChatMentionBadgeV817();
+  }
+}
+
+function renderChatReactionsV803(message){
+  const reactions=chatMetaV803(message).reactions||{};
+  const parts=[];
+
+  CHAT_REACTION_EMOJIS.forEach(emoji=>{
+    const users=Array.isArray(reactions[emoji])?reactions[emoji]:[];
+    if(!users.length)return;
+    const mine=users.includes(authUser?.id);
+    parts.push(`
+      <button type="button"
+        class="chat-reaction-chip ${mine?"mine":""}"
+        data-chat-react="${message.id}"
+        data-chat-emoji="${emoji}"
+        data-viewer-allowed="true">
+        <span>${emoji}</span><b>${users.length}</b>
+      </button>
+    `);
+  });
+
+  return parts.length
+    ? `<div class="chat-reactions">${parts.join("")}</div>`
+    : "";
+}
+
+function renderVoicePlayerV803(url){
+  return `<div class="chat-voice-player" data-voice-player>
+    <button type="button" class="chat-voice-play" data-voice-play aria-label="Відтворити" data-viewer-allowed="true">▶</button>
+    <input type="range" class="chat-voice-progress" data-voice-progress min="0" max="1000" value="0" aria-label="Прогрес голосового">
+    <span class="chat-voice-time" data-voice-time>0:00</span>
+    <audio data-voice-audio preload="metadata" playsinline src="${url}"></audio>
+  </div>`;
+}
+
+function renderPinnedMessageV803(){
+  const banner=$("chatPinnedBanner");
+  const text=$("chatPinnedText");
+  if(!banner||!text)return;
+
+  const pinned=[...chatMessages].reverse().find(m=>chatMetaV803(m).pinned);
+  if(!pinned){
+    banner.classList.add("hidden");
+    banner.dataset.messageId="";
+    return;
+  }
+
+  const profile=teamProfiles.get(pinned.user_id);
+  const nick=profile?.display_name||chatVisibleAuthorV803(pinned);
+  text.textContent=`${nick}: ${chatMessagePreviewV803(pinned,72)}`;
+  banner.dataset.messageId=pinned.id;
+  banner.classList.remove("hidden");
+}
+
+function initChatVoicePlayersV803(){
+  document.querySelectorAll("[data-voice-player]").forEach(player=>{
+    if(player.dataset.bound==="1")return;
+    player.dataset.bound="1";
+
+    const audio=player.querySelector("[data-voice-audio]");
+    const play=player.querySelector("[data-voice-play]");
+    const range=player.querySelector("[data-voice-progress]");
+    const time=player.querySelector("[data-voice-time]");
+    if(!audio||!play||!range||!time)return;
+
+    const fmt=seconds=>{
+      const s=Math.max(0,Math.floor(Number(seconds)||0));
+      return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+    };
+
+    const sync=()=>{
+      const duration=Number.isFinite(audio.duration)?audio.duration:0;
+      const current=Number.isFinite(audio.currentTime)?audio.currentTime:0;
+      range.value=duration ? String(Math.round((current/duration)*1000)) : "0";
+      time.textContent=audio.paused
+        ? (current>0?`${fmt(current)} / ${fmt(duration)}`:fmt(duration))
+        : `${fmt(current)} / ${fmt(duration)}`;
+      play.textContent=audio.paused?"▶":"❚❚";
+    };
+
+    audio.addEventListener("loadedmetadata",sync);
+    audio.addEventListener("timeupdate",sync);
+    audio.addEventListener("play",()=>{
+      document.querySelectorAll("[data-voice-audio]").forEach(other=>{
+        if(other!==audio)other.pause();
+      });
+      sync();
+    });
+    audio.addEventListener("pause",sync);
+    audio.addEventListener("ended",()=>{audio.currentTime=0;sync()});
+
+    play.addEventListener("click",()=>{
+      if(audio.paused)audio.play().catch(()=>showToast("Не вдалося відтворити голосове"));
+      else audio.pause();
+    });
+
+    range.addEventListener("input",()=>{
+      if(Number.isFinite(audio.duration) && audio.duration>0){
+        audio.currentTime=(Number(range.value)/1000)*audio.duration;
+      }
+    });
+
+    sync();
+  });
+}
+
+function bindChatMessageGesturesV803(){
+  const box=$("chatMessages");
+  if(!box)return;
+
+  box.querySelectorAll(".chat-message").forEach(row=>{
+    let startX=0,startY=0,longTimer=null,longOpened=false,pointerActive=false;
+
+    row.addEventListener("pointerdown",e=>{
+      /* Interactive controls keep their own tap behavior and must not trigger reply. */
+      if(e.target.closest("button,input,audio,img,a,.chat-reactions-v803,.voice-player-v803")){
+        pointerActive=false;
+        return;
+      }
+      pointerActive=true;
+      startX=e.clientX;
+      startY=e.clientY;
+      longOpened=false;
+      clearTimeout(longTimer);
+      longTimer=setTimeout(()=>{
+        if(!pointerActive)return;
+        longOpened=true;
+        const id=row.dataset.messageId;
+        const anchor=row.querySelector(".chat-more-btn")||row;
+        openChatMessageMenuV803(id,anchor);
+      },520);
+    });
+
+    const finish=e=>{
+      clearTimeout(longTimer);
+      if(!pointerActive){
+        pointerActive=false;
+        return;
+      }
+      pointerActive=false;
+      if(longOpened)return;
+
+      const dx=e.clientX-startX;
+      const dy=e.clientY-startY;
+      const absX=Math.abs(dx);
+      const absY=Math.abs(dy);
+
+      /* Keep the existing swipe-to-reply shortcut. */
+      if(absX>58 && absX>absY*1.35){
+        startChatReplyV803(row.dataset.messageId);
+        return;
+      }
+
+      /* v8.09: one normal tap on the message immediately starts a reply. */
+      if(absX<14 && absY<14){
+        startChatReplyV803(row.dataset.messageId);
+      }
+    };
+
+    row.addEventListener("pointerup",finish);
+    row.addEventListener("pointercancel",()=>{
+      pointerActive=false;
+      clearTimeout(longTimer);
+    });
+  });
 }
 
 function renderChatMessages(forceScroll=false){
   const box=$("chatMessages");
   if(!box)return;
+
   const nearBottom=box.scrollHeight-box.scrollTop-box.clientHeight<120;
 
   if(!chatMessages.length){
     box.innerHTML=`<div class="chat-empty">Поки що повідомлень немає.<br>Напиши першим.</div>`;
+    renderPinnedMessageV803();
+    updateChatUnreadBadgeV803();
     return;
   }
 
   box.innerHTML=chatMessages.map(m=>{
+    const authorParts=chatAuthorPartsV803(m.author_nick);
     const profile=teamProfiles.get(m.user_id)||{
-      display_name:m.author_nick||"Гравець",
-      avatar_url:null
+      display_name:authorParts.nick||"Гравець",
+      avatar_url:null,
+      role:"viewer"
     };
+
     const own=authUser?.id===m.user_id;
+    const canEdit=own;
     const canDelete=own || authRole==="admin";
-    const time=new Date(m.created_at).toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
-    const day=new Date(m.created_at).toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit"});
+    const canPin=authRole==="admin" || authRole==="editor";
+    const meta=authorParts.meta||{};
+    const mentionedMe=chatMentionsMineV817.has(m.id);
+
+    const dt=new Date(m.created_at);
+    const time=dt.toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"});
+    const day=dt.toLocaleDateString("uk-UA",{day:"2-digit",month:"2-digit"});
+    const parsed=parseChatStoredTextV803(m.text);
+
     let media="";
     if(m.media_url){
       if(m.media_type==="audio"){
-        media=`<div class="voice-message">
-          <span class="voice-icon">🎙</span>
-          <audio class="chat-audio" controls playsinline preload="metadata" src="${m.media_url}"></audio>
-        </div>`;
+        media=renderVoicePlayerV803(m.media_url);
       }else{
         media=`<img class="chat-media ${m.media_type==="gif"?"is-gif":""}" src="${m.media_url}" alt="Вкладення">`;
       }
     }
-    return `<div class="chat-message ${own?"own":""}" data-message-id="${m.id}">
+
+    const reply=parsed.replyLine
+      ? `<div class="chat-reply-preview"><span>↩</span><b>${esc(parsed.replyLine)}</b></div>`
+      : "";
+
+    const divider=m.id===chatUnreadBoundaryId
+      ? `<div class="chat-new-divider"><span>НОВІ ПОВІДОМЛЕННЯ</span></div>`
+      : "";
+
+    return `${divider}<div class="chat-message ${own?"own":""} ${mentionedMe?"mentioned-me":""}" data-message-id="${m.id}">
       ${profileAvatarHtml(profile)}
       <div class="chat-message-main">
         <div class="chat-message-meta">
-          <strong>${esc(profile.display_name||"Гравець")}</strong>
-          <span>${day} · ${time}</span>
-          ${canDelete?`<button class="chat-delete" type="button" data-delete-message="${m.id}" data-viewer-allowed="true">×</button>`:""}
+          <div class="chat-author-line">
+            <strong>${esc(profile.display_name||"Гравець")}</strong>
+            <span class="chat-role-pill ${chatRoleClassV803(profile)}">${chatRoleLabelV803(profile)}</span>
+          </div>
+          <span class="chat-time">${day} · ${time}${meta.pinned?" · 📌":""}</span>
+          ${mentionedMe?`<span class="chat-mentioned-me-badge">@ ТЕБЕ</span>`:""}
+          ${renderChatReadReceiptV817(m)}
+          <button class="chat-more-btn" type="button" data-chat-more="${m.id}" aria-label="Дії" data-viewer-allowed="true">•••</button>
         </div>
         <div class="chat-bubble">
-          ${m.text?`<div class="chat-text">${esc(m.text).replace(/\n/g,"<br>")}</div>`:""}
+          ${reply}
+          ${parsed.body?`<div class="chat-text">${renderChatTextV817(parsed.body)}</div>`:""}
           ${media}
         </div>
+        ${renderChatReactionsV803(m)}
       </div>
     </div>`;
   }).join("");
 
-  box.querySelectorAll("[data-delete-message]").forEach(btn=>{
-    btn.addEventListener("click",()=>deleteChatMessage(btn.dataset.deleteMessage));
+  box.querySelectorAll("[data-chat-more]").forEach(btn=>{
+    btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      openChatMessageMenuV803(btn.dataset.chatMore,btn);
+    });
   });
 
+  box.querySelectorAll("[data-chat-react]").forEach(btn=>{
+    btn.addEventListener("click",()=>toggleChatReactionV803(
+      btn.dataset.chatReact,
+      btn.dataset.chatEmoji
+    ));
+  });
+
+  initChatVoicePlayersV803();
+  bindChatMessageGesturesV803();
+  renderPinnedMessageV803();
+  updateChatUnreadBadgeV803();
+  updateChatMentionBadgeV817();
+
   if(forceScroll || nearBottom){
-    requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight;});
+    requestAnimationFrame(()=>{box.scrollTop=box.scrollHeight});
   }
+}
+
+function closeChatMessageMenuV803(){
+  if(chatMessageMenuEl){
+    chatMessageMenuEl.remove();
+    chatMessageMenuEl=null;
+  }
+}
+
+function openChatMessageMenuV803(id,anchor){
+  closeChatMessageMenuV803();
+
+  const msg=chatMessages.find(m=>m.id===id);
+  if(!msg)return;
+
+  const own=msg.user_id===authUser?.id;
+  const canDelete=own || authRole==="admin";
+  const canEdit=own;
+  const canPin=authRole==="admin"||authRole==="editor";
+  const pinned=!!chatMetaV803(msg).pinned;
+
+  const menu=document.createElement("div");
+  menu.className="chat-message-menu-v803";
+  menu.innerHTML=`
+    <div class="chat-message-menu-actions">
+      <button type="button" data-action="reply">↩ ВІДПОВІСТИ</button>
+      ${canEdit?`<button type="button" data-action="edit">✎ РЕДАГУВАТИ</button>`:""}
+      ${canPin?`<button type="button" data-action="pin">📌 ${pinned?"ВІДКРІПИТИ":"ЗАКРІПИТИ"}</button>`:""}
+      ${canDelete?`<button type="button" class="danger" data-action="delete">🗑 ВИДАЛИТИ</button>`:""}
+    </div>
+    <div class="chat-message-menu-reactions">
+      ${CHAT_REACTION_EMOJIS.map(e=>`<button type="button" data-reaction="${e}">${e}</button>`).join("")}
+    </div>
+  `;
+
+  document.body.appendChild(menu);
+  chatMessageMenuEl=menu;
+
+  const r=anchor.getBoundingClientRect();
+  const mw=Math.min(330,window.innerWidth-20);
+  menu.style.width=mw+"px";
+
+  requestAnimationFrame(()=>{
+    const mr=menu.getBoundingClientRect();
+    let left=Math.max(10,Math.min(window.innerWidth-mr.width-10,r.left+r.width-mr.width));
+    let top=r.bottom+6;
+    if(top+mr.height>window.innerHeight-10)top=Math.max(10,r.top-mr.height-6);
+    menu.style.left=left+"px";
+    menu.style.top=top+"px";
+  });
+
+  const closeOnOutside=e=>{
+    if(!menu.contains(e.target)){
+      closeChatMessageMenuV803();
+      document.removeEventListener("pointerdown",closeOnOutside,true);
+    }
+  };
+  setTimeout(()=>document.addEventListener("pointerdown",closeOnOutside,true),0);
+
+  menu.querySelector('[data-action="reply"]')?.addEventListener("click",()=>{
+    closeChatMessageMenuV803();
+    startChatReplyV803(id);
+  });
+
+  menu.querySelector('[data-action="edit"]')?.addEventListener("click",()=>{
+    closeChatMessageMenuV803();
+    startChatEditV803(id);
+  });
+
+  menu.querySelector('[data-action="pin"]')?.addEventListener("click",async()=>{
+    closeChatMessageMenuV803();
+    await toggleChatPinV803(id);
+  });
+
+  menu.querySelector('[data-action="delete"]')?.addEventListener("click",()=>{
+    closeChatMessageMenuV803();
+    deleteChatMessage(id);
+  });
+
+  menu.querySelectorAll("[data-reaction]").forEach(btn=>{
+    btn.addEventListener("click",async()=>{
+      const emoji=btn.dataset.reaction;
+      closeChatMessageMenuV803();
+      await toggleChatReactionV803(id,emoji);
+    });
+  });
+}
+
+function renderChatComposerContextV803(){
+  const bar=$("chatComposerContext");
+  if(!bar)return;
+
+  if(chatEditingMessageId){
+    const msg=chatMessages.find(m=>m.id===chatEditingMessageId);
+    $("chatComposerContextTitle").textContent="РЕДАГУВАННЯ";
+    $("chatComposerContextText").textContent=chatMessagePreviewV803(msg,95);
+    bar.classList.remove("hidden");
+    return;
+  }
+
+  if(chatReplyTarget){
+    $("chatComposerContextTitle").textContent=`ВІДПОВІДЬ · ${chatReplyTarget.nick}`;
+    $("chatComposerContextText").textContent=chatReplyTarget.preview;
+    bar.classList.remove("hidden");
+    return;
+  }
+
+  bar.classList.add("hidden");
+}
+
+function clearChatComposerContextV803(){
+  chatReplyTarget=null;
+  chatEditingMessageId=null;
+  chatEditingReplyLine="";
+  renderChatComposerContextV803();
+}
+
+function startChatReplyV803(id){
+  const msg=chatMessages.find(m=>m.id===id);
+  if(!msg)return;
+
+  const profile=teamProfiles.get(msg.user_id);
+  const nick=profile?.display_name||chatVisibleAuthorV803(msg);
+  chatEditingMessageId=null;
+  chatEditingReplyLine="";
+  chatReplyTarget={
+    id,
+    nick,
+    preview:chatMessagePreviewV803(msg,100)
+  };
+
+  renderChatComposerContextV803();
+  $("chatInput")?.focus();
+}
+
+function startChatEditV803(id){
+  const msg=chatMessages.find(m=>m.id===id);
+  if(!msg || msg.user_id!==authUser?.id)return;
+
+  const parsed=parseChatStoredTextV803(msg.text);
+  chatReplyTarget=null;
+  chatEditingMessageId=id;
+  chatEditingReplyLine=parsed.replyLine||"";
+  if($("chatInput"))$("chatInput").value=parsed.body||"";
+
+  renderChatComposerContextV803();
+  $("chatInput")?.focus();
+}
+
+async function updateChatMessageAuthorMetaV803(message,meta){
+  const visible=chatVisibleAuthorV803(message);
+  const author_nick=buildChatAuthorNickV803(visible,meta);
+  const {error}=await sb.from("messages")
+    .update({author_nick})
+    .eq("id",message.id);
+
+  if(error){
+    console.error("Chat meta update failed",error);
+    showToast("Не вдалося оновити повідомлення");
+    return false;
+  }
+  return true;
+}
+
+async function toggleChatReactionV803(id,emoji){
+  if(!sb||!authUser||!CHAT_REACTION_EMOJIS.includes(emoji))return;
+  const msg=chatMessages.find(m=>m.id===id);
+  if(!msg)return;
+
+  const reactions=chatMetaV803(msg).reactions||{};
+  const alreadyMine=Array.isArray(reactions[emoji]) && reactions[emoji].includes(authUser.id);
+
+  /* One reaction per user/message: tapping the same emoji removes it;
+     tapping a different emoji replaces the previous reaction. */
+  const {error:deleteError}=await sb.from("message_reactions")
+    .delete()
+    .eq("message_id",id)
+    .eq("user_id",authUser.id);
+
+  if(deleteError){
+    console.error("Chat reaction delete failed",deleteError);
+    showToast("Не вдалося змінити реакцію");
+    return;
+  }
+
+  if(!alreadyMine){
+    const {error:insertError}=await sb.from("message_reactions")
+      .insert({message_id:id,user_id:authUser.id,emoji});
+    if(insertError){
+      console.error("Chat reaction insert failed",insertError);
+      showToast("Не вдалося додати реакцію");
+      return;
+    }
+  }
+
+  await loadChatMessages();
+}
+
+async function toggleChatPinV803(id){
+  if(!sb||!authUser||!(authRole==="admin"||authRole==="editor"))return;
+
+  const target=chatMessages.find(m=>m.id===id);
+  if(!target)return;
+
+  const {error}=await sb.rpc("toggle_message_pin",{p_message_id:id});
+  if(error){
+    console.error("Chat pin failed",error);
+    showToast("Не вдалося закріпити повідомлення");
+    return;
+  }
+
+  await loadChatMessages(true);
 }
 
 async function deleteChatMessage(id){
@@ -2669,8 +4068,17 @@ async function deleteChatMessage(id){
   if(!msg)return;
   if(msg.user_id!==authUser.id && authRole!=="admin")return;
   if(!confirm("Видалити це повідомлення?"))return;
+
   const {error}=await sb.from("messages").delete().eq("id",id);
-  if(error){showToast("Не вдалося видалити повідомлення");return}
+  if(error){
+    showToast("Не вдалося видалити повідомлення");
+    return;
+  }
+
+  if(chatEditingMessageId===id || chatReplyTarget?.id===id){
+    clearChatComposerContextV803();
+  }
+
   await loadChatMessages();
 }
 
@@ -2933,40 +4341,166 @@ async function sendChatMessage(){
     openAuthModal();
     return;
   }
+
   const input=$("chatInput");
-  const text=(input?.value||"").trim();
-  if(!text && !chatAttachment)return;
+  const body=(input?.value||"").trim();
+
+  /* Editing uses the existing media attachment of that message. */
+  if(chatEditingMessageId){
+    const msg=chatMessages.find(m=>m.id===chatEditingMessageId);
+    if(!msg || msg.user_id!==authUser.id){
+      clearChatComposerContextV803();
+      return;
+    }
+
+    if(!body && !msg.media_url){
+      showToast("Повідомлення не може бути порожнім");
+      return;
+    }
+
+    const stored=buildChatStoredTextV803(body,chatEditingReplyLine);
+
+    const btn=$("sendMessageBtn");
+    if(btn)btn.disabled=true;
+    const {error}=await sb.from("messages")
+      .update({text:stored||null,edited_at:new Date().toISOString()})
+      .eq("id",chatEditingMessageId);
+    if(btn)btn.disabled=false;
+
+    if(error){
+      console.error("Chat edit failed",error);
+      showToast("Не вдалося відредагувати повідомлення");
+      return;
+    }
+
+    await syncMessageMentionsV817(chatEditingMessageId,body);
+    if(input)input.value="";
+    closeChatMentionMenuV817();
+    clearChatComposerContextV803();
+    await loadChatMessages();
+    return;
+  }
+
+  if(!body && !chatAttachment)return;
+
+  let replyLine="";
+  if(chatReplyTarget){
+    replyLine=`${chatReplyTarget.nick}: ${chatReplyTarget.preview}`;
+  }
+  const storedText=buildChatStoredTextV803(body,replyLine);
 
   const btn=$("sendMessageBtn");
   if(btn)btn.disabled=true;
+
+  const visibleNick=authProfile?.display_name||
+    authUser.email?.split("@")[0]||
+    "Гравець";
+
   const payload={
     user_id:authUser.id,
-    text:text||null,
+    text:storedText||null,
     media_url:chatAttachment?.url||null,
     media_type:chatAttachment?.type||null,
-    author_nick:authProfile?.display_name||authUser.email?.split("@")[0]||"Гравець"
+    author_nick:buildChatAuthorNickV803(visibleNick,{})
   };
-  const {error}=await sb.from("messages").insert(payload);
+
+  const {data:inserted,error}=await sb.from("messages").insert(payload).select("id").single();
   if(btn)btn.disabled=false;
+
   if(error){
     console.error("Send error",error);
     showToast("Не вдалося відправити повідомлення");
     return;
   }
-  const senderNick=payload.author_nick||"Гравець";
-  let pushBody=text;
-  if(!pushBody && chatAttachment?.type==="voice")pushBody="🎙 Голосове повідомлення";
+
+  if(inserted?.id)await syncMessageMentionsV817(inserted.id,body);
+
+  const senderNick=visibleNick;
+  let pushBody=body;
+  if(!pushBody && chatAttachment?.type==="audio")pushBody="🎙 Голосове повідомлення";
   if(!pushBody && chatAttachment?.type==="gif")pushBody="GIF";
   if(!pushBody && chatAttachment?.type)pushBody="📷 Фото";
+
+  /* Existing Edge Function already routes chat pushes to /?open=chat. */
   sendPushEvent("chat",`${senderNick} — Чат`,pushBody||"Нове повідомлення");
 
   if(input)input.value="";
+  closeChatMentionMenuV817();
   chatAttachment=null;
   if($("chatMediaInput"))$("chatMediaInput").value="";
   renderAttachmentPreview();
+  clearChatComposerContextV803();
+  setChatTypingV803(false);
   await loadChatMessages(true);
 }
 
+
+async function syncChatPresenceTrackV803(typing=false){
+  if(!chatPresenceChannel || !authUser || !authProfile)return;
+  try{
+    await chatPresenceChannel.track({
+      user_id:authUser.id,
+      nick:authProfile?.display_name||"Гравець",
+      avatar:authProfile?.avatar_url||null,
+      online_at:new Date().toISOString(),
+      typing:!!typing,
+      typing_at:typing?Date.now():null
+    });
+  }catch(_e){}
+}
+
+function setChatTypingV803(value){
+  const typing=!!value;
+  if(chatIsTyping===typing && typing)return;
+  chatIsTyping=typing;
+  syncChatPresenceTrackV803(typing);
+}
+
+function scheduleChatTypingV803(){
+  if(!authUser || !$("screen-chat")?.classList.contains("active"))return;
+  setChatTypingV803(true);
+  clearTimeout(chatTypingTimer);
+  chatTypingTimer=setTimeout(()=>setChatTypingV803(false),1400);
+}
+
+function renderChatTypingIndicatorV803(){
+  const box=$("chatTypingIndicator");
+  if(!box)return;
+
+  if(!chatPresenceChannel){
+    box.classList.add("hidden");
+    return;
+  }
+
+  const now=Date.now();
+  const names=[];
+  const state=chatPresenceChannel.presenceState();
+
+  Object.values(state).forEach(entries=>{
+    (entries||[]).forEach(p=>{
+      if(
+        p?.user_id &&
+        p.user_id!==authUser?.id &&
+        p.typing===true &&
+        (!p.typing_at || now-Number(p.typing_at)<5000)
+      ){
+        const name=p.nick||"Гравець";
+        if(!names.includes(name))names.push(name);
+      }
+    });
+  });
+
+  if(!names.length){
+    box.classList.add("hidden");
+    box.textContent="";
+    return;
+  }
+
+  box.textContent=names.length===1
+    ? `${names[0]} друкує…`
+    : `${names.slice(0,2).join(", ")} друкують…`;
+  box.classList.remove("hidden");
+}
 
 function getOnlineUserIds(){
   const ids=new Set();
@@ -3039,6 +4573,7 @@ function setChatSection(section){
     requestAnimationFrame(()=>{
       const box=$("chatMessages");
       if(box)box.scrollTop=box.scrollHeight;
+      if(authUser){markChatSeenV803();markChatMessagesReadV817();}
     });
   }
 }
@@ -3082,6 +4617,7 @@ function renderOnlinePresence(){
       </div>`).join("");
   }
   renderMembersList();
+  renderChatTypingIndicatorV803();
 }
 
 async function stopChatPresence(){
@@ -3107,12 +4643,7 @@ async function startChatPresence(){
 
   chatPresenceChannel.subscribe(async status=>{
     if(status==="SUBSCRIBED"){
-      await chatPresenceChannel.track({
-        user_id:authUser.id,
-        nick:authProfile?.display_name||"Гравець",
-        avatar:authProfile?.avatar_url||null,
-        online_at:new Date().toISOString()
-      });
+      await syncChatPresenceTrackV803(false);
       renderOnlinePresence();
     }
   });
@@ -3141,7 +4672,10 @@ async function refreshChatAuthState(){
     if(profileBtn)profileBtn.classList.add("hidden");
     await stopChatPresence();
     chatMessages=[];
+    chatReadsV817=new Map();
+    chatMentionsMineV817=new Map();
     chatLastSignature="";
+    updateChatMentionBadgeV817();
   }
 }
 
@@ -3193,13 +4727,17 @@ async function openChatScreen(){
   if(authUser){
     await maybeWeeklyChatCleanup();
     await loadChatMessages(true);
+    /* Keep the divider from the previous last-seen point on screen,
+       but reset the nav badge after the user actually opens Chat. */
+    markChatSeenV803();
   }
 }
 
 async function avatarFileToDataUrl(file){
   if(!file)return null;
-  if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
-    throw new Error("Аватар має бути JPG, PNG або WEBP");
+  const allowed=["image/jpeg","image/png","image/webp","image/heic","image/heif"];
+  if(file.type && !allowed.includes(file.type)){
+    throw new Error("Оберіть фотографію JPG, PNG, WEBP або HEIC");
   }
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
@@ -3263,13 +4801,22 @@ async function saveProfile(){
   $("profileStatus").textContent="Збереження…";
   const payload={display_name:nick};
   if(pendingAvatarData)payload.avatar_url=pendingAvatarData;
-  const {error}=await sb.from("profiles").update(payload).eq("user_id",authUser.id);
-  if(error){
-    console.error(error);
+  const {data:updated,error}=await sb.from("profiles")
+    .update(payload)
+    .eq("user_id",authUser.id)
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
+    .maybeSingle();
+  if(error || !updated){
+    console.error(error||new Error("Profile update returned no row"));
     $("profileStatus").textContent="Не вдалося зберегти профіль.";
     return;
   }
+  // Paint the saved avatar immediately; refreshAuth then confirms the server state.
+  authProfile=updated;
+  renderProfilePreview();
+  try{ if(typeof syncSettingsV659==="function") syncSettingsV659(); }catch(_e){}
   await refreshAuth();
+  try{ if(typeof syncSettingsV659==="function") syncSettingsV659(); }catch(_e){}
   $("profileStatus").textContent="Профіль збережено.";
   setTimeout(closeProfileModal,350);
 }
@@ -3304,10 +4851,43 @@ $("chatMediaInput")?.addEventListener("change",async e=>{
   }
 });
 $("sendMessageBtn")?.addEventListener("click",sendChatMessage);
+
+$("chatInput")?.addEventListener("input",()=>{
+  scheduleChatTypingV803();
+  updateChatMentionMenuV817();
+  const input=$("chatInput");
+  if(input){
+    input.style.height="auto";
+    input.style.height=Math.min(120,input.scrollHeight)+"px";
+  }
+});
+
 $("chatInput")?.addEventListener("keydown",e=>{
   if(e.key==="Enter" && !e.shiftKey){
     e.preventDefault();
     sendChatMessage();
+  }
+});
+
+$("chatInput")?.addEventListener("blur",()=>{
+  clearTimeout(chatTypingTimer);
+  setChatTypingV803(false);
+  setTimeout(closeChatMentionMenuV817,120);
+});
+
+$("chatComposerContextClose")?.addEventListener("click",()=>{
+  clearChatComposerContextV803();
+  if($("chatInput"))$("chatInput").value="";
+});
+
+$("chatPinnedBanner")?.addEventListener("click",()=>{
+  const id=$("chatPinnedBanner")?.dataset.messageId;
+  if(!id)return;
+  const row=$("chatMessages")?.querySelector(`[data-message-id="${CSS.escape(id)}"]`);
+  if(row){
+    row.scrollIntoView({behavior:"smooth",block:"center"});
+    row.classList.add("chat-message-flash-v803");
+    setTimeout(()=>row.classList.remove("chat-message-flash-v803"),900);
   }
 });
 
@@ -4151,6 +5731,7 @@ async function deleteCalendarMatch(){
 }
 
 $("calendarBackHomeBtn")?.addEventListener("click",()=>navigate("home"));
+$("playersBackHomeBtn")?.addEventListener("click",()=>navigate("home"));
 $("calendarPrevBtn")?.addEventListener("click",()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1);renderCalendar();});
 $("calendarNextBtn")?.addEventListener("click",()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1);renderCalendar();});
 $("closeCalendarMatchModal")?.addEventListener("click",closeCalendarMatchModal);
@@ -4190,6 +5771,33 @@ function defaultTacticalState(){
   };
 }
 
+function clampTbStoredPoint(x,y){
+  /* Minimal universal edge protection only.
+     Every marker can otherwise use the whole tactical pitch. */
+  return {
+    x:Math.max(2.4,Math.min(97.6,Number(x)||50)),
+    y:Math.max(1.8,Math.min(98.2,Number(y)||50))
+  };
+}
+
+function tbDragBoundsForElement(el,pitchRect){
+  const w=Math.max(1,pitchRect?.width||1);
+  const h=Math.max(1,pitchRect?.height||1);
+  const ew=Math.max(29,el?.offsetWidth||30);
+  const eh=Math.max(29,el?.offsetHeight||30);
+  /* One extra pixel prevents clipping from borders/outline rounding. */
+  const mx=Math.min(12,Math.max(1.5,((ew/2+1)/w)*100));
+  const my=Math.min(12,Math.max(1.5,((eh/2+1)/h)*100));
+  return {minX:mx,maxX:100-mx,minY:my,maxY:100-my};
+}
+
+function clampTbPointToBounds(x,y,bounds){
+  return {
+    x:Math.max(bounds.minX,Math.min(bounds.maxX,Number(x)||50)),
+    y:Math.max(bounds.minY,Math.min(bounds.maxY,Number(y)||50))
+  };
+}
+
 function normalizeTacticalState(raw){
   const s=cloneTacticalState(raw);
   if(!Array.isArray(s.markers))s.markers=[];
@@ -4197,101 +5805,299 @@ function normalizeTacticalState(raw){
   if(!s.ball)s.ball={x:50,y:69,visible:true};
   s.markers=s.markers.filter(m=>m&&Number.isFinite(Number(m.x))&&Number.isFinite(Number(m.y))).map((m,i)=>({
     id:m.id||uid(), type:m.type==="opponent"?"opponent":"own", n:Number(m.n)||i+1,
-    x:Math.max(2,Math.min(98,Number(m.x))), y:Math.max(2,Math.min(98,Number(m.y)))
+    label:String(m.label||"").trim().slice(0,5),
+    ...clampTbStoredPoint(m.x,m.y)
   }));
   s.arrows=s.arrows.filter(a=>a&&[a.x1,a.y1,a.x2,a.y2].every(v=>Number.isFinite(Number(v)))).map(a=>({
     id:a.id||uid(),x1:Number(a.x1),y1:Number(a.y1),x2:Number(a.x2),y2:Number(a.y2)
   }));
-  s.ball={x:Math.max(2,Math.min(98,Number(s.ball.x)||50)),y:Math.max(2,Math.min(98,Number(s.ball.y)||69)),visible:s.ball.visible!==false};
+  const safeBall=clampTbStoredPoint(s.ball.x,s.ball.y);
+  s.ball={x:safeBall.x,y:safeBall.y,visible:s.ball.visible!==false};
   return s;
 }
 
-function tacticalPointFromEvent(e){
-  const pitch=$("tacticalPitch");
-  const r=pitch.getBoundingClientRect();
+/* ==========================================================
+   v7.99 — Tactical Board 2.0
+   Complete rebuild of pitch interaction.
+
+   No old tacticalPitch / tb-marker / ghost / auto-scroll code is used.
+   One system only: Pointer Events + Pointer Capture + frozen pitch rect.
+   ========================================================== */
+
+function tb2GetObject(kind,id){
+  if(kind==="marker"){
+    return (tbState.markers||[]).find(m=>m.id===id)||null;
+  }
+  if(!tbState.ball)tbState.ball={x:50,y:69,visible:true};
+  return tbState.ball;
+}
+
+function tb2BoundsForElement(el,pitchRect){
+  const w=Math.max(1,pitchRect?.width||1);
+  const h=Math.max(1,pitchRect?.height||1);
+  const er=el?.getBoundingClientRect?.();
+  const ew=Math.max(30,er?.width||34);
+  const eh=Math.max(30,er?.height||34);
+
+  const mx=Math.max(1.5,((ew/2+2)/w)*100);
+  const my=Math.max(1.2,((eh/2+2)/h)*100);
+
   return {
-    x:Math.max(1,Math.min(99,((e.clientX-r.left)/r.width)*100)),
-    y:Math.max(1,Math.min(99,((e.clientY-r.top)/r.height)*100))
+    minX:Math.min(12,mx),
+    maxX:100-Math.min(12,mx),
+    minY:Math.min(8,my),
+    maxY:100-Math.min(8,my)
   };
 }
 
-function setTbSelected(kind,id=null){
+function tb2Clamp(x,y,bounds){
+  return {
+    x:Math.max(bounds.minX,Math.min(bounds.maxX,Number(x)||50)),
+    y:Math.max(bounds.minY,Math.min(bounds.maxY,Number(y)||50))
+  };
+}
+
+function tb2PointFromClient(clientX,clientY,pitchRect,bounds){
+  const rawX=((clientX-pitchRect.left)/pitchRect.width)*100;
+  const rawY=((clientY-pitchRect.top)/pitchRect.height)*100;
+  return tb2Clamp(rawX,rawY,bounds);
+}
+
+function tb2SetSelected(kind,id=null){
   tbSelected={kind,id};
+
+  document.querySelectorAll("#tb2MarkerLayer .tb2-marker.selected")
+    .forEach(el=>el.classList.remove("selected"));
+
+  if(kind==="marker" && id){
+    document
+      .querySelector(`#tb2MarkerLayer [data-tb2-marker-id="${CSS.escape(String(id))}"]`)
+      ?.classList.add("selected");
+  }
+
+  $("tb2Ball")?.classList.toggle("selected",kind==="ball");
+}
+
+function editTbMarkerLabel(id){
+  if(!canEditSite())return;
+  const marker=(tbState.markers||[]).find(m=>m.id===id);
+  if(!marker)return;
+
+  const current=String(marker.label||"");
+  const value=window.prompt(
+    "Підпис гравця (наприклад: ЛЗ, ЦЗ, ПЗ, ЦП, ЦАП, ФРВ).\nЗалиш порожнім, щоб знову показувати номер.",
+    current
+  );
+  if(value===null)return;
+
+  marker.label=String(value).trim().toUpperCase().slice(0,5);
   renderTacticalBoard();
 }
 
 function renderTacticalArrows(){
-  const group=$("tbArrowGroup");
+  const group=$("tb2ArrowGroup");
   if(!group)return;
+
   const arrows=[...(tbState.arrows||[])];
   if(tbArrowDraft)arrows.push({...tbArrowDraft,id:"draft",draft:true});
-  group.innerHTML=arrows.map(a=>`<line class="tb-arrow-line ${a.draft?"draft":""}" x1="${a.x1}" y1="${a.y1}" x2="${a.x2}" y2="${a.y2}" marker-end="url(#tbArrowHead)"></line>`).join("");
+
+  group.innerHTML=arrows.map(a=>`
+    <line
+      class="tb2-arrow-line ${a.draft?"draft":""}"
+      x1="${a.x1}" y1="${a.y1}"
+      x2="${a.x2}" y2="${a.y2}"
+      marker-end="url(#tb2ArrowHead)">
+    </line>
+  `).join("");
 }
 
-function bindTbDrag(el,kind,id){
+function tb2BindDraggable(el,kind,id){
+  if(el.dataset.tb2DragBound==="1")return;
+  el.dataset.tb2DragBound="1";
+
+  let drag=null;
+
   el.addEventListener("pointerdown",e=>{
-    if(!canEditSite())return;
-    e.preventDefault();e.stopPropagation();
-    tbSelected={kind,id};
-    tbDrag={kind,id,pointerId:e.pointerId};
-    try{el.setPointerCapture(e.pointerId)}catch(_e){}
-    renderTacticalBoard();
-  });
-  el.addEventListener("pointermove",e=>{
-    if(!canEditSite()||!tbDrag||tbDrag.pointerId!==e.pointerId||tbDrag.kind!==kind||tbDrag.id!==id)return;
+    if(!canEditSite() || tbArrowMode)return;
+    if(e.pointerType==="mouse" && e.button!==0)return;
+
+    const pitch=$("tb2Pitch");
+    const object=tb2GetObject(kind,id);
+    if(!pitch||!object)return;
+
+    const rect=pitch.getBoundingClientRect();
+    if(!rect.width||!rect.height)return;
+
     e.preventDefault();
-    const p=tacticalPointFromEvent(e);
-    if(kind==="marker"){
-      const m=tbState.markers.find(v=>v.id===id);if(m){m.x=p.x;m.y=p.y;}
-    }else if(kind==="ball"){
-      tbState.ball.x=p.x;tbState.ball.y=p.y;
+    e.stopPropagation();
+
+    drag={
+      pointerId:e.pointerId,
+      pitchRect:{
+        left:rect.left,
+        top:rect.top,
+        width:rect.width,
+        height:rect.height
+      },
+      bounds:tb2BoundsForElement(el,rect),
+      screen:$("screen-tactical-board"),
+      scrollTop:$("screen-tactical-board")?.scrollTop||0,
+      startClientX:e.clientX,
+      startClientY:e.clientY,
+      moved:false
+    };
+
+    tb2SetSelected(kind,id);
+    el.classList.add("dragging");
+    pitch.classList.add("tb2-dragging");
+
+    try{el.setPointerCapture(e.pointerId)}catch(_e){}
+  },{passive:false});
+
+  el.addEventListener("pointermove",e=>{
+    if(!drag || drag.pointerId!==e.pointerId)return;
+
+    e.preventDefault();
+
+    if(drag.screen && Math.abs(drag.screen.scrollTop-drag.scrollTop)>.5){
+      drag.screen.scrollTop=drag.scrollTop;
     }
-    renderTacticalBoard(false);
-  });
-  const end=e=>{
-    if(tbDrag&&tbDrag.pointerId===e.pointerId){tbDrag=null;renderTacticalBoard();}
+
+    const dist=Math.hypot(
+      e.clientX-drag.startClientX,
+      e.clientY-drag.startClientY
+    );
+
+    if(!drag.moved && dist<3)return;
+    drag.moved=true;
+
+    const p=tb2PointFromClient(
+      e.clientX,e.clientY,
+      drag.pitchRect,
+      drag.bounds
+    );
+
+    const object=tb2GetObject(kind,id);
+    if(!object)return;
+
+    object.x=p.x;
+    object.y=p.y;
+
+    /* Visible point and stored state always use the same x/y. */
+    el.style.left=p.x+"%";
+    el.style.top=p.y+"%";
+  },{passive:false});
+
+  const finish=e=>{
+    if(!drag || drag.pointerId!==e.pointerId)return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const wasTap=kind==="marker"&&!drag.moved;
+
+    if(drag.screen)drag.screen.scrollTop=drag.scrollTop;
+
+    try{
+      if(el.hasPointerCapture?.(e.pointerId)){
+        el.releasePointerCapture(e.pointerId);
+      }
+    }catch(_e){}
+
+    el.classList.remove("dragging");
+    $("tb2Pitch")?.classList.remove("tb2-dragging");
+
+    /* NO drop conversion and NO re-render after drag.
+       The point stays exactly where the finger left it. */
+    drag=null;
+
+    if(wasTap)setTimeout(()=>editTbMarkerLabel(id),30);
   };
-  el.addEventListener("pointerup",end);
-  el.addEventListener("pointercancel",end);
+
+  el.addEventListener("pointerup",finish,{passive:false});
+  el.addEventListener("pointercancel",finish,{passive:false});
+  el.addEventListener("lostpointercapture",()=>{
+    if(!drag)return;
+    el.classList.remove("dragging");
+    $("tb2Pitch")?.classList.remove("tb2-dragging");
+    drag=null;
+  });
 }
 
-function renderTacticalBoard(full=true){
-  const layer=$("tbMarkerLayer");
-  if(!layer)return;
-  if(full){
-    layer.innerHTML="";
-    (tbState.markers||[]).forEach(m=>{
-      const btn=document.createElement("button");
-      btn.type="button";
-      btn.className=`tb-marker ${m.type} ${tbSelected?.kind==="marker"&&tbSelected?.id===m.id?"selected":""}`;
-      btn.style.left=m.x+"%";btn.style.top=m.y+"%";
-      btn.textContent=m.n;
-      btn.dataset.viewerAllowed="true";
-      btn.setAttribute("aria-label",m.type==="own"?`Свій гравець ${m.n}`:`Суперник ${m.n}`);
-      bindTbDrag(btn,"marker",m.id);
-      layer.appendChild(btn);
-    });
-    const ball=$("tbBallObject");
-    if(ball){
-      ball.classList.toggle("hidden",tbState.ball?.visible===false);
-      ball.classList.toggle("selected",tbSelected?.kind==="ball");
-      ball.style.left=(tbState.ball?.x??50)+"%";
-      ball.style.top=(tbState.ball?.y??69)+"%";
-      if(!ball.dataset.dragBound){bindTbDrag(ball,"ball",null);ball.dataset.dragBound="1";}
-    }
-  }else{
-    (tbState.markers||[]).forEach(m=>{
-      const nodes=[...layer.children];
-      const node=nodes.find(n=>n.textContent==String(m.n)&&n.classList.contains(m.type));
-      if(node){node.style.left=m.x+"%";node.style.top=m.y+"%";}
-    });
-    const ball=$("tbBallObject");
-    if(ball){ball.style.left=(tbState.ball?.x??50)+"%";ball.style.top=(tbState.ball?.y??69)+"%";}
+function renderTacticalBoard(){
+  const pitch=$("tb2Pitch");
+  const layer=$("tb2MarkerLayer");
+  if(!pitch||!layer)return;
+
+  const rect=pitch.getBoundingClientRect();
+  layer.innerHTML="";
+
+  (tbState.markers||[]).forEach(m=>{
+    const btn=document.createElement("button");
+    btn.type="button";
+    btn.className=`tb2-marker ${m.type}`;
+    btn.dataset.tb2MarkerId=m.id;
+    btn.dataset.viewerAllowed="true";
+
+    const markerText=String(m.label||"").trim()||String(m.n);
+    btn.textContent=markerText;
+    btn.classList.toggle("has-label",!!String(m.label||"").trim());
+    btn.setAttribute(
+      "aria-label",
+      m.type==="own"
+        ? `Свій гравець ${markerText}`
+        : `Суперник ${markerText}`
+    );
+
+    layer.appendChild(btn);
+
+    const safe=tb2Clamp(
+      m.x,m.y,
+      tb2BoundsForElement(btn,rect)
+    );
+    m.x=safe.x;
+    m.y=safe.y;
+
+    btn.style.left=m.x+"%";
+    btn.style.top=m.y+"%";
+    btn.classList.toggle(
+      "selected",
+      tbSelected?.kind==="marker"&&tbSelected?.id===m.id
+    );
+
+    tb2BindDraggable(btn,"marker",m.id);
+  });
+
+  const ball=$("tb2Ball");
+  if(ball){
+    const safe=tb2Clamp(
+      tbState.ball?.x??50,
+      tbState.ball?.y??69,
+      tb2BoundsForElement(ball,rect)
+    );
+
+    tbState.ball.x=safe.x;
+    tbState.ball.y=safe.y;
+
+    ball.style.left=safe.x+"%";
+    ball.style.top=safe.y+"%";
+    ball.classList.toggle("hidden",tbState.ball?.visible===false);
+    ball.classList.toggle("selected",tbSelected?.kind==="ball");
+
+    tb2BindDraggable(ball,"ball",null);
   }
+
   renderTacticalArrows();
-  const arrowBtn=$("tbArrowBtn");
-  if(arrowBtn)arrowBtn.classList.toggle("active",tbArrowMode);
+  $("tbArrowBtn")?.classList.toggle("active",!!tbArrowMode);
+  pitch.classList.toggle("arrow-mode",!!tbArrowMode);
   refreshTacticalBoardPermissions();
+}
+
+function tb2PointForArrow(e,rect){
+  return {
+    x:Math.max(0,Math.min(100,((e.clientX-rect.left)/rect.width)*100)),
+    y:Math.max(0,Math.min(100,((e.clientY-rect.top)/rect.height)*100))
+  };
 }
 
 function nextTbNumber(type){
@@ -4303,8 +6109,10 @@ function nextTbNumber(type){
 function addTbMarker(type){
   if(!canEditSite())return;
   const n=nextTbNumber(type);
-  const offset=(tbState.markers.filter(m=>m.type===type).length%6)*5;
-  const m={id:uid(),type,n,x:type==="own"?35+offset:65-offset,y:type==="own"?72:28};
+  const count=tbState.markers.filter(m=>m.type===type).length;
+  const offset=(count%6)*5;
+  const spawn=clampTbStoredPoint(type==="own"?35+offset:65-offset,type==="own"?72:28);
+  const m={id:uid(),type,n,label:"",x:spawn.x,y:spawn.y};
   tbState.markers.push(m);tbSelected={kind:"marker",id:m.id};renderTacticalBoard();
 }
 
@@ -4461,28 +6269,82 @@ $("tbClearBtn")?.addEventListener("click",clearTacticalBoard);
 $("tbSaveBtn")?.addEventListener("click",saveTacticalBoard);
 $("tbDeleteBoardBtn")?.addEventListener("click",deleteTacticalBoard);
 
-$("tacticalPitch")?.addEventListener("pointerdown",e=>{
-  if(!canEditSite()||!tbArrowMode)return;
-  if(e.target.closest(".tb-marker,.tb-ball-object"))return;
+/* Tactical Board 2.0 — arrow drawing */
+let tb2ArrowGesture=null;
+
+$("tb2Pitch")?.addEventListener("pointerdown",e=>{
+  if(!canEditSite() || !tbArrowMode)return;
+  if(e.target.closest(".tb2-marker,.tb2-ball"))return;
+  if(e.pointerType==="mouse" && e.button!==0)return;
+
+  const pitch=$("tb2Pitch");
+  const rect=pitch.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+
   e.preventDefault();
-  const p=tacticalPointFromEvent(e);
-  tbArrowDraft={x1:p.x,y1:p.y,x2:p.x,y2:p.y,pointerId:e.pointerId};
-  try{$("tacticalPitch").setPointerCapture(e.pointerId)}catch(_e){}
+
+  const p=tb2PointForArrow(e,rect);
+  tb2ArrowGesture={
+    pointerId:e.pointerId,
+    rect:{
+      left:rect.left,
+      top:rect.top,
+      width:rect.width,
+      height:rect.height
+    }
+  };
+
+  tbArrowDraft={
+    x1:p.x,y1:p.y,
+    x2:p.x,y2:p.y,
+    pointerId:e.pointerId
+  };
+
+  try{pitch.setPointerCapture(e.pointerId)}catch(_e){}
   renderTacticalArrows();
-});
-$("tacticalPitch")?.addEventListener("pointermove",e=>{
-  if(!tbArrowDraft||tbArrowDraft.pointerId!==e.pointerId)return;
-  e.preventDefault();const p=tacticalPointFromEvent(e);tbArrowDraft.x2=p.x;tbArrowDraft.y2=p.y;renderTacticalArrows();
-});
-const finishTbArrow=e=>{
-  if(!tbArrowDraft||tbArrowDraft.pointerId!==e.pointerId)return;
-  const a=tbArrowDraft;tbArrowDraft=null;
+},{passive:false});
+
+$("tb2Pitch")?.addEventListener("pointermove",e=>{
+  if(!tbArrowDraft || !tb2ArrowGesture ||
+     tb2ArrowGesture.pointerId!==e.pointerId)return;
+
+  e.preventDefault();
+
+  const p=tb2PointForArrow(e,tb2ArrowGesture.rect);
+  tbArrowDraft.x2=p.x;
+  tbArrowDraft.y2=p.y;
+  renderTacticalArrows();
+},{passive:false});
+
+const finishTb2Arrow=e=>{
+  if(!tbArrowDraft || !tb2ArrowGesture ||
+     tb2ArrowGesture.pointerId!==e.pointerId)return;
+
+  e.preventDefault();
+
+  const a=tbArrowDraft;
+  tbArrowDraft=null;
+  tb2ArrowGesture=null;
+
   const dist=Math.hypot(a.x2-a.x1,a.y2-a.y1);
-  if(dist>3)tbState.arrows.push({id:uid(),x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2});
-  renderTacticalBoard();
+  if(dist>3){
+    tbState.arrows.push({
+      id:uid(),
+      x1:a.x1,y1:a.y1,
+      x2:a.x2,y2:a.y2
+    });
+  }
+
+  renderTacticalArrows();
 };
-$("tacticalPitch")?.addEventListener("pointerup",finishTbArrow);
-$("tacticalPitch")?.addEventListener("pointercancel",()=>{tbArrowDraft=null;renderTacticalArrows();});
+
+$("tb2Pitch")?.addEventListener("pointerup",finishTb2Arrow,{passive:false});
+$("tb2Pitch")?.addEventListener("pointercancel",e=>{
+  if(tb2ArrowGesture?.pointerId!==e.pointerId)return;
+  tbArrowDraft=null;
+  tb2ArrowGesture=null;
+  renderTacticalArrows();
+},{passive:false});
 
 
 
@@ -4601,24 +6463,95 @@ function setGeneralStatsSlide(index){
   renderGeneralStats();
 }
 
+function generalModeEventDate(row){
+  if(generalStatsMode==="official")return calendarMatches.find(m=>m.id===row.match_id)?.match_date||null;
+  return trainingDays.find(d=>d.id===row.training_day_id)?.training_date||null;
+}
+
+function generalTeamMatches(monthDate=null){
+  const monthKey=monthDate?generalMonthKey(monthDate):null;
+  if(generalStatsMode==="official"){
+    const ids=new Set();
+    officialMatchStats.forEach(r=>{
+      const date=calendarMatches.find(m=>m.id===r.match_id)?.match_date||null;
+      if(!date)return;
+      if(monthKey && generalMonthKey(new Date(`${date}T12:00:00`))!==monthKey)return;
+      ids.add(r.match_id);
+    });
+    return ids.size;
+  }
+
+  const dayIds=new Set();
+  trainingStats.forEach(r=>{
+    const day=trainingDays.find(d=>d.id===r.training_day_id);
+    const date=day?.training_date||null;
+    if(!date)return;
+    if(monthKey && generalMonthKey(new Date(`${date}T12:00:00`))!==monthKey)return;
+    dayIds.add(r.training_day_id);
+  });
+
+  return [...dayIds].reduce((sum,id)=>{
+    const day=trainingDays.find(d=>d.id===id);
+    const declared=Number(day?.matches_played);
+    if(Number.isFinite(declared)&&declared>0)return sum+declared;
+    const fallback=Math.max(0,...trainingStats.filter(r=>r.training_day_id===id).map(r=>Number(r.matches_played)||0));
+    return sum+fallback;
+  },0);
+}
+
+function generalMinMatches(teamMatches){
+  return teamMatches>0?Math.max(1,Math.ceil(teamMatches*.30)):1;
+}
+
+function generalAdjustedRating(stats,teamMatches){
+  const avg=Number(stats?.average)||0;
+  const matches=Number(stats?.matches)||0;
+  if(!(avg>0)||!(teamMatches>0)||!(matches>0))return 0;
+  const participation=Math.min(1,matches/teamMatches);
+  return Math.max(0,avg-(.20*(1-participation)));
+}
+
 function renderGeneralPlayers(){
-  const rows=players.map(p=>({player:p,stats:generalAggregatePlayer(p)}));
+  const teamMatches=generalTeamMatches();
+  const minMatches=generalMinMatches(teamMatches);
+  const rows=players.map(p=>{
+    const stats=generalAggregatePlayer(p);
+    return {player:p,stats,eligible:stats.matches>=minMatches,adjusted:generalAdjustedRating(stats,teamMatches)};
+  });
+
   rows.sort((a,b)=>{
+    if(generalStatsSort==="average"){
+      if(a.eligible!==b.eligible)return a.eligible?-1:1;
+      if(a.eligible&&b.eligible)return (b.adjusted-a.adjusted)||(b.stats.average-a.stats.average)||(b.stats.matches-a.stats.matches);
+      return (b.stats.average-a.stats.average)||(b.stats.matches-a.stats.matches);
+    }
     const diff=(b.stats[generalStatsSort]||0)-(a.stats[generalStatsSort]||0);
     return diff || b.stats.average-a.stats.average;
   });
 
-  $("generalPlayersSummary").textContent=`Гравців: ${players.length}`;
+  $("generalPlayersSummary").textContent=teamMatches
+    ?`Гравців: ${players.length} • Матчів: ${teamMatches} • Мін. ${minMatches}`
+    :`Гравців: ${players.length}`;
 
+  let ratedPlace=0;
   $("generalPlayersRanking").innerHTML=rows.length?rows.map((x,i)=>{
-    const value=generalStatsSort==="average"?(x.stats.average?x.stats.average.toFixed(2):"—"):x.stats[generalStatsSort];
-    return `<button type="button" class="general-player-full-row" data-general-player="${x.player.id}" data-viewer-allowed="true">
-      <span class="general-place ${i<3?`top-${i+1}`:""}">${i+1}</span>
+    const ratingMode=generalStatsSort==="average";
+    const hasPlace=!ratingMode||x.eligible;
+    const place=hasPlace?(ratingMode?++ratedPlace:i+1):"—";
+    const placeClass=typeof place==="number"&&place<=3?`top-${place}`:"";
+    const value=ratingMode
+      ?(x.eligible&&x.adjusted?x.adjusted.toFixed(2):"—")
+      :x.stats[generalStatsSort];
+    const detail=ratingMode&&!x.eligible
+      ?`Недостатньо матчів • потрібно ${minMatches}`
+      :`Ср. ${x.stats.average?x.stats.average.toFixed(2):"—"} • MVP ${x.stats.mvp}`;
+    return `<button type="button" class="general-player-full-row ${ratingMode&&!x.eligible?"rating-ineligible":""}" data-general-player="${x.player.id}" data-viewer-allowed="true">
+      <span class="general-place ${placeClass}">${place}</span>
       <img src="${x.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
       <span class="general-player-info">
         <strong>${esc(x.player.name)}</strong>
         <small>Матчі ${x.stats.matches} • Голи ${x.stats.goals} • Асисти ${x.stats.assists}</small>
-        <small>Ср. ${x.stats.average?x.stats.average.toFixed(1):"—"} • MVP ${x.stats.mvp}</small>
+        <small>${detail}</small>
       </span>
       <b>${value}</b>
     </button>`;
@@ -4732,8 +6665,17 @@ function generalMonthAggregate(player,date){
   const mvpMap=generalEventMvpMap();
   const eventKey=generalStatsMode==="official"?"match_id":"training_day_id";
   const eventIds=[...new Set(rows.map(r=>r[eventKey]))];
+  let matches=eventIds.length;
+  if(generalStatsMode==="training"){
+    matches=rows.reduce((sum,r)=>{
+      const personal=Number(r.matches_played);
+      if(Number.isFinite(personal))return sum+personal;
+      return sum+(Number(trainingDays.find(d=>d.id===r.training_day_id)?.matches_played)||0);
+    },0);
+  }
   return {
     events:eventIds.length,
+    matches,
     goals:rows.reduce((s,r)=>s+(Number(r.goals)||0),0),
     assists:rows.reduce((s,r)=>s+(Number(r.assists)||0),0),
     average:ratings.length?ratings.reduce((a,b)=>a+b,0)/ratings.length:0,
@@ -4741,36 +6683,325 @@ function generalMonthAggregate(player,date){
   };
 }
 
+let generalMonthlyMvpWinners=[];
+let generalMonthlyMvpIndex=0;
+let generalMonthlyMvpTimer=null;
+let generalMonthlyMvpTouchX=null;
+
+function generalAwardMetricPart(value,max,weight){
+  return max>0?((Number(value)||0)/max)*weight:0;
+}
+
+function generalAwardComposite(x,maxima,weights){
+  return ((Number(x.adjusted)||0)/10)*weights.rating
+    +generalAwardMetricPart(x.stats.goals,maxima.goals,weights.goals||0)
+    +generalAwardMetricPart(x.stats.assists,maxima.assists,weights.assists||0)
+    +generalAwardMetricPart(x.stats.mvp,maxima.mvp,weights.mvp||0);
+}
+
+function generalPickByScore(arr,scoreFn){
+  if(!arr.length)return null;
+  return arr.map(x=>({...x,awardScore:scoreFn(x)}))
+    .sort((a,b)=>b.awardScore-a.awardScore||b.adjusted-a.adjusted||b.stats.matches-a.stats.matches)[0];
+}
+
+function generalPickCountingAward(arr,key){
+  if(!arr.length)return null;
+  const sorted=arr.slice().sort((a,b)=>(b.stats[key]||0)-(a.stats[key]||0)||(a.stats.matches||0)-(b.stats.matches||0)||(b.adjusted||0)-(a.adjusted||0));
+  return (sorted[0]?.stats[key]||0)>0?sorted[0]:null;
+}
+
+function paintGeneralMonthlyMvp(){
+  const card=document.querySelector("[data-monthly-mvp-card]");
+  if(!card||!generalMonthlyMvpWinners.length)return;
+  generalMonthlyMvpIndex=((generalMonthlyMvpIndex%generalMonthlyMvpWinners.length)+generalMonthlyMvpWinners.length)%generalMonthlyMvpWinners.length;
+  const x=generalMonthlyMvpWinners[generalMonthlyMvpIndex];
+  const img=card.querySelector("img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
+  if(img)img.src=x.player.cardImage||PLAYER_PLACEHOLDER;
+  if(name)name.textContent=x.player.name||"Гравець";
+  if(value)value.textContent=`${x.stats.mvp} MVP`;
+  if(counter)counter.textContent=generalMonthlyMvpWinners.length>1?`${generalMonthlyMvpIndex+1}/${generalMonthlyMvpWinners.length}`:"";
+  if(dots)dots.innerHTML=generalMonthlyMvpWinners.length>1?generalMonthlyMvpWinners.map((_,i)=>`<i class="${i===generalMonthlyMvpIndex?"active":""}"></i>`).join(""):"";
+}
+
+function restartGeneralMonthlyMvp(){
+  clearInterval(generalMonthlyMvpTimer);
+  if(generalMonthlyMvpWinners.length>1){
+    generalMonthlyMvpTimer=setInterval(()=>{
+      generalMonthlyMvpIndex=(generalMonthlyMvpIndex+1)%generalMonthlyMvpWinners.length;
+      paintGeneralMonthlyMvp();
+    },5000);
+  }
+}
+
+function bindGeneralMonthlyMvp(){
+  const card=document.querySelector("[data-monthly-mvp-card]");
+  if(!card)return;
+  card.addEventListener("touchstart",e=>{generalMonthlyMvpTouchX=e.changedTouches?.[0]?.clientX??null;},{passive:true});
+  card.addEventListener("touchend",e=>{
+    if(generalMonthlyMvpTouchX===null||generalMonthlyMvpWinners.length<2)return;
+    const x=e.changedTouches?.[0]?.clientX??generalMonthlyMvpTouchX;
+    const dx=x-generalMonthlyMvpTouchX;
+    generalMonthlyMvpTouchX=null;
+    if(Math.abs(dx)<35)return;
+    generalMonthlyMvpIndex=(generalMonthlyMvpIndex+(dx<0?1:-1)+generalMonthlyMvpWinners.length)%generalMonthlyMvpWinners.length;
+    paintGeneralMonthlyMvp();
+    restartGeneralMonthlyMvp();
+  },{passive:true});
+}
+
 function renderGeneralAwards(){
   const now=new Date();
   $("generalAwardsMonth").textContent=generalAwardsMonthCursor.toLocaleDateString("uk-UA",{month:"long",year:"numeric"}).toUpperCase();
   const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
-  $("generalAwardsState").textContent=current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ";
 
-  const data=players.map(player=>({player,stats:generalMonthAggregate(player,generalAwardsMonthCursor)})).filter(x=>x.stats.events>0);
-  const maxEvents=Math.max(0,...data.map(x=>x.stats.events));
-  const eligible=data.filter(x=>x.stats.events>=Math.max(1,Math.ceil(maxEvents*.5)));
-  const pick=(arr,key)=>arr.length?arr.slice().sort((a,b)=>b.stats[key]-a.stats[key])[0]:null;
+  const teamMatches=generalTeamMatches(generalAwardsMonthCursor);
+  const minMatches=generalMinMatches(teamMatches);
+  $("generalAwardsState").textContent=teamMatches
+    ?`${current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ"} • МІНІМУМ ${minMatches} МАТЧІВ`
+    :(current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ");
 
-  const awards=[
-    ["👑","ГРАВЕЦЬ МІСЯЦЯ",pick(eligible,"average"),"average"],
-    ["⚽","БОМБАРДИР",pick(data,"goals"),"goals"],
-    ["🎯","АСИСТЕНТ",pick(data,"assists"),"assists"],
-    ["🏆","MVP",pick(data,"mvp"),"mvp"]
-  ];
+  const data=players.map(player=>{
+    const stats=generalMonthAggregate(player,generalAwardsMonthCursor);
+    return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
+  }).filter(x=>x.stats.events>0||x.stats.matches>0);
+  const eligible=data.filter(x=>x.stats.matches>=minMatches);
 
-  $("generalAwardsList").innerHTML=data.length?awards.map((a,i)=>{
-    const x=a[2]; if(!x)return "";
-    const val=a[3]==="average"?x.stats.average.toFixed(2):x.stats[a[3]];
-    return `<div class="general-award-card ${i===0?"main":""}">
-      <small>${a[0]} ${a[1]}</small>
+  const maxima={
+    goals:Math.max(0,...eligible.map(x=>x.stats.goals||0)),
+    assists:Math.max(0,...eligible.map(x=>x.stats.assists||0)),
+    mvp:Math.max(0,...eligible.map(x=>x.stats.mvp||0))
+  };
+
+  const playerOfMonth=generalPickByScore(eligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+  const scorer=generalPickCountingAward(eligible,"goals");
+  const assistant=generalPickCountingAward(eligible,"assists");
+
+  const defenders=eligible.filter(x=>["LB","CB","RB"].includes(String(x.player.primaryPos||"").toUpperCase()));
+  const defenderMaxima={
+    goals:Math.max(0,...defenders.map(x=>x.stats.goals||0)),
+    assists:Math.max(0,...defenders.map(x=>x.stats.assists||0)),
+    mvp:Math.max(0,...defenders.map(x=>x.stats.mvp||0))
+  };
+  const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
+
+  const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
+  const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
+  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+
+  const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
+  generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+  generalMonthlyMvpIndex=0;
+  clearInterval(generalMonthlyMvpTimer);
+
+  const card=(icon,title,x,value,main=false)=>x?`<div class="general-award-card ${main?"main":""}">
+      <small>${icon} ${title}</small>
       <img src="${x.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
       <strong>${esc(x.player.name)}</strong>
-      <b>${val}</b>
-    </div>`;
-  }).join(""):`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
+      <b>${value}</b>
+    </div>`:"";
 
+  const awardCards=[];
+  if(playerOfMonth)awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.adjusted.toFixed(2),true));
+  if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
+  if(assistant)awardCards.push(card("🎯","АСИСТЕНТ",assistant,`${assistant.stats.assists}`));
+  if(defenderOfMonth)awardCards.push(card("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth,defenderOfMonth.adjusted.toFixed(2)));
+  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,goalkeeperOfMonth.adjusted.toFixed(2)));
+  if(generalMonthlyMvpWinners.length){
+    const first=generalMonthlyMvpWinners[0];
+    awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
+      <small>🏆 MVP МІСЯЦЯ <em class="general-award-counter"></em></small>
+      <img src="${first.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
+      <strong>${esc(first.player.name)}</strong>
+      <b>${first.stats.mvp} MVP</b>
+      <span class="general-award-dots"></span>
+    </div>`);
+  }
+
+  $("generalAwardsList").innerHTML=data.length
+    ?(awardCards.join("")||`<div class="empty-state"><strong>НЕМАЄ ГРАВЦІВ, ЯКІ ЗІГРАЛИ 30% МАТЧІВ</strong><span>Потрібно мінімум ${minMatches} матчів.</span></div>`)
+    :`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
+
+  if(generalMonthlyMvpWinners.length){paintGeneralMonthlyMvp();bindGeneralMonthlyMvp();restartGeneralMonthlyMvp();}
   $("generalAwardsNext").disabled=generalMonthKey(generalAwardsMonthCursor)>=generalMonthKey(now);
+}
+
+
+/* ==========================================================
+   v7.54 — automatic monthly awards + reigning Player of Month
+   ========================================================== */
+let autoMonthlyAwardsRunningV754=false;
+
+function awardModeLabelV754(mode){
+  return mode==="official"?"Офіційні матчі":"Тренування";
+}
+
+function awardMonthLastDateV754(monthDate){
+  const last=new Date(monthDate.getFullYear(),monthDate.getMonth()+1,0);
+  return `${last.getFullYear()}-${String(last.getMonth()+1).padStart(2,"0")}-${String(last.getDate()).padStart(2,"0")}`;
+}
+
+function awardMonthLabelV754(dateString){
+  if(!dateString)return "";
+  const d=new Date(`${dateString}T12:00:00`);
+  return d.toLocaleDateString("uk-UA",{month:"long",year:"numeric"}).toUpperCase();
+}
+
+function syncCurrentPlayerOfMonthV754(){
+  const rows=(playerAwardsV589||[])
+    .filter(a=>String(a.title||"").trim().toLowerCase()==="гравець місяця" && a.player_id && a.award_date)
+    .slice()
+    .sort((a,b)=>String(b.award_date).localeCompare(String(a.award_date))||String(b.created_at||"").localeCompare(String(a.created_at||"")));
+
+  let chosen=null;
+  if(rows.length){
+    const newestDate=rows[0].award_date;
+    const newest=rows.filter(a=>a.award_date===newestDate);
+    /* When both modes eventually exist, the training title is the visual
+       reigning card by default because that is the team's continuous monthly
+       competition. If there is no training award, use the official one. */
+    chosen=newest.find(a=>String(a.note||"").startsWith("Тренування"))||newest[0];
+  }
+
+  const next={
+    playerId:chosen?.player_id||null,
+    awardDate:chosen?.award_date||null,
+    monthLabel:chosen?.award_date?awardMonthLabelV754(chosen.award_date):""
+  };
+  const changed=next.playerId!==currentPlayerOfMonthV754.playerId || next.awardDate!==currentPlayerOfMonthV754.awardDate;
+  currentPlayerOfMonthV754=next;
+  if(changed){
+    try{renderPlayers();}catch(_e){}
+  }
+}
+
+function calculateMonthlyAwardsV754(monthDate,mode){
+  const previousMode=generalStatsMode;
+  generalStatsMode=mode;
+  try{
+    const teamMatches=generalTeamMatches(monthDate);
+    const minMatches=generalMinMatches(teamMatches);
+    if(!teamMatches)return {teamMatches,minMatches,awards:[]};
+
+    const data=players.map(player=>{
+      const stats=generalMonthAggregate(player,monthDate);
+      return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
+    }).filter(x=>x.stats.events>0||x.stats.matches>0);
+    const eligible=data.filter(x=>x.stats.matches>=minMatches);
+    if(!eligible.length)return {teamMatches,minMatches,awards:[]};
+
+    const maxima={
+      goals:Math.max(0,...eligible.map(x=>x.stats.goals||0)),
+      assists:Math.max(0,...eligible.map(x=>x.stats.assists||0)),
+      mvp:Math.max(0,...eligible.map(x=>x.stats.mvp||0))
+    };
+    const playerOfMonth=generalPickByScore(eligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+    const scorer=generalPickCountingAward(eligible,"goals");
+    const assistant=generalPickCountingAward(eligible,"assists");
+
+    const defenders=eligible.filter(x=>["LB","CB","RB"].includes(String(x.player.primaryPos||"").toUpperCase()));
+    const defenderMaxima={
+      goals:Math.max(0,...defenders.map(x=>x.stats.goals||0)),
+      assists:Math.max(0,...defenders.map(x=>x.stats.assists||0)),
+      mvp:Math.max(0,...defenders.map(x=>x.stats.mvp||0))
+    };
+    const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
+
+    const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
+    const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
+    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+
+    const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
+    const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+    const modeLabel=awardModeLabelV754(mode);
+    const awards=[];
+    const push=(x,title,icon,note)=>{if(x?.player?.id)awards.push({player_id:x.player.id,title,icon,note});};
+
+    push(playerOfMonth,"Гравець місяця","👑",`${modeLabel} • ${Number(playerOfMonth?.awardScore||0).toFixed(1)} бала`);
+    push(scorer,"Бомбардир місяця","⚽",`${modeLabel} • ${scorer?.stats?.goals||0} голів`);
+    push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
+    push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • ${Number(defenderOfMonth?.awardScore||0).toFixed(1)} бала`);
+    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • ${Number(goalkeeperOfMonth?.awardScore||0).toFixed(1)} бала`);
+    mvpWinners.forEach(x=>push(x,"MVP місяця","🏆",`${modeLabel} • ${x.stats.mvp||0} MVP`));
+
+    return {teamMatches,minMatches,awards};
+  }finally{
+    generalStatsMode=previousMode;
+  }
+}
+
+function completedAwardMonthsV754(){
+  const now=new Date();
+  const currentKey=generalMonthKey(now);
+  const found=new Map();
+
+  trainingDays.forEach(d=>{
+    if(!d?.training_date)return;
+    const date=new Date(`${d.training_date}T12:00:00`);
+    const key=generalMonthKey(date);
+    if(key<currentKey)found.set(`training:${key}`,{mode:"training",date:new Date(date.getFullYear(),date.getMonth(),1)});
+  });
+  calendarMatches.forEach(m=>{
+    if(!m?.match_date)return;
+    const date=new Date(`${m.match_date}T12:00:00`);
+    const key=generalMonthKey(date);
+    if(key<currentKey)found.set(`official:${key}`,{mode:"official",date:new Date(date.getFullYear(),date.getMonth(),1)});
+  });
+  return [...found.values()].sort((a,b)=>a.date-b.date||a.mode.localeCompare(b.mode));
+}
+
+async function autoIssueCompletedMonthlyAwardsV754(){
+  if(autoMonthlyAwardsRunningV754||!sb||!authUser||!["admin","editor"].includes(authRole))return;
+  autoMonthlyAwardsRunningV754=true;
+  try{
+    /* Official award calculations need match dates. They are not always loaded
+       on the Home screen, so fetch them only when official player stats exist. */
+    if(officialMatchStats.length && !calendarMatches.length){
+      const {data,error}=await sb.from("calendar_matches").select("*").order("match_date",{ascending:true});
+      if(!error)calendarMatches=data||[];
+    }
+
+    const months=completedAwardMonthsV754();
+    if(!months.length){syncCurrentPlayerOfMonthV754();return;}
+
+    const {data:existing,error:existingError}=await sb.from("player_awards")
+      .select("id,player_id,title,award_date,note,icon,created_by,created_at");
+    if(existingError){console.warn("v7.54 award duplicate check",existingError);return;}
+    const known=existing||[];
+    const inserts=[];
+
+    months.forEach(({mode,date})=>{
+      const calculated=calculateMonthlyAwardsV754(date,mode);
+      if(!calculated.awards.length)return;
+      const awardDate=awardMonthLastDateV754(date);
+      const modeLabel=awardModeLabelV754(mode);
+      calculated.awards.forEach(a=>{
+        const exists=known.some(x=>
+          x.player_id===a.player_id &&
+          String(x.title||"").trim().toLowerCase()===String(a.title||"").trim().toLowerCase() &&
+          x.award_date===awardDate &&
+          String(x.note||"").startsWith(modeLabel)
+        );
+        if(exists)return;
+        inserts.push({...a,award_date:awardDate,created_by:authUser.id});
+      });
+    });
+
+    if(inserts.length){
+      const {data,error}=await sb.from("player_awards").insert(inserts).select("*");
+      if(error){console.warn("v7.54 automatic awards insert",error);return;}
+      const fresh=data||[];
+      playerAwardsV589=[...known,...fresh];
+      syncCurrentPlayerOfMonthV754();
+      showToast(`Автоматично видано нагород: ${fresh.length}`);
+      try{if(typeof renderPlayerAccountSettingsV589==="function")renderPlayerAccountSettingsV589();}catch(_e){}
+    }else{
+      playerAwardsV589=known;
+      syncCurrentPlayerOfMonthV754();
+    }
+  }finally{
+    autoMonthlyAwardsRunningV754=false;
+  }
 }
 
 function fillGeneralCompare(){
@@ -4908,6 +7139,24 @@ $("themeLightBtn")?.addEventListener("click",()=>applySiteTheme("light"));
 /* Supabase Auth */
 const authModal=$("authModal");
 const authStatus=$("authStatus");
+let authRecoveryMode=false;
+
+function setAuthModalMode(mode="login"){
+  const recovery=mode==="recovery";
+  authRecoveryMode=recovery;
+
+  $("authLoginPanel")?.classList.toggle("hidden",recovery);
+  $("authRecoveryPanel")?.classList.toggle("hidden",!recovery);
+
+  if($("authTitle")){
+    $("authTitle").textContent=recovery ? "НОВИЙ ПАРОЛЬ" : "ВХІД";
+  }
+  if($("authNote")){
+    $("authNote").textContent=recovery
+      ? "Введи новий пароль для свого акаунта Centuria Athletics."
+      : "Увійди у свій акаунт або створи новий акаунт учасника Centuria Athletics.";
+  }
+}
 
 function closeAuthModal(){
   authModal?.classList.add("hidden");
@@ -4915,7 +7164,22 @@ function closeAuthModal(){
   if(authStatus) authStatus.textContent="";
 }
 
+function openPasswordRecoveryModal(){
+  setAuthModalMode("recovery");
+  authModal?.classList.remove("hidden");
+  document.body.classList.add("auth-open");
+  if(authStatus)authStatus.textContent="";
+  setTimeout(()=>$("authNewPassword")?.focus(),60);
+}
+
 async function openAuthModal(){
+  /* If the user opened a password-recovery link and closed the modal,
+     opening Account again must return to NEW PASSWORD, not offer logout. */
+  if(authRecoveryMode){
+    openPasswordRecoveryModal();
+    return;
+  }
+
   if(authUser){
     const ok=confirm(`Вийти з акаунта ${authUser.email}?`);
     if(ok && sb){
@@ -4927,6 +7191,8 @@ async function openAuthModal(){
     }
     return;
   }
+
+  setAuthModalMode("login");
   authModal?.classList.remove("hidden");
   document.body.classList.add("auth-open");
   setTimeout(()=>$("authEmail")?.focus(),50);
@@ -4935,6 +7201,81 @@ async function openAuthModal(){
 $("authBtn")?.addEventListener("click",openAuthModal);
 $("closeAuthModal")?.addEventListener("click",closeAuthModal);
 document.querySelectorAll("[data-close-auth]").forEach(el=>el.addEventListener("click",closeAuthModal));
+
+$("forgotPasswordBtn")?.addEventListener("click",async()=>{
+  if(!sb)return;
+
+  const email=$("authEmail")?.value.trim();
+  if(!email){
+    authStatus.textContent="Спочатку введи email свого акаунта.";
+    $("authEmail")?.focus();
+    return;
+  }
+
+  authStatus.textContent="Надсилаю лист для скидання пароля...";
+
+  /* v8.05:
+     Password recovery from the test build must always return to the
+     dedicated test site, never to the production Site URL. */
+  const redirectUrl="https://centuria-tests.vercel.app/?password_recovery=1";
+
+  const {error}=await sb.auth.resetPasswordForEmail(email,{
+    redirectTo:redirectUrl
+  });
+
+  if(error){
+    console.error("Password reset email error",error);
+    authStatus.textContent="Не вдалося надіслати лист: "+error.message;
+    return;
+  }
+
+  /* Generic success text avoids revealing whether an email is registered. */
+  authStatus.textContent="Якщо цей email зареєстрований, на нього надіслано лист для скидання пароля.";
+});
+
+$("saveNewPasswordBtn")?.addEventListener("click",async()=>{
+  if(!sb)return;
+
+  const password=$("authNewPassword")?.value||"";
+  const confirmPassword=$("authNewPasswordConfirm")?.value||"";
+
+  if(password.length<6){
+    authStatus.textContent="Новий пароль має містити мінімум 6 символів.";
+    return;
+  }
+  if(password!==confirmPassword){
+    authStatus.textContent="Паролі не співпадають.";
+    return;
+  }
+
+  authStatus.textContent="Зберігаю новий пароль...";
+
+  const {error}=await sb.auth.updateUser({password});
+  if(error){
+    console.error("Password update error",error);
+    authStatus.textContent="Не вдалося змінити пароль: "+error.message;
+    return;
+  }
+
+  authRecoveryMode=false;
+  $("authNewPassword").value="";
+  $("authNewPasswordConfirm").value="";
+
+  /* Remove recovery markers/tokens from the visible URL after success. */
+  try{
+    const clean=new URL(location.href);
+    clean.searchParams.delete("password_recovery");
+    clean.hash="";
+    history.replaceState(null,"",clean.pathname+clean.search);
+  }catch(_e){}
+
+  await refreshAuth();
+  authStatus.textContent="Пароль змінено ✓";
+  setTimeout(()=>{
+    setAuthModalMode("login");
+    closeAuthModal();
+  },700);
+});
 
 $("signInBtn")?.addEventListener("click",async()=>{
   if(!sb)return;
@@ -4988,7 +7329,21 @@ $("signUpBtn")?.addEventListener("click",async()=>{
 });
 
 if(sb){
-  sb.auth.onAuthStateChange(()=>refreshAuth());
+  sb.auth.onAuthStateChange((event)=>{
+    /* Supabase emits PASSWORD_RECOVERY after a valid recovery email link.
+       Open the new-password form in the SAME auth modal. */
+    if(event==="PASSWORD_RECOVERY"){
+      setTimeout(()=>openPasswordRecoveryModal(),0);
+    }
+    if(event==="SIGNED_OUT"){
+      authRecoveryMode=false;
+      setAuthModalMode("login");
+    }
+
+    /* Avoid doing additional Supabase calls synchronously inside
+       onAuthStateChange. */
+    setTimeout(()=>refreshAuth().catch(console.error),0);
+  });
 
   sb.channel("centuria-live")
     .on("postgres_changes",{event:"*",schema:"public",table:"players"},async()=>{
@@ -5009,6 +7364,9 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"training_days"},async()=>{await loadStatisticsData();})
     .on("postgres_changes",{event:"*",schema:"public",table:"training_player_stats"},async()=>{await loadStatisticsData();})
     .on("postgres_changes",{event:"*",schema:"public",table:"official_match_player_stats"},async()=>{await loadStatisticsData();})
+    .on("postgres_changes",{event:"*",schema:"public",table:"player_awards"},async()=>{
+      if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
+    })
     .on("postgres_changes",{event:"*",schema:"public",table:"gatherings"},async()=>{
       if($("screen-calendar")?.classList.contains("active"))await loadCalendarData();
     })
@@ -5020,10 +7378,27 @@ if(sb){
     initSiteTheme();
     setupFormOptions();
     await openDB();
-    await registerPushServiceWorker();
+    // v6.63: service-worker readiness can take seconds on iOS/PWA.
+    // Do not block the first Home data paint behind it.
+    const pushWorkerPromise=registerPushServiceWorker();
     await refreshAuth();
+
+    /* Fallback for browsers where the PASSWORD_RECOVERY event fires before
+       the page listener is ready. The reset email points back with this flag. */
+    const recoveryFlag=new URLSearchParams(location.search).get("password_recovery")==="1";
+    const recoveryHash=location.hash.includes("type=recovery");
+    if(recoveryFlag || recoveryHash){
+      openPasswordRecoveryModal();
+      if(!authUser && authStatus){
+        authStatus.textContent="Відкрий це посилання саме з листа для скидання пароля.";
+      }
+    }
+
+    await pushWorkerPromise;
     const openTarget=new URLSearchParams(location.search).get("open");
-    if(openTarget==="chat" || openTarget==="gatherings")switchScreen(openTarget);
+    if(["players","tactics","squads","chat","gatherings"].includes(openTarget)){
+      navigate(openTarget);
+    }
   }catch(err){
     console.error(err);
     showToast("Помилка запуску сайту. Перезавантаж сторінку.");
@@ -5155,10 +7530,10 @@ window.addEventListener("centuria-theme-change",()=>setTimeout(renderHomeVip,50)
 function applyHomeBackgroundForTheme(theme){
   const img=document.getElementById("homeBackgroundImage");
   if(!img)return;
-  const light=theme==="light";
-  const wanted=light?"home-screen-light.jpg":"home-screen.jpg";
+  const isLight=theme==="light";
+  const wanted=isLight?"home-screen-light-v666.jpg":"home-screen-clean.jpg";
   if(!img.src.endsWith(wanted)) img.src=wanted;
-  img.dataset.themeBackground=light?"light":"dark";
+  img.dataset.themeBackground=isLight?"light-v666":"dark-clean";
 }
 
 window.addEventListener("centuria-theme-change",e=>{
@@ -6046,6 +8421,7 @@ async function loadPlayerAccountSystemV589(){
   if(!pr.error)accountProfilesV589=pr.data||[];
   if(!aw.error)playerAwardsV589=aw.data||[];
   if(!rq.error)playerChangeRequestsV589=rq.data||[];
+  if(typeof syncCurrentPlayerOfMonthV754==="function")syncCurrentPlayerOfMonthV754();
   renderPlayerAccountSettingsV589();
 
   // Keep chat profiles in sync with linked player IDs.
@@ -6055,12 +8431,52 @@ async function loadPlayerAccountSystemV589(){
   }
 }
 
+function setSiteAccessPanelV662(open,{scroll=false}={}){
+  const panel=$("adminSiteAccessCard");
+  const btn=$("settingsAccessJumpBtn");
+  if(!panel)return;
+  const canOpen=!!open && isAdminV589();
+  panel.dataset.expanded=canOpen?"true":"false";
+  panel.classList.toggle("hidden",!canOpen);
+  panel.hidden=!canOpen;
+  panel.setAttribute("aria-hidden",canOpen?"false":"true");
+  if(btn){
+    btn.setAttribute("aria-expanded",canOpen?"true":"false");
+    btn.classList.toggle("is-expanded",canOpen);
+    const arrow=btn.querySelector("i");
+    if(arrow)arrow.textContent=canOpen?"⌄":"›";
+  }
+  if(canOpen && scroll){
+    requestAnimationFrame(()=>panel.scrollIntoView({behavior:"smooth",block:"start"}));
+  }
+}
+
+function setPlayerLinksPanelV661(open,{scroll=false}={}){
+  const panel=$("adminPlayerLinksCard");
+  const btn=$("settingsPlayerLinksBtn");
+  if(!panel)return;
+  const canOpen=!!open && isAdminV589();
+  panel.dataset.expanded=canOpen?"true":"false";
+  panel.classList.toggle("hidden",!canOpen);
+  panel.hidden=!canOpen;
+  panel.setAttribute("aria-hidden",canOpen?"false":"true");
+  if(btn){
+    btn.setAttribute("aria-expanded",canOpen?"true":"false");
+    btn.classList.toggle("is-expanded",canOpen);
+    const arrow=btn.querySelector("i");
+    if(arrow)arrow.textContent=canOpen?"⌄":"›";
+  }
+  if(canOpen && scroll){
+    requestAnimationFrame(()=>panel.scrollIntoView({behavior:"smooth",block:"start"}));
+  }
+}
+
 function renderPlayerAccountSettingsV589(){
   const mine=$("myPlayerSettingsCard");
   const links=$("adminPlayerLinksCard");
   const requests=$("playerRequestsSettingsCard");
   if(mine)mine.classList.toggle("hidden",!authUser);
-  if(links)links.classList.toggle("hidden",!isAdminV589());
+  if(links)setPlayerLinksPanelV661(links.dataset.expanded==="true");
   if(requests)requests.classList.toggle("hidden",!(isAdminV589()||authRole==="editor"));
 
   const myStatus=$("myPlayerLinkStatus");
@@ -6176,11 +8592,25 @@ async function renderAwardsIntoPlayerModalV589(pid){
       <strong>${esc(a.title||"Нагорода")}</strong>
       <span>${a.award_date?new Date(a.award_date+"T00:00:00").toLocaleDateString("uk-UA",{month:"long",year:"numeric"}):""}</span>
       ${a.note?`<small>${esc(a.note)}</small>`:""}
-      ${(isAdminV589()||authRole==="editor")?`<button type="button" class="award-delete-btn" data-delete-award="${a.id}">ВИДАЛИТИ</button>`:""}
+      ${authRole==="admin"?`<button type="button" class="award-delete-btn" data-delete-award="${a.id}">ВИДАЛИТИ</button>`:""}
     </div>`).join(""):'<div class="empty-state"><strong>НАГОРОД ПОКИ НЕМАЄ</strong></div>';
 
-  $("playerAwardAdminBox")?.classList.toggle("hidden",!(isAdminV589()||authRole==="editor"));
+  {
+    const pane=$("playerAwardsPane");
+    const adminBox=$("playerAwardAdminBox");
+    const addTrigger=$("openAddAwardBtn");
+    const adminOnly=authRole==="admin";
+
+    if(adminBox) adminBox.classList.add("hidden");
+    if(pane) pane.classList.remove("award-add-open");
+    if(addTrigger){
+      addTrigger.classList.toggle("hidden",!adminOnly);
+      addTrigger.textContent="＋ ДОДАТИ НАГОРОДУ";
+      addTrigger.setAttribute("aria-expanded","false");
+    }
+  }
   box.querySelectorAll("[data-delete-award]").forEach(btn=>btn.onclick=()=>deletePlayerAwardV589(btn.dataset.deleteAward));
+  syncAwardsAddButtonV739();
 }
 
 async function showPlayerAwardsV589(){
@@ -6195,7 +8625,7 @@ $("playerInfoTab")?.addEventListener("click",()=>returnPlayerSlidesV589(0));
 $("playerStatsTab")?.addEventListener("click",()=>returnPlayerSlidesV589(1));
 
 async function addPlayerAwardV589(){
-  if(!(isAdminV589()||authRole==="editor")||!currentAwardsPlayerIdV589)return;
+  if(authRole!=="admin"||!currentAwardsPlayerIdV589)return;
   const title=$("awardTitleInput")?.value.trim();
   const date=$("awardDateInput")?.value||new Date().toISOString().slice(0,10);
   const icon=$("awardIconInput")?.value.trim()||"🏅";
@@ -6211,7 +8641,7 @@ async function addPlayerAwardV589(){
   showToast("Нагороду додано");
 }
 async function deletePlayerAwardV589(id){
-  if(!(isAdminV589()||authRole==="editor"))return;
+  if(authRole!=="admin")return;
   if(!confirm("Видалити цю нагороду?"))return;
   const {error}=await sb.from("player_awards").delete().eq("id",id);
   if(error){showToast("Не вдалося видалити нагороду");return;}
@@ -6784,7 +9214,21 @@ function renderHomeVip(){
       if(p)homeVipPlayers.push({player:p,rating:Number(w.rating),date:latest.date,type:latest.type});
     });
   }
-  if(!homeVipPlayers.length){card.classList.add("hidden");clearInterval(homeVipTimer);return;}
+  if(!homeVipPlayers.length){
+    // v6.63: keep the MVP shell at its final size from the first paint.
+    // Hiding the second grid item while cloud data loads made Home visibly
+    // pop/reflow a moment later on iPhone/PWA.
+    card.classList.remove("hidden");
+    card.dataset.playerId="";
+    const n=$("homeMvpName"), meta=$("homeMvpMeta"), rating=$("homeMvpRating"), img=$("homeMvpPhoto");
+    if(n)n.textContent="MVP";
+    if(meta)meta.textContent="ЗАВАНТАЖЕННЯ…";
+    if(rating)rating.textContent="—";
+    if(img){img.src=PLAYER_PLACEHOLDER;img.classList.remove("hidden");}
+    const dots=card.querySelector(".home-vip-dots");if(dots)dots.innerHTML="";
+    clearInterval(homeVipTimer);
+    return;
+  }
   if(homeVipIndex>=homeVipPlayers.length)homeVipIndex=0;
   paintHomeVipV642();restartHomeVipV642();
 }
@@ -6820,3 +9264,1288 @@ document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".se
 
 
 document.addEventListener("DOMContentLoaded",()=>{document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.43");});
+
+// v6.45 home greeting
+function syncHomeGreeting(){
+  const el=document.getElementById('homeGreetingNick');
+  if(el) el.textContent=authProfile?.display_name || authUser?.email?.split('@')[0] || 'Гравець';
+}
+setInterval(syncHomeGreeting,1200);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncHomeGreeting()});
+
+
+/* v6.48 exact interactive home */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.48");
+  const currentTheme=document.documentElement.getAttribute("data-site-theme")||"dark";
+  applyHomeBackgroundForTheme(currentTheme);
+});
+
+
+/* ==========================================================
+   v6.59 — SETTINGS REDESIGN BEHAVIOR
+   ========================================================== */
+/* ==========================================================
+   v8.02 — themed logout confirmation + automatic version
+   ========================================================== */
+function getCenturiaRuntimeVersionV802(){
+  try{
+    const script=[...document.scripts].find(s=>
+      /(?:^|\/)app\.js(?:\?|$)/.test(s.src||"")
+    );
+    if(script?.src){
+      const raw=new URL(script.src,location.href).searchParams.get("v")||"";
+      const match=raw.match(/^(\d+\.\d+)/);
+      if(match)return "v"+match[1];
+    }
+  }catch(_e){}
+  return "v8.09";
+}
+
+function syncCenturiaVersionV802(){
+  const version=getCenturiaRuntimeVersionV802();
+  document.querySelectorAll(".settings-version strong").forEach(el=>{
+    el.textContent=version;
+  });
+}
+
+function askSettingsLogoutV802(){
+  return new Promise(resolve=>{
+    const overlay=document.getElementById("settingsLogoutConfirmV802");
+    const approve=document.getElementById("settingsLogoutApproveV802");
+    const cancel=document.getElementById("settingsLogoutCancelV802");
+    if(!overlay||!approve||!cancel){
+      resolve(false);
+      return;
+    }
+
+    let done=false;
+
+    const finish=value=>{
+      if(done)return;
+      done=true;
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden","true");
+      approve.removeEventListener("click",yes);
+      cancel.removeEventListener("click",no);
+      overlay.removeEventListener("click",backdrop);
+      document.removeEventListener("keydown",key);
+      resolve(value);
+    };
+
+    const yes=()=>finish(true);
+    const no=()=>finish(false);
+    const backdrop=e=>{
+      if(e.target===overlay)finish(false);
+    };
+    const key=e=>{
+      if(e.key==="Escape")finish(false);
+    };
+
+    approve.addEventListener("click",yes);
+    cancel.addEventListener("click",no);
+    overlay.addEventListener("click",backdrop);
+    document.addEventListener("keydown",key);
+
+    overlay.classList.remove("hidden");
+    overlay.setAttribute("aria-hidden","false");
+    setTimeout(()=>cancel.focus(),30);
+  });
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  /* Registered late in app.js so it wins over all legacy version labels. */
+  syncCenturiaVersionV802();
+});
+
+function syncSettingsV659(){
+  const nick=authProfile?.display_name || authUser?.email?.split("@")[0] || "Гравець";
+  const role=String(authRole||"viewer").toUpperCase();
+  const nickEl=document.getElementById("settingsProfileNick");
+  const roleEl=document.getElementById("settingsProfileRole");
+  const avatar=document.getElementById("settingsProfileAvatar");
+  const admin=document.getElementById("settingsAdminPanelV659");
+  if(nickEl) nickEl.textContent=nick;
+  if(roleEl) roleEl.textContent=role;
+  if(avatar){
+    if(authProfile?.avatar_url){
+      avatar.innerHTML=`<img src="${esc(authProfile.avatar_url)}" alt="">`;
+    }else{
+      avatar.innerHTML=`<span>${esc(String(nick).trim().slice(0,2).toUpperCase()||"CA")}</span>`;
+    }
+  }
+  if(admin) admin.classList.toggle("hidden",authRole!=="admin");
+  if(authRole!=="admin"){
+    setSiteAccessPanelV662(false);
+    setPlayerLinksPanelV661(false);
+  }
+}
+
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.62");
+  syncSettingsV659();
+  setSiteAccessPanelV662(false);
+  setPlayerLinksPanelV661(false);
+
+  document.getElementById("settingsEditProfileBtn")?.addEventListener("click",()=>{
+    if(typeof openProfileModal==="function") openProfileModal();
+  });
+
+  document.getElementById("settingsLogoutBtn")?.addEventListener("click",async()=>{
+    if(!sb || !authUser)return;
+
+    const ok=await askSettingsLogoutV802();
+    if(!ok)return;
+
+    const btn=document.getElementById("settingsLogoutBtn");
+    if(btn){
+      btn.disabled=true;
+      btn.textContent="ВИХІД...";
+    }
+
+    try{
+      if(voiceRecorder && voiceRecorder.state==="recording")stopVoiceRecording();
+      cleanupVoiceStream();
+      await stopChatPresence();
+      await sb.auth.signOut();
+      await refreshAuth();
+      showToast("Ви вийшли з акаунта");
+      goScreen("home");
+    }catch(err){
+      console.error("Settings logout error",err);
+      showToast("Не вдалося вийти з акаунта");
+    }finally{
+      if(btn){
+        btn.disabled=false;
+        btn.textContent="ВИЙТИ";
+      }
+    }
+  });
+  document.getElementById("settingsArenaAdminBtn")?.addEventListener("click",()=>{
+    openArenaV664("test-admin");
+  });
+  document.getElementById("settingsAccessJumpBtn")?.addEventListener("click",()=>{
+    const panel=document.getElementById("adminSiteAccessCard");
+    if(!panel)return;
+    const willOpen=panel.dataset.expanded!=="true";
+    setSiteAccessPanelV662(willOpen,{scroll:willOpen});
+    if(willOpen && typeof renderAdminSiteAccessV629==="function")renderAdminSiteAccessV629();
+  });
+  document.getElementById("settingsPlayerLinksBtn")?.addEventListener("click",()=>{
+    const panel=document.getElementById("adminPlayerLinksCard");
+    if(!panel)return;
+    const willOpen=panel.dataset.expanded!=="true";
+    setPlayerLinksPanelV661(willOpen,{scroll:willOpen});
+    if(willOpen && typeof renderAdminPlayerLinksV589==="function")renderAdminPlayerLinksV589();
+  });
+});
+
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncSettingsV659();});
+setInterval(()=>{
+  if(document.getElementById("screen-settings")?.classList.contains("active")) syncSettingsV659();
+},1500);
+
+
+/* ==========================================================
+   v6.63 — PROFILE AVATAR SYNC + STABLE/FAST HOME FIRST PAINT
+   ========================================================== */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.63");
+  try{ renderHomeVip(); }catch(_e){}
+});
+
+
+/* ==========================================================
+   v6.64 — PERSISTENT PROFILE AVATAR + HOME-FIRST PWA LAUNCH
+   ========================================================== */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.64");
+});
+
+
+/* ==========================================================
+   v6.66 — APPROVED LIGHT HOME + LIGHT SETTINGS
+   ========================================================== */
+document.addEventListener("DOMContentLoaded",()=>{
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v6.66");
+  const currentTheme=document.documentElement.getAttribute("data-site-theme")||"dark";
+  applyHomeBackgroundForTheme(currentTheme);
+});
+window.addEventListener("centuria-theme-change",e=>{
+  applyHomeBackgroundForTheme(e.detail?.theme||"dark");
+});
+
+
+/* v6.87 — force visible Home button press animation on iOS PWA */
+(function(){
+  const selector = [
+    "#screen-home .home-v645-btn",
+    "#screen-home .home-v645-square",
+    "#screen-home .home-v645-arena",
+    "#screen-home .home-next-event",
+    "#screen-home .home-mvp-card"
+  ].join(",");
+
+  function press(el){
+    if(!el) return;
+    el.classList.remove("centuria-press");
+    /* restart keyframe even on rapid repeated taps */
+    void el.offsetWidth;
+    el.classList.add("centuria-press");
+    clearTimeout(el.__centuriaPressTimer);
+    const pressDuration = el.classList.contains("home-v645-arena") ? 135 : 260;
+    el.__centuriaPressTimer=setTimeout(function(){
+      el.classList.remove("centuria-press");
+    },pressDuration);
+  }
+
+  document.addEventListener("pointerdown",function(e){
+    const el=e.target && e.target.closest ? e.target.closest(selector) : null;
+    if(el) press(el);
+  },{capture:true,passive:true});
+
+  /* Fallback for older iOS WebKit */
+  document.addEventListener("touchstart",function(e){
+    const t=e.target;
+    const el=t && t.closest ? t.closest(selector) : null;
+    if(el && !el.classList.contains("centuria-press")) press(el);
+  },{capture:true,passive:true});
+})();
+
+
+/* v6.92 — visible Calendar tap animation on iOS PWA */
+(function(){
+  const selector = "#screen-calendar button, #screen-calendar .calendar-month-arrow";
+  function animateCalendarButton(el){
+    if(!el) return;
+    el.classList.remove("calendar-press");
+    void el.offsetWidth;
+    el.classList.add("calendar-press");
+    clearTimeout(el.__calendarPressTimer);
+    el.__calendarPressTimer=setTimeout(function(){
+      el.classList.remove("calendar-press");
+    },250);
+  }
+  document.addEventListener("pointerdown",function(e){
+    const el=e.target && e.target.closest ? e.target.closest(selector) : null;
+    if(el) animateCalendarButton(el);
+  },{capture:true,passive:true});
+  document.addEventListener("touchstart",function(e){
+    const el=e.target && e.target.closest ? e.target.closest(selector) : null;
+    if(el && !el.classList.contains("calendar-press")) animateCalendarButton(el);
+  },{capture:true,passive:true});
+})();
+
+
+/* v6.99 — keep Arena emblem src in sync with theme without delayed CSS content swap */
+(function(){
+  function sync(){
+    var img=document.getElementById("homeArenaEmblem");
+    if(!img) return;
+    var root=document.documentElement;
+    var light=root.getAttribute("data-site-theme")==="light" || root.classList.contains("light-theme");
+    var src=light ? "arena-emblem-light.png" : "arena-emblem.png";
+    if(img.getAttribute("src")!==src) img.src=src;
+  }
+  document.addEventListener("DOMContentLoaded",sync);
+  window.addEventListener("centuria-theme-change",function(){ sync(); });
+  window.addEventListener("pageshow",sync);
+})();
+
+
+/* v7.23 — reliable press animation for Players back/+ buttons on iOS PWA */
+(function(){
+  function bindPlayersTopPressAnimation(){
+    ["addPlayerBtn","playersBackHomeBtn"].forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el || el.dataset.caPressBound==="1") return;
+      el.dataset.caPressBound="1";
+
+      var down=function(){ el.classList.add("ca-pressing"); };
+      var up=function(){ el.classList.remove("ca-pressing"); };
+
+      el.addEventListener("pointerdown",down,{passive:true});
+      el.addEventListener("pointerup",up,{passive:true});
+      el.addEventListener("pointercancel",up,{passive:true});
+      el.addEventListener("pointerleave",up,{passive:true});
+
+      el.addEventListener("touchstart",down,{passive:true});
+      el.addEventListener("touchend",function(){
+        setTimeout(up,70);
+      },{passive:true});
+      el.addEventListener("touchcancel",up,{passive:true});
+    });
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",bindPlayersTopPressAnimation);
+  }else{
+    bindPlayersTopPressAnimation();
+  }
+})();
+
+
+/* v7.24 — reliable press animation in Player information modal on iOS/PWA */
+(function(){
+  function bindPlayerInfoPressAnimations(){
+    [
+      "closePlayerModal",
+      "playerInfoTab",
+      "playerStatsTab",
+      "playerAwardsTab",
+      "viewDeletePlayerBtn",
+      "editPlayerBtn"
+    ].forEach(function(id){
+      var el=document.getElementById(id);
+      if(!el || el.dataset.caPlayerPressBound==="1") return;
+      el.dataset.caPlayerPressBound="1";
+
+      var down=function(){ el.classList.add("ca-player-press"); };
+      var up=function(){ el.classList.remove("ca-player-press"); };
+
+      el.addEventListener("pointerdown",down,{passive:true});
+      el.addEventListener("pointerup",function(){ setTimeout(up,55); },{passive:true});
+      el.addEventListener("pointercancel",up,{passive:true});
+      el.addEventListener("pointerleave",up,{passive:true});
+
+      el.addEventListener("touchstart",down,{passive:true});
+      el.addEventListener("touchend",function(){ setTimeout(up,70); },{passive:true});
+      el.addEventListener("touchcancel",up,{passive:true});
+    });
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",bindPlayerInfoPressAnimations);
+  }else{
+    bindPlayerInfoPressAnimations();
+  }
+})();
+
+
+/* v7.26 — chart horizontal swipe must never trigger player slide navigation */
+(function(){
+  function protectRatingCharts(){
+    document.querySelectorAll("#playerDialog .rating-history-scroll").forEach(function(el){
+      if(el.dataset.caSwipeProtected==="1")return;
+      el.dataset.caSwipeProtected="1";
+      ["touchstart","touchmove","touchend"].forEach(function(type){
+        el.addEventListener(type,function(e){ e.stopPropagation(); },{passive:true});
+      });
+    });
+  }
+  const obs=new MutationObserver(protectRatingCharts);
+  if(document.getElementById("playerDialog")){
+    obs.observe(document.getElementById("playerDialog"),{childList:true,subtree:true});
+  }
+  protectRatingCharts();
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ==========================================================
+   v7.39 — Awards button deterministic visibility
+   ========================================================== */
+function syncAwardsAddButtonV739(){
+  const pane=$("playerAwardsPane");
+  const btn=$("openAddAwardBtn");
+  const box=$("playerAwardAdminBox");
+  const slider=$("playerViewSlider");
+  if(!pane||!btn||!box)return;
+
+  const admin=(authRole==="admin");
+  btn.classList.toggle("hidden",!admin);
+
+  if(!admin){
+    box.classList.add("hidden");
+    pane.classList.remove("award-add-open");
+    btn.textContent="＋ ДОДАТИ НАГОРОДУ";
+    btn.setAttribute("aria-expanded","false");
+  }
+
+  requestAnimationFrame(()=>{
+    if(slider && pane && $("playerAwardsTab")?.classList.contains("active")){
+      slider.style.height=`${pane.scrollHeight}px`;
+    }
+  });
+}
+
+/* ==========================================================
+   v7.34 — Awards add menu: single clean controller
+   ========================================================== */
+(function(){
+  function fitAwardsSlide(){
+    const pane=$("playerAwardsPane");
+    const slider=$("playerViewSlider");
+    if(!pane||!slider)return;
+    requestAnimationFrame(()=>{
+      slider.style.height=`${pane.scrollHeight}px`;
+    });
+  }
+
+  function syncAwardsAddUI(){
+    syncAwardsAddButtonV739();
+    const pane=$("playerAwardsPane");
+    const btn=$("openAddAwardBtn");
+    const box=$("playerAwardAdminBox");
+    if(!pane||!btn||!box)return;
+
+    const admin=authRole==="admin";
+    btn.classList.toggle("hidden",!admin);
+
+    if(!admin){
+      box.classList.add("hidden");
+      pane.classList.remove("award-add-open");
+      btn.textContent="＋ ДОДАТИ НАГОРОДУ";
+      btn.setAttribute("aria-expanded","false");
+    }
+  }
+
+  function bindAwardsAddUI(){
+    const pane=$("playerAwardsPane");
+    const btn=$("openAddAwardBtn");
+    const box=$("playerAwardAdminBox");
+    if(!pane||!btn||!box)return;
+
+    if(btn.dataset.awardMenuBound==="1"){
+      syncAwardsAddUI();
+      return;
+    }
+    btn.dataset.awardMenuBound="1";
+
+    btn.addEventListener("click",()=>{
+      if(authRole!=="admin")return;
+
+      const opening=box.classList.contains("hidden");
+      box.classList.toggle("hidden",!opening);
+      pane.classList.toggle("award-add-open",opening);
+
+      btn.textContent=opening
+        ?"× ЗАКРИТИ ДОДАВАННЯ"
+        :"＋ ДОДАТИ НАГОРОДУ";
+      btn.setAttribute("aria-expanded",opening?"true":"false");
+
+      fitAwardsSlide();
+    });
+
+    syncAwardsAddUI();
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",bindAwardsAddUI);
+  }else{
+    bindAwardsAddUI();
+  }
+
+  $("playerAwardsTab")?.addEventListener("click",()=>{
+    setTimeout(()=>{
+      bindAwardsAddUI();
+      fitAwardsSlide();
+    },30);
+  });
+})();
+
+
+/* v7.38 — keep Arena emblem visible and synced to theme */
+(function(){
+  function syncHomeArenaEmblemV738(){
+    const img=document.getElementById("homeArenaEmblem");
+    if(!img)return;
+
+    const root=document.documentElement;
+    const light=
+      root.classList.contains("light-theme") ||
+      root.getAttribute("data-site-theme")==="light";
+
+    const wanted=light ? "arena-emblem-light.png" : "arena-emblem.png";
+    if(img.getAttribute("src")!==wanted){
+      img.setAttribute("src",wanted);
+    }
+
+    img.style.removeProperty("display");
+    img.style.removeProperty("visibility");
+    img.style.removeProperty("opacity");
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",syncHomeArenaEmblemV738);
+  }else{
+    syncHomeArenaEmblemV738();
+  }
+
+  const mo=new MutationObserver(syncHomeArenaEmblemV738);
+  mo.observe(document.documentElement,{
+    attributes:true,
+    attributeFilter:["class","data-site-theme"]
+  });
+
+  document.addEventListener("click",function(){
+    setTimeout(syncHomeArenaEmblemV738,0);
+  },{passive:true});
+})();
+
+
+/* v7.39 — Awards tab: resync before and after rendering/transitions */
+(function(){
+  function resyncAwardsV739(){
+    syncAwardsAddButtonV739();
+    setTimeout(syncAwardsAddButtonV739,0);
+    setTimeout(syncAwardsAddButtonV739,60);
+    setTimeout(syncAwardsAddButtonV739,180);
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",resyncAwardsV739);
+  }else{
+    resyncAwardsV739();
+  }
+
+  $("playerAwardsTab")?.addEventListener("click",resyncAwardsV739);
+
+  // When player modal opens, role/profile/render may complete a moment later.
+  $("playerDialog")?.addEventListener("toggle",resyncAwardsV739);
+})();
+
+/* ==========================================================
+   v7.49 — six-button bottom-nav press animation + safe state sync
+   ========================================================== */
+(function(){
+  const nav=document.getElementById("bottomNav");
+  if(!nav)return;
+
+  const buttons=[...nav.querySelectorAll("button[data-nav]")];
+  let pressed=null;
+  let releaseTimer=0;
+
+  function clearPressed(){
+    if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer=0; }
+    buttons.forEach(btn=>btn.classList.remove("nav-pressing"));
+    pressed=null;
+  }
+
+  function press(btn){
+    clearPressed();
+    pressed=btn;
+    btn.classList.add("nav-pressing");
+  }
+
+  function releaseSoon(){
+    if(!pressed)return;
+    const target=pressed;
+    releaseTimer=setTimeout(()=>{
+      target.classList.remove("nav-pressing");
+      if(pressed===target)pressed=null;
+      releaseTimer=0;
+    },85);
+  }
+
+  buttons.forEach(btn=>{
+    btn.addEventListener("pointerdown",e=>{
+      if(e.pointerType==="mouse" && e.button!==0)return;
+      press(btn);
+    },{passive:true});
+    btn.addEventListener("pointerup",releaseSoon,{passive:true});
+    btn.addEventListener("pointercancel",clearPressed,{passive:true});
+    btn.addEventListener("pointerleave",e=>{
+      if(e.pointerType==="mouse")clearPressed();
+    },{passive:true});
+  });
+
+  window.addEventListener("blur",clearPressed,{passive:true});
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden)clearPressed(); });
+})();
+
+/* ==========================================================
+   v7.50 — Players: iOS top rubber-band guard
+   ========================================================== */
+(function(){
+  const screen=document.getElementById("screen-players");
+  if(!screen)return;
+
+  let startY=0;
+
+  screen.addEventListener("touchstart",e=>{
+    if(e.touches.length!==1)return;
+    startY=e.touches[0].clientY;
+  },{passive:true});
+
+  screen.addEventListener("touchmove",e=>{
+    if(e.touches.length!==1)return;
+    const y=e.touches[0].clientY;
+    const pullingDown=(y-startY)>0;
+
+    /* At the very top only upward finger travel (content moves up) is valid.
+       Prevent the iOS pull-down/rubber-band without affecting normal scroll. */
+    if(screen.classList.contains("active") && screen.scrollTop<=0 && pullingDown){
+      if(e.cancelable)e.preventDefault();
+      screen.scrollTop=0;
+    }
+  },{passive:false});
+
+  screen.addEventListener("scroll",()=>{
+    if(screen.scrollTop<0)screen.scrollTop=0;
+  },{passive:true});
+})();
+
+
+/* ==========================================================
+   v7.67 — reliable press feedback for Tactical Board launcher
+   ========================================================== */
+(function(){
+  const btn=document.getElementById("openTacticalBoardBtn");
+  if(!btn)return;
+
+  const clear=()=>btn.classList.remove("press-feedback");
+  btn.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse" && e.button!==0)return;
+    btn.classList.add("press-feedback");
+  },{passive:true});
+  btn.addEventListener("pointerup",()=>setTimeout(clear,90),{passive:true});
+  btn.addEventListener("pointercancel",clear,{passive:true});
+  btn.addEventListener("pointerleave",e=>{
+    if(e.pointerType==="mouse")clear();
+  },{passive:true});
+})();
+
+
+/* v8.02 — absolute final version sync after all legacy version handlers */
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",syncCenturiaVersionV802);
+}else{
+  syncCenturiaVersionV802();
+}
+
+/* ==========================================================
+   v8.15 TEST — iPhone keyboard detection by real viewport height
+   ========================================================== */
+(function(){
+  const chatScreen=document.getElementById('screen-chat');
+  const chatInput=document.getElementById('chatInput');
+  if(!chatScreen || !chatInput) return;
+
+  const root=document.documentElement;
+  const body=document.body;
+  const vv=window.visualViewport;
+  let raf=0;
+  let pollTimer=0;
+  let baselineHeight=Math.max(
+    vv ? vv.height : 0,
+    window.innerHeight || 0,
+    document.documentElement.clientHeight || 0
+  );
+
+  function isChatActive(){
+    return chatScreen.classList.contains('active');
+  }
+
+  function inputHasFocus(){
+    return document.activeElement===chatInput;
+  }
+
+  function currentViewportHeight(){
+    return vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight || 0);
+  }
+
+  function currentViewportTop(){
+    return vv ? vv.offsetTop : 0;
+  }
+
+  function refreshBaseline(){
+    const h=currentViewportHeight();
+    /* Baseline may grow after orientation/PWA chrome changes, but must never
+       be learned while the keyboard layout is active. */
+    if(!body.classList.contains('ca-chat-keyboard-open') && h>baselineHeight-24){
+      baselineHeight=Math.max(baselineHeight,h);
+    }
+  }
+
+  function keyboardIsPhysicallyVisible(){
+    if(!isChatActive() || !inputHasFocus()) return false;
+    const h=currentViewportHeight();
+    const lost=Math.max(0,baselineHeight-h);
+    /* iPhone keyboards remove hundreds of px. 110px leaves room for small
+       Safari/PWA chrome changes without falsely keeping keyboard mode alive. */
+    return lost>110;
+  }
+
+  function setViewportVars(){
+    root.style.setProperty('--ca-chat-vv-height',Math.max(240,Math.round(currentViewportHeight()))+'px');
+    root.style.setProperty('--ca-chat-vv-top',Math.max(0,Math.round(currentViewportTop()))+'px');
+  }
+
+  function clearKeyboardLayout(){
+    body.classList.remove('ca-chat-keyboard-open');
+    root.style.removeProperty('--ca-chat-vv-height');
+    root.style.removeProperty('--ca-chat-vv-top');
+
+    /* v8.16: iOS can keep a stale composited geometry for the Chat screen
+       after the keyboard closes. Clear every temporary geometry property,
+       reset document scroll and force a repaint without navigating away. */
+    [
+      'position','left','right','top','bottom','width','height','min-height',
+      'max-height','z-index','overflow','padding-top','padding-bottom','transform'
+    ].forEach(prop=>chatScreen.style.removeProperty(prop));
+
+    document.documentElement.scrollTop=0;
+    document.body.scrollTop=0;
+    window.scrollTo(0,0);
+
+    body.classList.add('ca-chat-layout-reset');
+    void chatScreen.offsetHeight;
+
+    requestAnimationFrame(()=>{
+      document.documentElement.scrollTop=0;
+      document.body.scrollTop=0;
+      window.scrollTo(0,0);
+      void chatScreen.offsetHeight;
+      requestAnimationFrame(()=>{
+        body.classList.remove('ca-chat-layout-reset');
+        document.documentElement.scrollTop=0;
+        document.body.scrollTop=0;
+        window.scrollTo(0,0);
+      });
+    });
+  }
+
+  function scrollMessagesToBottom(){
+    const messages=document.getElementById('chatMessages');
+    if(!messages) return;
+    requestAnimationFrame(()=>{messages.scrollTop=messages.scrollHeight;});
+  }
+
+  function syncKeyboardState(){
+    if(raf) cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(()=>{
+      raf=0;
+      if(!isChatActive()){
+        clearKeyboardLayout();
+        refreshBaseline();
+        return;
+      }
+
+      if(!keyboardIsPhysicallyVisible()){
+        /* Critical v8.15 behavior: closing the iPhone keyboard wins even if
+           the textarea remains focused and still shows a caret. */
+        clearKeyboardLayout();
+        refreshBaseline();
+        return;
+      }
+
+      setViewportVars();
+      body.classList.add('ca-chat-keyboard-open');
+      window.scrollTo(0,0);
+      scrollMessagesToBottom();
+    });
+  }
+
+  function startPolling(){
+    if(pollTimer) return;
+    pollTimer=window.setInterval(()=>{
+      /* iOS sometimes dismisses the keyboard without a final blur/resize.
+         Poll the real visual viewport while the textarea is focused. */
+      if(inputHasFocus() || body.classList.contains('ca-chat-keyboard-open')){
+        syncKeyboardState();
+      }else{
+        refreshBaseline();
+      }
+    },120);
+  }
+
+  chatInput.addEventListener('focus',()=>{
+    refreshBaseline();
+    startPolling();
+    setTimeout(syncKeyboardState,40);
+    setTimeout(syncKeyboardState,180);
+    setTimeout(syncKeyboardState,420);
+  });
+
+  chatInput.addEventListener('blur',()=>{
+    clearKeyboardLayout();
+    setTimeout(()=>{
+      refreshBaseline();
+      clearKeyboardLayout();
+    },80);
+  });
+
+  if(vv){
+    vv.addEventListener('resize',syncKeyboardState,{passive:true});
+    vv.addEventListener('scroll',syncKeyboardState,{passive:true});
+  }
+  window.addEventListener('resize',()=>{
+    if(!inputHasFocus()) refreshBaseline();
+    syncKeyboardState();
+  },{passive:true});
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden) clearKeyboardLayout();
+    else {refreshBaseline(); syncKeyboardState();}
+  });
+
+  document.getElementById('bottomNav')?.addEventListener('click',e=>{
+    const btn=e.target.closest?.('button[data-nav]');
+    if(btn && btn.dataset.nav!=='chat') clearKeyboardLayout();
+  },true);
+
+  window.addEventListener('pageshow',()=>{
+    clearKeyboardLayout();
+    baselineHeight=Math.max(baselineHeight,currentViewportHeight());
+  },{passive:true});
+
+  window.addEventListener('orientationchange',()=>{
+    clearKeyboardLayout();
+    setTimeout(()=>{
+      baselineHeight=currentViewportHeight();
+      refreshBaseline();
+    },350);
+  },{passive:true});
+
+  clearKeyboardLayout();
+  startPolling();
+})();;
+
+
+/* v8.17 TEST — typing indicator + durable read receipts + @mentions. */
+
+
+/* v8.18 TEST — admin/editor full-screen site announcements. */
+(()=>{
+  const ANNOUNCEMENT_SESSION_START_V818=new Date().toISOString();
+  let announcementQueueV818=[];
+  let currentAnnouncementV818=null;
+  let announcementsCheckedForUserV818=null;
+  let selectedAnnouncementFileV818=null;
+
+  function canCreateAnnouncementV818(){return authRole==='admin'||authRole==='editor'}
+  function activeAnnouncementThemeV821(){
+    const root=document.documentElement;
+    const body=document.body;
+    const stored=String(root?.getAttribute('data-site-theme')||body?.getAttribute('data-site-theme')||'').toLowerCase();
+    if(stored==='light'||root?.classList.contains('light-theme')||body?.classList.contains('light-theme'))return 'light';
+    return 'dark';
+  }
+  function syncAnnouncementThemeV821(){
+    const theme=activeAnnouncementThemeV821();
+    document.getElementById('announcementCreateModalV818')?.setAttribute('data-announcement-theme',theme);
+    document.getElementById('siteAnnouncementOverlayV818')?.setAttribute('data-announcement-theme',theme);
+    const toast=document.getElementById('toast');
+    if(toast)toast.setAttribute('data-site-toast-theme',theme);
+  }
+  function syncAnnouncementCreatorV818(){
+    document.getElementById('settingsAnnouncementCreatorV818')?.classList.toggle('hidden',!canCreateAnnouncementV818());
+  }
+  function openAnnouncementEditorV818(){
+    if(!canCreateAnnouncementV818())return;
+    const modal=document.getElementById('announcementCreateModalV818');
+    syncAnnouncementThemeV821();
+    modal?.classList.remove('hidden');modal?.setAttribute('aria-hidden','false');
+    document.body.classList.add('ca-announcement-editor-open');
+    setTimeout(()=>document.getElementById('announcementTextV818')?.focus(),80);
+  }
+  function closeAnnouncementEditorV818(){
+    const modal=document.getElementById('announcementCreateModalV818');
+    modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');
+    document.body.classList.remove('ca-announcement-editor-open');
+  }
+  function resetAnnouncementEditorV818(){
+    const text=document.getElementById('announcementTextV818');if(text)text.value='';
+    const input=document.getElementById('announcementImageV818');if(input)input.value='';
+    selectedAnnouncementFileV818=null;
+    document.getElementById('announcementImagePreviewWrapV818')?.classList.add('hidden');
+    const img=document.getElementById('announcementImagePreviewV818');if(img)img.removeAttribute('src');
+    const status=document.getElementById('announcementEditorStatusV818');if(status)status.textContent='';
+  }
+  function announcementExtV818(file){
+    const type=String(file?.type||'').toLowerCase();
+    if(type.includes('png'))return 'png';if(type.includes('webp'))return 'webp';if(type.includes('heic'))return 'heic';
+    return 'jpg';
+  }
+  async function uploadAnnouncementImageV818(file){
+    if(!file)return '';
+    if(file.size>10*1024*1024)throw new Error('Фото завелике. Максимум 10 МБ.');
+    const path=`announcements/${authUser.id}/${Date.now()}-${crypto.randomUUID?.()||Math.random().toString(36).slice(2)}.${announcementExtV818(file)}`;
+    const {error}=await sb.storage.from('centuria-assets').upload(path,file,{upsert:false,contentType:file.type||'image/jpeg',cacheControl:'3600'});
+    if(error)throw error;
+    const {data}=sb.storage.from('centuria-assets').getPublicUrl(path);
+    return data?.publicUrl||'';
+  }
+  async function sendAnnouncementV818(){
+    if(!sb||!authUser||!canCreateAnnouncementV818())return;
+    const text=String(document.getElementById('announcementTextV818')?.value||'').trim();
+    const status=document.getElementById('announcementEditorStatusV818');
+    const btn=document.getElementById('announcementSendBtnV818');
+    if(!text){if(status)status.textContent='Напиши текст сповіщення.';return}
+    btn.disabled=true;if(status)status.textContent='Відправлення…';
+    try{
+      const imageUrl=selectedAnnouncementFileV818?await uploadAnnouncementImageV818(selectedAnnouncementFileV818):'';
+      const {error}=await sb.from('site_announcements').insert({created_by:authUser.id,body:text,image_url:imageUrl||null});
+      if(error)throw error;
+      resetAnnouncementEditorV818();closeAnnouncementEditorV818();
+      showToast('Сповіщення відправлено · з’явиться при наступному вході');
+    }catch(err){console.error('Announcement send',err);if(status)status.textContent=err?.message||'Не вдалося відправити сповіщення';}
+    finally{btn.disabled=false}
+  }
+  function authorNameV818(id){
+    if(id===authUser?.id)return authProfile?.display_name||'Ви';
+    return teamProfiles.get(id)?.display_name||'Centuria Athletics';
+  }
+  function showNextAnnouncementV818(){
+    if(currentAnnouncementV818||!announcementQueueV818.length)return;
+    currentAnnouncementV818=announcementQueueV818.shift();
+    const a=currentAnnouncementV818;
+    const overlay=document.getElementById('siteAnnouncementOverlayV818');
+    syncAnnouncementThemeV821();
+    const txt=document.getElementById('siteAnnouncementTextV818');if(txt)txt.textContent=a.body||'';
+    const author=document.getElementById('siteAnnouncementAuthorV818');if(author)author.textContent=`Від: ${authorNameV818(a.created_by)}`;
+    const wrap=document.getElementById('siteAnnouncementImageWrapV818');
+    const img=document.getElementById('siteAnnouncementImageV818');
+    if(a.image_url&&img&&wrap){img.src=a.image_url;wrap.classList.remove('hidden')}else{if(img)img.removeAttribute('src');wrap?.classList.add('hidden')}
+    overlay?.classList.remove('hidden');overlay?.setAttribute('aria-hidden','false');
+    document.body.classList.add('ca-announcement-open');
+  }
+  async function acknowledgeAnnouncementV818(){
+    if(!currentAnnouncementV818||!authUser)return;
+    const a=currentAnnouncementV818;
+    const btn=document.getElementById('siteAnnouncementAcknowledgeV818');if(btn)btn.disabled=true;
+    try{
+      const {error}=await sb.from('site_announcement_reads').upsert({announcement_id:a.id,user_id:authUser.id,seen_at:new Date().toISOString()},{onConflict:'announcement_id,user_id'});
+      if(error)throw error;
+      document.getElementById('siteAnnouncementOverlayV818')?.classList.add('hidden');
+      document.getElementById('siteAnnouncementOverlayV818')?.setAttribute('aria-hidden','true');
+      document.body.classList.remove('ca-announcement-open');
+      currentAnnouncementV818=null;
+      setTimeout(showNextAnnouncementV818,180);
+    }catch(err){console.error('Announcement acknowledge',err);showToast('Не вдалося підтвердити сповіщення');}
+    finally{if(btn)btn.disabled=false}
+  }
+  async function loadUnreadAnnouncementsV818(){
+    if(!sb||!authUser||!currentHasSiteAccessV629())return;
+    if(announcementsCheckedForUserV818===authUser.id)return;
+    announcementsCheckedForUserV818=authUser.id;
+    try{
+      const [{data:items,error:e1},{data:reads,error:e2}]=await Promise.all([
+        sb.from('site_announcements').select('id,created_by,body,image_url,created_at').eq('is_active',true).lte('created_at',ANNOUNCEMENT_SESSION_START_V818).order('created_at',{ascending:true}),
+        sb.from('site_announcement_reads').select('announcement_id').eq('user_id',authUser.id)
+      ]);
+      if(e1)throw e1;if(e2)throw e2;
+      const seen=new Set((reads||[]).map(x=>x.announcement_id));
+      announcementQueueV818=(items||[]).filter(x=>!seen.has(x.id));
+      if(announcementQueueV818.length)setTimeout(showNextAnnouncementV818,450);
+    }catch(err){announcementsCheckedForUserV818=null;console.error('Announcement load',err)}
+  }
+
+  const originalRefreshAuthV818=refreshAuth;
+  refreshAuth=async function(...args){
+    const prevUser=authUser?.id||null;
+    const result=await originalRefreshAuthV818.apply(this,args);
+    syncAnnouncementCreatorV818();
+    if(!authUser){announcementsCheckedForUserV818=null;announcementQueueV818=[];currentAnnouncementV818=null;return result}
+    if(prevUser&&prevUser!==authUser.id)announcementsCheckedForUserV818=null;
+    setTimeout(loadUnreadAnnouncementsV818,80);
+    return result;
+  };
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    syncAnnouncementCreatorV818();
+    syncAnnouncementThemeV821();
+    new MutationObserver(syncAnnouncementThemeV821).observe(document.documentElement,{attributes:true,attributeFilter:['class','data-site-theme']});
+    document.getElementById('createAnnouncementBtnV818')?.addEventListener('click',openAnnouncementEditorV818);
+    document.querySelectorAll('[data-announcement-editor-close]').forEach(el=>el.addEventListener('click',closeAnnouncementEditorV818));
+    document.getElementById('announcementSendBtnV818')?.addEventListener('click',sendAnnouncementV818);
+    document.getElementById('announcementImageRemoveV818')?.addEventListener('click',()=>{
+      selectedAnnouncementFileV818=null;const input=document.getElementById('announcementImageV818');if(input)input.value='';
+      document.getElementById('announcementImagePreviewWrapV818')?.classList.add('hidden');
+    });
+    document.getElementById('announcementImageV818')?.addEventListener('change',e=>{
+      const file=e.target.files?.[0]||null;selectedAnnouncementFileV818=file;if(!file)return;
+      if(file.size>10*1024*1024){selectedAnnouncementFileV818=null;e.target.value='';showToast('Фото завелике · максимум 10 МБ');return}
+      const img=document.getElementById('announcementImagePreviewV818');const wrap=document.getElementById('announcementImagePreviewWrapV818');
+      const url=URL.createObjectURL(file);if(img)img.src=url;wrap?.classList.remove('hidden');
+    });
+    document.getElementById('siteAnnouncementAcknowledgeV818')?.addEventListener('click',acknowledgeAnnouncementV818);
+    if(authUser)setTimeout(loadUnreadAnnouncementsV818,500);
+  });
+})();
+
+/* ==========================================================
+   v8.31 TEST — RELIABLE PRESS FEEDBACK FOR EVERY BUTTON
+   ========================================================== */
+(()=>{
+  const CLASS='ca-global-press-v831';
+  const timers=new WeakMap();
+
+  function getButton(target){
+    const btn=target?.closest?.('button');
+    return btn && !btn.disabled ? btn : null;
+  }
+
+  function press(btn){
+    if(!btn) return;
+    const old=timers.get(btn);
+    if(old) clearTimeout(old);
+    btn.classList.add(CLASS);
+  }
+
+  function release(btn,delay=75){
+    if(!btn) return;
+    const old=timers.get(btn);
+    if(old) clearTimeout(old);
+    const timer=setTimeout(()=>{
+      btn.classList.remove(CLASS);
+      timers.delete(btn);
+    },delay);
+    timers.set(btn,timer);
+  }
+
+  document.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    press(getButton(e.target));
+  },{capture:true,passive:true});
+
+  document.addEventListener('pointerup',e=>release(getButton(e.target)),{capture:true,passive:true});
+  document.addEventListener('pointercancel',e=>release(getButton(e.target),0),{capture:true,passive:true});
+
+  /* Touch fallback for older iOS/PWA event paths. */
+  document.addEventListener('touchstart',e=>press(getButton(e.target)),{capture:true,passive:true});
+  document.addEventListener('touchend',e=>release(getButton(e.target),90),{capture:true,passive:true});
+  document.addEventListener('touchcancel',e=>release(getButton(e.target),0),{capture:true,passive:true});
+
+  window.addEventListener('blur',()=>{
+    document.querySelectorAll('button.'+CLASS).forEach(btn=>btn.classList.remove(CLASS));
+  });
+})();
+
+/* v8.31 — keep the textarea itself visible after iOS finishes keyboard layout. */
+(()=>{
+  const input=document.getElementById('chatInput');
+  const messages=document.getElementById('chatMessages');
+  if(!input) return;
+
+  function revealComposer(){
+    if(!document.body.classList.contains('ca-chat-keyboard-open')) return;
+    document.documentElement.scrollTop=0;
+    document.body.scrollTop=0;
+    if(messages) messages.scrollTop=messages.scrollHeight;
+  }
+
+  input.addEventListener('focus',()=>{
+    setTimeout(revealComposer,220);
+    setTimeout(revealComposer,480);
+  });
+  input.addEventListener('input',()=>requestAnimationFrame(revealComposer),{passive:true});
+  window.visualViewport?.addEventListener('resize',()=>setTimeout(revealComposer,30),{passive:true});
+})();
+
+
+/* v8.32 — keep keyboard dock and @ mention chooser inside the visible viewport. */
+(()=>{
+  const input=document.getElementById('chatInput');
+  const dock=document.querySelector('#screen-chat .chat-input-dock-v832');
+  const menu=document.getElementById('chatMentionMenu');
+  const messages=document.getElementById('chatMessages');
+  if(!input || !dock) return;
+
+  function keepDockVisible(){
+    if(!document.body.classList.contains('ca-chat-keyboard-open')) return;
+    // Reflow after iOS changes VisualViewport or after mention menu appears.
+    void dock.offsetHeight;
+    if(messages) messages.scrollTop=messages.scrollHeight;
+  }
+
+  input.addEventListener('focus',()=>{
+    setTimeout(keepDockVisible,80);
+    setTimeout(keepDockVisible,260);
+    setTimeout(keepDockVisible,520);
+  });
+  input.addEventListener('input',()=>{
+    requestAnimationFrame(()=>{
+      keepDockVisible();
+      if(menu && !menu.classList.contains('hidden')) menu.scrollTop=0;
+    });
+  });
+  window.visualViewport?.addEventListener('resize',()=>requestAnimationFrame(keepDockVisible),{passive:true});
+  window.visualViewport?.addEventListener('scroll',()=>requestAnimationFrame(keepDockVisible),{passive:true});
+})();
+
+
+/* ==========================================================
+   v8.35 — lower Chat input dock closer to the iOS accessory strip.
+   visualViewport.height stops at the keyboard, but iOS may draw the
+   previous/next/done strip over the bottom part of that visible area.
+   ========================================================== */
+(()=>{
+  const input=document.getElementById('chatInput');
+  const dock=document.querySelector('#screen-chat .chat-input-dock-v832');
+  const menu=document.getElementById('chatMentionMenu');
+  const messages=document.getElementById('chatMessages');
+  if(!input || !dock) return;
+
+  const root=document.documentElement;
+  const vv=window.visualViewport;
+  const isiOS=/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+
+  function viewportBottom(){
+    if(vv) return Math.round(vv.offsetTop + vv.height);
+    return Math.round(window.innerHeight || document.documentElement.clientHeight || 0);
+  }
+
+  function accessoryGap(){
+    // The iPhone input assistant visible in the user's screenshot is about
+    // one compact control row high. Keep a small safety margin as well.
+    return isiOS ? 12 : 6;
+  }
+
+  function placeDock(){
+    if(!document.body.classList.contains('ca-chat-keyboard-open')){
+      root.style.removeProperty('--ca-chat-dock-anchor-y');
+      return;
+    }
+
+    const y=Math.max(150, viewportBottom()-accessoryGap());
+    root.style.setProperty('--ca-chat-dock-anchor-y', y+'px');
+
+    requestAnimationFrame(()=>{
+      if(messages) messages.scrollTop=messages.scrollHeight;
+      if(menu && !menu.classList.contains('hidden')) menu.scrollTop=0;
+    });
+  }
+
+  input.addEventListener('focus',()=>{
+    setTimeout(placeDock,60);
+    setTimeout(placeDock,180);
+    setTimeout(placeDock,360);
+    setTimeout(placeDock,620);
+  });
+
+  input.addEventListener('input',()=>requestAnimationFrame(placeDock),{passive:true});
+  input.addEventListener('keyup',()=>requestAnimationFrame(placeDock),{passive:true});
+  input.addEventListener('blur',()=>{
+    setTimeout(()=>root.style.removeProperty('--ca-chat-dock-anchor-y'),80);
+  });
+
+  vv?.addEventListener('resize',()=>requestAnimationFrame(placeDock),{passive:true});
+  vv?.addEventListener('scroll',()=>requestAnimationFrame(placeDock),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(placeDock,180),{passive:true});
+
+  // Mention menu can be rendered asynchronously after the textarea input
+  // event, so watch only this small node and re-anchor when it changes.
+  if(menu && 'MutationObserver' in window){
+    new MutationObserver(()=>requestAnimationFrame(placeDock)).observe(menu,{
+      attributes:true,
+      attributeFilter:['class'],
+      childList:true
+    });
+  }
+})();
+
+
+
+
+/* ==========================================================
+   v8.39 — CHAT WINDOW ENDS AT THE REAL COMPOSER
+   One geometry source only: the actual rendered top of the floating input
+   dock/composer. This replaces the conflicting v8.36/v8.38 shrink passes.
+   ========================================================== */
+(()=>{
+  const input=document.getElementById('chatInput');
+  const messages=document.getElementById('chatMessages');
+  const pane=document.getElementById('chatTabPane');
+  const composer=document.querySelector('#screen-chat .chat-composer');
+  const dock=document.querySelector('#screen-chat .chat-input-dock-v832');
+  const menu=document.getElementById('chatMentionMenu');
+  const context=document.getElementById('chatComposerContext');
+  const attachment=document.getElementById('chatAttachmentPreview');
+  if(!input || !messages || !composer) return;
+
+  let raf=0;
+  let timers=[];
+
+  function clearTimers(){ timers.forEach(clearTimeout); timers=[]; }
+
+  function reset(){
+    clearTimers();
+    if(pane){
+      ['height','max-height','min-height','flex','overflow'].forEach(k=>pane.style.removeProperty(k));
+    }
+    ['height','max-height','min-height','flex','overflow-y','overflow-x','padding-bottom','box-sizing'].forEach(k=>messages.style.removeProperty(k));
+  }
+
+  function sizeToComposer(){
+    cancelAnimationFrame(raf);
+    raf=requestAnimationFrame(()=>{
+      if(!document.body.classList.contains('ca-chat-keyboard-open')){
+        reset();
+        return;
+      }
+
+      // IMPORTANT: measure the composer itself after all fixed-position / transform
+      // rules have been applied. Do not infer its location from visualViewport.
+      const m=messages.getBoundingClientRect();
+      const c=composer.getBoundingClientRect();
+      if(!Number.isFinite(m.top) || !Number.isFinite(c.top)) return;
+
+      // v8.40: user requested the visible black chat window to be roughly
+      // twice as tall while the iOS keyboard is open. Use a deliberate
+      // fixed keyboard-mode height instead of another fragile viewport
+      // inference. This makes the change visually deterministic.
+      const h=280;
+
+      // Undo old pane hard-shrink geometry. The visible rounded surface is
+      // chatMessages, so only it needs the exact height.
+      if(pane){
+        pane.style.setProperty('height','auto','important');
+        pane.style.setProperty('max-height','none','important');
+        pane.style.setProperty('min-height','0','important');
+        pane.style.setProperty('flex','1 1 auto','important');
+        pane.style.setProperty('overflow','visible','important');
+      }
+
+      messages.style.setProperty('flex','0 0 '+h+'px','important');
+      messages.style.setProperty('height',h+'px','important');
+      messages.style.setProperty('max-height',h+'px','important');
+      messages.style.setProperty('min-height','0','important');
+      messages.style.setProperty('overflow-y','auto','important');
+      messages.style.setProperty('overflow-x','hidden','important');
+      messages.style.setProperty('padding-bottom','12px','important');
+      messages.style.setProperty('box-sizing','border-box','important');
+
+      messages.scrollTop=messages.scrollHeight;
+    });
+  }
+
+  function settle(){
+    clearTimers();
+    sizeToComposer();
+    [50,120,220,360,520,760,1050,1400].forEach(ms=>timers.push(setTimeout(sizeToComposer,ms)));
+  }
+
+  input.addEventListener('focus',settle);
+  input.addEventListener('input',sizeToComposer,{passive:true});
+  input.addEventListener('keyup',sizeToComposer,{passive:true});
+  input.addEventListener('blur',()=>timers.push(setTimeout(reset,160)));
+  window.visualViewport?.addEventListener('resize',settle,{passive:true});
+  window.visualViewport?.addEventListener('scroll',sizeToComposer,{passive:true});
+  window.addEventListener('resize',settle,{passive:true});
+  window.addEventListener('orientationchange',()=>timers.push(setTimeout(settle,180)),{passive:true});
+
+  if('ResizeObserver' in window){
+    const ro=new ResizeObserver(()=>sizeToComposer());
+    ro.observe(composer);
+    if(dock) ro.observe(dock);
+  }
+  if('MutationObserver' in window){
+    const mo=new MutationObserver(()=>settle());
+    [menu,context,attachment].filter(Boolean).forEach(n=>mo.observe(n,{attributes:true,attributeFilter:['class','style'],childList:true}));
+  }
+})();

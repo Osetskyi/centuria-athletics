@@ -1,0 +1,10 @@
+-- NOT APPLIED AUTOMATICALLY.
+-- Final production migration needed to cloud-sync the new formations.
+-- Current DB check permits only 4-5-1 and 3-4-2-1.
+--
+-- When you explicitly approve the production DB migration, replace the
+-- saved_lineups formation check to allow:
+--   4-5-1, 3-5-2, 4-4-1-1
+--
+-- The v7.80 update build uses a local fallback for unsupported formations
+-- so UI testing can continue without touching production schema.

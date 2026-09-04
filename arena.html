@@ -1,0 +1,45 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="theme-color" content="#120c05"><script>
+(function(){
+  try{
+    var standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+    if(!standalone) return;
+    var ts=Number(sessionStorage.getItem('ca_arena_open_ts')||0);
+    sessionStorage.removeItem('ca_arena_open_ts');
+    var intentional=ts>0 && (Date.now()-ts)<15000;
+    if(!intentional){
+      location.replace('index.html?standalone=1');
+    }
+  }catch(_e){}
+})();
+</script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Centuria"><meta name="application-name" content="Centuria Athletics"><meta name="format-detection" content="telephone=no"><link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><title>Centuria Arena</title><script>
+try{var caTheme=localStorage.getItem("centuria_theme")==="light"?"light":"dark";document.documentElement.dataset.siteTheme=caTheme;document.documentElement.classList.add(caTheme+"-theme");}catch(_e){}
+</script><link rel="stylesheet" href="arena.css?v=8.46-portrait-only"><style>
+.portrait-only-guard{display:none;position:fixed;inset:0;z-index:2147483647;align-items:center;justify-content:center;padding:24px;background:#120c05;color:#fff7e8;text-align:center;touch-action:none}.portrait-only-guard__card{width:min(78vw,520px);padding:28px 24px;border:1.5px solid rgba(223,174,62,.78);border-radius:28px;background:rgba(18,12,5,.94)}.portrait-only-guard__mark{font-size:44px;line-height:1;color:#e3b84f;margin-bottom:10px}.portrait-only-guard__eyebrow{font-size:12px;font-weight:800;letter-spacing:.18em;color:#d9b45d;margin-bottom:8px}.portrait-only-guard__title{font-size:24px;font-weight:900;margin-bottom:8px}.portrait-only-guard__text{font-size:14px;font-weight:650;opacity:.74}@media (orientation:landscape) and (pointer:coarse){.portrait-only-guard{display:flex}body{overflow:hidden!important}}
+</style><script>(function arenaPortraitGuardV846(){async function lock(){try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('portrait')}catch(e){}}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lock,{once:true});else lock();window.addEventListener('orientationchange',lock,{passive:true});document.addEventListener('pointerup',lock,{passive:true});})();</script></head><body><div id="portraitOnlyGuard" class="portrait-only-guard" aria-hidden="true"><div class="portrait-only-guard__card"><div class="portrait-only-guard__mark">↻</div><div class="portrait-only-guard__eyebrow">CENTURIA ATHLETICS</div><div class="portrait-only-guard__title">ПОВЕРНІТЬ ТЕЛЕФОН</div><div class="portrait-only-guard__text">Сайт працює тільки у вертикальному режимі</div></div></div><header><button onclick="location.href='index.html'">← НАЗАД</button><h1>CENTURIA ARENA</h1><b>ADMIN</b></header><main id="app"></main>
+<nav id="arenaBottomNav" class="arena-bottom-nav" aria-label="Швидка навігація">
+  <button type="button" data-open="players"><span>♟️</span><small>ГРАВЦІ</small></button>
+  <button type="button" data-open="tactics"><span>⚽️</span><small>ТАКТИКА</small></button>
+  <button type="button" data-open="squads"><span>🧑‍🧑‍🧒‍🧒</span><small>СКЛАДИ</small></button>
+  <button type="button" data-open="chat"><span>✏️</span><small>ЧАТ</small></button>
+  <button type="button" data-open="gatherings"><span>✅</span><small>ЗБОРИ</small></button>
+  <button type="button" class="active" data-open="arena"><span>⚔️</span><small>АРЕНА</small></button>
+</nav>
+<script src="arena.js"></script>
+<script>
+(function(){
+  const nav=document.getElementById("arenaBottomNav");
+  if(!nav)return;
+  const buttons=[...nav.querySelectorAll("button[data-open]")];
+  let pressed=null,timer=0;
+  function clearPressed(){if(timer){clearTimeout(timer);timer=0;}buttons.forEach(b=>b.classList.remove("nav-pressing"));pressed=null;}
+  function press(btn){clearPressed();pressed=btn;btn.classList.add("nav-pressing");}
+  function release(){if(!pressed)return;const target=pressed;timer=setTimeout(()=>{target.classList.remove("nav-pressing");if(pressed===target)pressed=null;timer=0;},85);}
+  buttons.forEach(btn=>{
+    btn.addEventListener("pointerdown",e=>{if(e.pointerType==="mouse"&&e.button!==0)return;press(btn);},{passive:true});
+    btn.addEventListener("pointerup",release,{passive:true});
+    btn.addEventListener("pointercancel",clearPressed,{passive:true});
+    btn.addEventListener("click",()=>{const target=btn.dataset.open;if(target==="arena")return;location.href=`index.html?open=${encodeURIComponent(target)}`;});
+  });
+  window.addEventListener("blur",clearPressed,{passive:true});
+})();
+</script></body></html>

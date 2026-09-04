@@ -1,3 +1,5 @@
+Centuria Athletics v6.59 — Settings redesign
+
 CENTURIA ATHLETICS — SITE v1
 
 Як запустити:
@@ -599,3 +601,130 @@ v6.39: У складі на Збір над карткою гравця пока
 
 
 v6.40: Виправлено світле головне меню — невидимі зони кнопок знову активні та відкривають відповідні вкладки; дизайн світлого фону не змінено.
+
+
+v6.51 PWA: standalone iPhone metadata, manifest, install helper, Arena metadata, fresh network-first service worker.
+
+v6.52 TEST HOME
+- Home page scrolling/rubber-band disabled; no scrollbar indicator on Home.
+- Home remains fixed in place while all interactive buttons still work.
+- Removed top safe-area reservation on Home; background is full-bleed to top edge under iPhone status area.
+- Other application screens keep normal scrolling.
+
+
+v6.60 TEST: settings screen scroll enabled; ADMIN player linking moved behind its own action button.
+
+
+v7.43: fixed Xbox platform icon background and exclusive platform selection in Player edit.
+
+v7.44: виправлено ексклюзивний вибір платформи та Xbox-іконку у світлій темі.
+
+v7.45: виправлено фантомну подвійну анімацію натискання платформ на iPhone/PWA; вибір застосовується одразу при дотику, а platform-кнопки більше не масштабуються при натисканні.
+
+
+v7.49: Нижня навігація розширена до 6 кнопок: Гравці / Тактика / Склади / Чат / Збори / Арена. Арена має такий самий active/press стиль і панель доступна також всередині Arena.
+
+
+v7.50: Повернуто 6-кнопкову нижню навігацію у вкладці «Гравці» та заблоковано iOS pull-down/rubber-band на верхній межі списку гравців. Звичайне прокручування вгору по контенту збережено.
+
+
+v7.51: Оновлено значки нижньої навігації: Гравці ♟️, Тактика ⚽️, Склади 🧑‍🧑‍🧒‍🧒, Чат ✏️, Збори ✅, Арена ⚔️. Іншу логіку та стилі не змінено.
+
+
+v7.52: Оновлено підрахунок загальної статистики та нагород місяця.
+- Рейтинг таблиці: середня оцінка − 0.20 × (1 − матчі гравця / матчі команди).
+- Для місця в рейтингу та нагород місяця потрібно зіграти мінімум 30% матчів команди.
+- Гравець місяця: 60% рейтинг, 15% голи, 15% асисти, 10% MVP.
+- Бомбардир: найбільше голів; при рівності вище гравець з меншою кількістю матчів.
+- Асистент: найбільше асистів; при рівності вище гравець з меншою кількістю матчів.
+- Захисник місяця: 75% рейтинг, 5% голи, 5% асисти, 15% MVP.
+- Воротар місяця: 90% рейтинг, 10% MVP.
+- MVP місяця: усі гравці з однаковою максимальною кількістю MVP; між переможцями можна свайпати, також є автоперемикання.
+
+
+v7.53: Виправлено відображення нагород місяця. Внутрішній composite score більше не показується користувачу; для Гравця/Захисника/Воротаря показується скоригований рейтинг. Для Бомбардира та Асистента показується лише число без «ГОЛ.»/«АС.».
+
+v7.54 — MONTHLY AWARDS AUTO-ISSUE + REIGNING PLAYER CARD
+- Completed-month awards are automatically written to player_awards by ADMIN/EDITOR.
+- Uses the agreed 30% eligibility and monthly award formulas.
+- Shared MVP of the month is issued to every tied winner.
+- Duplicate-safe client check prevents re-issuing the same player's same monthly award/mode/date.
+- Awards are stored in the player profile and appear in the Awards tab.
+- The latest Training “Гравець місяця” receives a special reigning gold card until the next monthly winner is issued; Official is used as fallback.
+- No database mutation is performed merely by building this package; writes occur only when an authorized ADMIN/EDITOR runs the app after a month has completed.
+
+
+v7.55: Нижню 6-кнопкову навігацію опущено на 10 px ближче до нижнього краю на всіх розділах. Розмір панелі, кнопок, іконок та логіка не змінювались. Відступ контенту скориговано під нову позицію.
+
+v7.56 — TACTICS LOWER + SCROLL + HOME BACKGROUND
+- Tactics screen moved below iPhone safe-area/status bar.
+- Entire Tactics page is vertically scrollable.
+- Tactics reuses existing Home stadium artwork in dark/light themes.
+- Bottom navigation remains fixed and unchanged.
+
+
+v7.57 — THREE TACTICS FORMATIONS
+- Tactics formation selector now has exactly three visible options: 4-5-1, 3-5-2 and 4-4-1-1.
+- Replaced the previous 3-4-2-1 option with 3-5-2.
+- Added a complete 4-4-1-1 pitch layout.
+- Existing stored 3-4-2-1 selection migrates safely to 3-5-2 so Tactics does not open on an invalid formation.
+
+
+v7.58 — TACTICS EMPTY LABELS REMOVED
+- Прибрано напис «Порожньо» з незаповнених слотів на полі у розділі «Тактика».
+- Позиційні позначки та кнопка + залишені без змін.
+
+
+v7.59 — 3-5-2 DEFENSIVE LINE RAISED
+- Raised all three CB slots in the 3-5-2 formation to create a clear gap above the goalkeeper.
+- No other tactics layout changes.
+
+
+v7.60 — TACTICS PLAIN NICKNAMES
+- Removed the black nickname plate/background under filled player cards on the Tactics pitch.
+- Nickname is now plain text directly below the card, matching the Gatherings lineup style.
+- Position badge, player cards, captain/vice-captain labels and formations are unchanged.
+- Applied to both dark and light themes.
+
+
+v7.61 — TACTICS LIGHT LEGEND CONTRAST
+- In light theme only, darkened the labels “Основна”, “Додаткова” and “Не рідна” below the Tactics pitch for better readability.
+- Colored legend dots are unchanged.
+- Dark theme is unchanged.
+
+
+v8.06 TEST — CHAT DARK BACK BUTTON + LOWER COMPOSER
+- У темній темі кнопка «Назад» у шапці Чату отримала темне напівпрозоре оформлення із золотою стрілкою.
+- Панель введення повідомлення опущено ближче до нижнього швидкого меню.
+- Світлу тему та основний сайт не змінено.
+
+
+v8.07 TEST — CENTURIA - TESTA CHAT FINAL UI PASS
+- Test target explicitly marked as Centuria - testa.
+- Removed Profile button from Chat header only; profile functionality remains in Settings.
+- Back button widened and moved higher so it does not overlap the CHAT heading.
+- Chat viewport uses remaining screen height; composer now sits immediately above quick navigation.
+- Replaced the red chat unread badge with a smaller gold Centuria-style counter.
+- Bumped cache/runtime markers to v8.07 TEST.
+
+
+=== v8.17 TEST — CHAT SOCIAL FEATURES ===
+- Typing indicator shows when another team member is actively composing a message.
+- Own messages show ✓ when sent and ✓✓ once at least one teammate has read them; hover/title exposes reader names where supported.
+- Type @ in the composer to choose a team member from an autocomplete list.
+- Mentions are persisted in Supabase, highlighted in the message, and show a separate @ badge on the Chat quick-nav button until read.
+- Existing unread red dot, reactions, pinning, replies, editing and iOS keyboard fixes remain unchanged.
+
+
+Оновлення v8.22 — Збори: safe-area + вертикальна прокрутка:
+- Вкладку «Збори» опущено нижче системних значків iPhone через safe-area.
+- Додано окрему вертикальну прокрутку всієї вкладки «Збори».
+- Додано нижній запас під фіксоване швидке меню та safe-area.
+- Інші розділи й готові сповіщення не змінювались.
+
+
+Оновлення v8.23 — Збори: фон головного екрана по темах:
+- темна тема використовує наявний home-screen-clean.jpg;
+- світла тема використовує наявний home-screen-light-v670.jpg;
+- збережено safe-area та вертикальну прокрутку з v8.22;
+- нові зображення не генерувалися.

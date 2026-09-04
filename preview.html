@@ -3,13 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#120c05">
+  <meta name="theme-color" content="#090909">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Centuria">
-  <meta name="application-name" content="Centuria Athletics">
-  <meta name="format-detection" content="telephone=no">
 
   <title>Centuria Athletics</title>
   <script>
@@ -21,11 +18,11 @@
     document.documentElement.classList.toggle("dark-theme",t==="dark");
     /* v6.36 theme-color */
     var tm=document.querySelector('meta[name="theme-color"]');
-    if(tm) tm.setAttribute("content",t==="light"?"#ebd2ad":"#120c05");
+    if(tm) tm.setAttribute("content",t==="light"?"#efe7da":"#090909");
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=8.46-main-arena-locked">
+<link rel="stylesheet" href="style.css?v=6.48-exact-clickable-home">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest">
 
@@ -53,7 +50,7 @@
     });
 
     const meta=document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute("content",value==="light"?"#ebd2ad":"#120c05");
+    if(meta) meta.setAttribute("content",value==="light"?"#fffdf8":"#090909");
 
     window.dispatchEvent(new CustomEvent("centuria-theme-change",{detail:{theme:value}}));
   }
@@ -78,34 +75,8 @@
 })();
 </script>
 
-
-<script>
-(function(){
-  function syncArenaEmblem(){
-    var img=document.getElementById("homeArenaEmblem");
-    if(!img) return;
-    var root=document.documentElement;
-    var isLight=root.getAttribute("data-site-theme")==="light" || root.classList.contains("light-theme");
-    var next=isLight ? "arena-emblem-light.png" : "arena-emblem.png";
-    if(img.getAttribute("src")!==next) img.setAttribute("src",next);
-  }
-  window.syncArenaEmblemV699=syncArenaEmblem;
-  document.addEventListener("DOMContentLoaded",syncArenaEmblem,{once:true});
-  window.addEventListener("centuria-theme-change",function(){ requestAnimationFrame(syncArenaEmblem); });
-})();
-</script>
-
-</head>
+<style>#siteAccessGate{display:none!important} #screen-home{display:block!important}</style></head>
 <body>
-<div id="portraitOnlyGuard" class="portrait-only-guard" aria-hidden="true">
-  <div class="portrait-only-guard__card">
-    <div class="portrait-only-guard__mark">↻</div>
-    <div class="portrait-only-guard__eyebrow">CENTURIA ATHLETICS</div>
-    <div class="portrait-only-guard__title">ПОВЕРНІТЬ ТЕЛЕФОН</div>
-    <div class="portrait-only-guard__text">Сайт працює тільки у вертикальному режимі</div>
-  </div>
-</div>
-
 
 <div id="siteAccessGate" class="site-access-gate">
   <div class="site-access-panel">
@@ -124,7 +95,7 @@
 
 <div id="app">
 
-  <!-- HOME v6.49 phone reference rebuild -->
+  <!-- HOME v6.46 clean mobile rebuild -->
   <section id="screen-home" class="screen active home-screen home-v645">
     <div class="home-v645-wrap">
       <img src="home-screen-clean.jpg" class="home-v645-bg" alt="" id="homeBackgroundImage">
@@ -133,10 +104,10 @@
         <div class="home-event-mvp-row">
           <button id="homeNextEvent" class="home-next-event" type="button" data-viewer-allowed="true" aria-label="Найближча подія">
             <div id="homeNextEmpty" class="home-next-empty"><div class="home-next-marquee"><span>НЕМАЄ ЗАПЛАНОВАНИХ ПОДІЙ</span></div></div>
-            <div id="homeNextGathering" class="home-next-content home-next-gathering hidden"><div class="home-next-type">ЗБІР</div><div class="home-next-gathering-icon" aria-hidden="true"></div><div class="home-next-main"><strong id="homeNextGatheringTitle">ТРЕНУВАННЯ</strong><span id="homeNextGatheringDate">—</span></div><span class="home-next-calendar-art" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="33" rx="4"/><path d="M6 19h36M15 4v11M33 4v11M14 27h5M23 27h5M32 27h5M14 35h5M23 35h5M32 35h5"/></svg></span><div class="home-next-countdown" id="homeNextGatheringCountdown">—</div></div>
+            <div id="homeNextGathering" class="home-next-content home-next-gathering hidden"><div class="home-next-type">ЗБІР</div><div class="home-next-gathering-icon" aria-hidden="true"><svg viewBox="0 0 64 64"><path d="M17 33.5 27.5 44 48 21.5"/></svg></div><div class="home-next-main"><strong id="homeNextGatheringTitle">ТРЕНУВАННЯ</strong><span id="homeNextGatheringDate">—</span></div><span class="home-next-calendar-art" aria-hidden="true"><svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="33" rx="4"/><path d="M6 19h36M15 4v11M33 4v11M14 27h5M23 27h5M32 27h5M14 35h5M23 35h5M32 35h5"/></svg></span><div class="home-next-countdown" id="homeNextGatheringCountdown">—</div></div>
             <div id="homeNextMatch" class="home-next-content home-next-match hidden"><div class="home-next-type">МАТЧ</div><div class="home-next-team"><div class="home-next-logo"><img id="homeNextHomeLogo" alt=""></div><small id="homeNextHomeName">Centuria</small></div><div class="home-next-vs"><strong>VS</strong><span id="homeNextMatchDate">—</span><b id="homeNextMatchCountdown">—</b></div><div class="home-next-team"><div class="home-next-logo"><img id="homeNextAwayLogo" alt=""></div><small id="homeNextAwayName">Суперник</small></div></div>
           </button>
-          <button id="homeMvpCard" class="home-mvp-card" type="button" data-viewer-allowed="true" aria-label="Останній VIP"><span class="home-mvp-ribbon">MVP</span><span class="home-mvp-photo"><img id="homeMvpPhoto" alt=""></span><span class="home-mvp-copy"><strong id="homeMvpName">—</strong><span id="homeMvpMeta">—</span></span><b id="homeMvpRating">—</b></button>
+          <button id="homeMvpCard" class="home-mvp-card hidden" type="button" data-viewer-allowed="true" aria-label="Останній VIP"><span class="home-mvp-ribbon">MVP</span><span class="home-mvp-photo"><img id="homeMvpPhoto" alt=""></span><span class="home-mvp-copy"><strong id="homeMvpName">—</strong><span id="homeMvpMeta">—</span></span><b id="homeMvpRating">—</b></button>
         </div>
         <nav class="home-v645-mainnav" aria-label="Головне меню">
           <button class="home-v645-btn" data-nav="chat" type="button">
@@ -153,7 +124,7 @@
           </button>
           <button class="home-v645-btn" data-nav="tactics" type="button">
             <span class="home-menu-icon tactics" aria-hidden="true">
-              <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="15" cy="18" r="5"/><circle cx="15" cy="46" r="5"/><path d="M22 18H31C38 18 42 22 42 29V34"/><path d="M36 29L42 35L48 29"/><path d="M23 46H31"/><path d="M40 41L51 52M51 41L40 52"/></svg>
+              <svg viewBox="0 0 64 64"><circle cx="14" cy="16" r="6"/><circle cx="17" cy="48" r="6"/><path d="M22 20 40 38"/><path d="M32 10h19v19"/><path d="M50 11 31 30"/><path d="M36 43 49 56"/><path d="M49 43 36 56"/></svg>
             </span>
             <strong>ТАКТИКА</strong><b>›</b>
           </button>
@@ -162,12 +133,11 @@
           <button class="home-v645-square" data-nav="calendar" data-viewer-allowed="true" type="button" aria-label="Календар">
             <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="14" width="44" height="40" rx="5"/><path d="M10 25h44M21 8v12M43 8v12M20 34h6M30 34h6M40 34h6M20 43h6M30 43h6M40 43h6"/></svg>
           </button>
-          <span class="home-v645-bottom-spacer" aria-hidden="true"></span>
-          <button class="home-v645-square home-settings-square" data-nav="settings" type="button" aria-label="Налаштування">
-            <span class="home-settings-glyph" aria-hidden="true">⚙</span>
+          <button class="home-v645-arena" type="button" onclick="location.href='arena.html'" aria-label="Centuria Arena"><img src="arena-emblem.jpg" alt="Centuria Athletics Arena"></button>
+          <button class="home-v645-square" data-nav="settings" type="button" aria-label="Налаштування">
+            <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M28 5h8l2 8 7 3 7-4 6 6-4 7 3 7 8 2v8l-8 2-3 7 4 7-6 6-7-4-7 3-2 8h-8l-2-8-7-3-7 4-6-6 4-7-3-7-8-2v-8l8-2 3-7-4-7 6-6 7 4 7-3 2-8Z"/><circle cx="32" cy="38" r="10" fill="#080806"/></svg>
           </button>
         </div>
-        <button class="home-v645-arena" type="button" onclick="openArenaV664()" aria-label="Centuria Arena"><img id="homeArenaEmblem" src="arena-emblem.png" alt="Centuria Athletics Arena"></button>
         <div id="homeOnlineBadge" class="home-online-badge"><span class="home-online-dot"></span><span id="homeOnlineCount">0</span></div>
       </div>
     </div>
@@ -202,21 +172,20 @@
       <span><i class="calendar-dot match"></i> МАТЧ</span>
       <span><i class="calendar-dot gathering"></i> ЗБІР</span>
     </div>
-    
+    <div class="calendar-note">Матчі створюються в календарі. Збори підтягуються автоматично, а тут до них додається статистика.</div>
   </section>
 
 
   <!-- PLAYERS -->
   <section id="screen-players" class="screen inner-screen">
     <header class="topbar">
-<div>
+      <div>
         <div class="brand-small">CENTURIA ATHLETICS</div>
         <h1>ГРАВЦІ</h1>
         <div id="playersCount" class="subline">0 ГРАВЦІВ</div>
       </div>
       <div class="top-actions">
         <button type="button" id="searchToggle" class="icon-btn">⌕</button>
-        <button type="button" id="playersBackHomeBtn" class="gold-btn compact players-back-inline" data-viewer-allowed="true" aria-label="На головну">←</button>
         <button type="button" id="addPlayerBtn" class="gold-btn compact">＋</button>
       </div>
     </header>
@@ -231,8 +200,7 @@
       <b>›</b>
     </button>
 
-    <div class="players-scroll-area">
-      <div class="filters">
+    <div class="filters">
       <button class="filter active" data-filter="ALL">ВСІ</button>
       <button class="filter" data-filter="GK">ВРТ</button>
       <button class="filter" data-filter="DEF">ЗАХ</button>
@@ -240,24 +208,17 @@
       <button class="filter" data-filter="ATT">НАП</button>
     </div>
 
-      <div id="playersGrid" class="players-grid"></div>
-      <button type="button" id="addPlayerBig" class="gold-btn full">＋ ДОДАТИ ГРАВЦЯ</button>
-    </div>
+    <div id="playersGrid" class="players-grid"></div>
+
+    <button type="button" id="addPlayerBig" class="gold-btn full">＋ ДОДАТИ ГРАВЦЯ</button>
   </section>
-<!-- TACTICS -->
+
+  <!-- TACTICS -->
   <section id="screen-tactics" class="screen inner-screen">
     <header class="topbar">
       <div>
         <div class="brand-small">CENTURIA ATHLETICS</div>
         <h1>ТАКТИКА</h1>
-      </div>
-      <div class="tactics-header-actions">
-        <button type="button" class="tactics-header-btn tactics-saved-btn" data-nav="squads" data-viewer-allowed="true" aria-label="Збережені склади" title="Збережені склади">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>
-        </button>
-        <button type="button" class="tactics-header-btn section-home-btn" data-nav="home" data-viewer-allowed="true" aria-label="На головну" title="На головну">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5"/><path d="m11 6-6 6 6 6"/></svg>
-        </button>
       </div>
     </header>
 
@@ -270,8 +231,7 @@
 
     <div class="formation-tabs">
       <button class="formation active" data-formation="451">4-5-1</button>
-      <button class="formation" data-formation="352">3-5-2</button>
-      <button class="formation" data-formation="4411">4-4-1-1</button>
+      <button class="formation" data-formation="3421">3-4-2-1</button>
     </div>
 
     <div class="pitch-shell">
@@ -337,36 +297,30 @@
         <div id="tbModeHint" class="tb-mode-hint">Перетягуй крапки та м'яч пальцем.</div>
       </div>
 
-      <div class="tb2-pitch-shell">
-        <div id="tb2Pitch" class="tb2-pitch" aria-label="Нова тактична дошка">
-          <svg class="tb2-pitch-lines" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="1.5" y="1.5" width="97" height="137" rx="1.6"></rect>
+      <div class="tactical-pitch-shell">
+        <div id="tacticalPitch" class="tactical-pitch" aria-label="Тактична дошка">
+          <svg class="tactical-pitch-lines" viewBox="0 0 100 140" preserveAspectRatio="none" aria-hidden="true">
+            <rect x="1.5" y="1.5" width="97" height="137" rx="1.5"></rect>
             <line x1="1.5" y1="70" x2="98.5" y2="70"></line>
             <circle cx="50" cy="70" r="13"></circle>
-            <circle cx="50" cy="70" r="0.9" class="tb2-pitch-dot"></circle>
+            <circle cx="50" cy="70" r="0.9" class="pitch-dot"></circle>
             <rect x="25" y="1.5" width="50" height="22"></rect>
             <rect x="37" y="1.5" width="26" height="8"></rect>
-            <circle cx="50" cy="16" r="0.8" class="tb2-pitch-dot"></circle>
+            <circle cx="50" cy="16" r="0.8" class="pitch-dot"></circle>
             <rect x="25" y="116.5" width="50" height="22"></rect>
             <rect x="37" y="130.5" width="26" height="8"></rect>
-            <circle cx="50" cy="124" r="0.8" class="tb2-pitch-dot"></circle>
+            <circle cx="50" cy="124" r="0.8" class="pitch-dot"></circle>
           </svg>
-
-          <svg id="tb2ArrowSvg" class="tb2-arrow-svg" viewBox="0 0 100 100"
-               preserveAspectRatio="none" aria-hidden="true">
+          <svg id="tbArrowSvg" class="tb-arrow-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs>
-              <marker id="tb2ArrowHead" markerWidth="7" markerHeight="7"
-                      refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <marker id="tbArrowHead" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="strokeWidth">
                 <path d="M0,0 L7,3.5 L0,7 z"></path>
               </marker>
             </defs>
-            <g id="tb2ArrowGroup"></g>
+            <g id="tbArrowGroup"></g>
           </svg>
-
-          <div id="tb2MarkerLayer" class="tb2-marker-layer"></div>
-
-          <button type="button" id="tb2Ball" class="tb2-ball"
-                  aria-label="М'яч" data-viewer-allowed="true">⚽</button>
+          <div id="tbMarkerLayer" class="tb-marker-layer"></div>
+          <button type="button" id="tbBallObject" class="tb-ball-object" aria-label="М'яч" data-viewer-allowed="true">⚽</button>
         </div>
       </div>
 
@@ -416,7 +370,6 @@
         <div class="brand-small">CENTURIA ATHLETICS</div>
         <h1>ЗБЕРЕЖЕНІ РОЗСТАНОВКИ</h1>
       </div>
-      <button type="button" class="saved-squads-back-btn" data-nav="tactics" data-viewer-allowed="true" aria-label="Назад до тактики" title="Назад до тактики">← НАЗАД</button>
     </header>
 
     <div id="squadsList" class="squads-list"></div>
@@ -435,9 +388,7 @@
           <span id="onlineCount">ОНЛАЙН: 0</span>
         </div>
       </div>
-      <div class="top-actions chat-top-actions-v807">
-        <button type="button" class="gold-btn compact section-home-btn chat-back-btn-v807" data-nav="home" data-viewer-allowed="true" aria-label="Назад на головну">←</button>
-      </div>
+      <button type="button" id="profileBtn" class="dark-btn chat-profile-btn" data-viewer-allowed="true">ПРОФІЛЬ</button>
     </header>
 
     <div id="chatGate" class="chat-gate">
@@ -459,34 +410,11 @@
 
       <div id="chatTabPane">
         <div id="onlinePeople" class="online-people"></div>
-
-        <button id="chatPinnedBanner" class="chat-pinned-banner hidden" type="button" data-viewer-allowed="true">
-          <span class="chat-pinned-icon">📌</span>
-          <span class="chat-pinned-main">
-            <strong>ЗАКРІПЛЕНО</strong>
-            <span id="chatPinnedText">—</span>
-          </span>
-          <span class="chat-pinned-arrow">›</span>
-        </button>
-
         <div id="chatMessages" class="chat-messages">
           <div class="chat-loading">Завантаження повідомлень…</div>
         </div>
 
-        <div class="chat-input-dock-v832">
-        <div id="chatTypingIndicator" class="chat-typing-indicator hidden"></div>
-
-        <div id="chatComposerContext" class="chat-composer-context hidden">
-          <div class="chat-composer-context-icon">↩</div>
-          <div class="chat-composer-context-main">
-            <strong id="chatComposerContextTitle">ВІДПОВІДЬ</strong>
-            <span id="chatComposerContextText"></span>
-          </div>
-          <button id="chatComposerContextClose" type="button" aria-label="Скасувати" data-viewer-allowed="true">×</button>
-        </div>
-
         <div id="chatAttachmentPreview" class="chat-attachment-preview hidden"></div>
-        <div id="chatMentionMenu" class="chat-mention-menu hidden"></div>
 
         <div class="chat-composer">
         <input id="chatMediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
@@ -496,7 +424,6 @@
         <button id="sendMessageBtn" class="chat-send-btn" type="button" data-viewer-allowed="true">➤</button>
         </div>
         <div id="chatHint" class="chat-hint">Фото до ~1 МБ · GIF до 1.2 МБ · голосові до 60 сек</div>
-        </div>
       </div>
 
       <div id="membersTabPane" class="members-pane hidden">
@@ -514,18 +441,13 @@
 
   <!-- GATHERINGS -->
   <section id="screen-gatherings" class="screen inner-screen gatherings-screen">
-    <img class="gatherings-page-bg gatherings-page-bg-dark" src="home-screen-clean.jpg" alt="" aria-hidden="true">
-    <img class="gatherings-page-bg gatherings-page-bg-light" src="home-screen-light-v670.jpg" alt="" aria-hidden="true">
     <header class="topbar gatherings-topbar">
       <div>
         <div class="brand-small">CENTURIA ATHLETICS</div>
         <h1>ЗБОРИ</h1>
         <div class="gatherings-subtitle">ГОЛОСУВАННЯ КОМАНДИ</div>
       </div>
-      <div class="top-actions">
-        <button type="button" class="gold-btn compact section-home-btn" data-nav="home" data-viewer-allowed="true" aria-label="На головну">←</button>
-        <button id="createGatheringBtn" class="gold-btn compact-btn hidden" type="button">＋ СТВОРИТИ</button>
-      </div>
+      <button id="createGatheringBtn" class="gold-btn compact-btn hidden" type="button">＋ СТВОРИТИ</button>
     </header>
 
     <div id="gatheringsGate" class="chat-gate">
@@ -545,173 +467,116 @@
     </div>
   </section>
 
-  <!-- SETTINGS v6.59 REDESIGN -->
-  <section id="screen-settings" class="screen inner-screen settings-screen-v659">
-    <div class="settings-v659-shell">
-      <header class="settings-v659-topbar">
-        <button type="button" class="settings-v659-back" data-nav="home" data-viewer-allowed="true" aria-label="Назад на головну">←</button>
-        <div class="settings-v659-titlebox">
-          <div class="brand-small">CENTURIA ATHLETICS</div>
-          <h1>НАЛАШТУВАННЯ</h1>
-        </div>
-      </header>
-
-      <section class="settings-profile-v659">
-        <div id="settingsProfileAvatar" class="settings-profile-avatar-v659"><span>CA</span></div>
-        <div class="settings-profile-copy-v659">
-          <strong id="settingsProfileNick">Гравець</strong>
-          <span id="settingsProfileRole" class="settings-profile-role-v659">VIEWER</span>
-        </div>
-        <div class="settings-profile-actions-v801">
-          <button type="button" id="settingsEditProfileBtn" class="settings-profile-edit-v659" data-viewer-allowed="true">РЕДАГУВАТИ</button>
-          <button type="button" id="settingsLogoutBtn" class="settings-profile-logout-v801" data-viewer-allowed="true">ВИЙТИ</button>
-        </div>
-      </section>
-
-      <section class="settings-group-v659">
-        <div class="settings-group-heading-v659"><span>ЗВУК</span><small>МУЗИКА ТА ГУЧНІСТЬ</small></div>
-        <div class="settings-panel-v659">
-          <label class="settings-row-v659 switch-row">
-            <span><b>Фонова музика</b><small>Музика Centuria у застосунку</small></span>
-            <input id="musicToggle" type="checkbox">
-          </label>
-          <label class="settings-volume-v659 volume-row">
-            <span><b>Гучність</b><small>Рівень фонової музики</small></span>
-            <input id="volumeRange" type="range" min="0" max="100" value="28">
-          </label>
-        </div>
-      </section>
-
-      <section class="settings-group-v659">
-        <div class="settings-group-heading-v659"><span>СПОВІЩЕННЯ</span><small>PUSH НА ТЕЛЕФОН</small></div>
-        <div class="settings-panel-v659 push-settings-card">
-          <button type="button" id="pushToggleBtn" class="settings-primary-v659" data-viewer-allowed="true">УВІМКНУТИ СПОВІЩЕННЯ</button>
-          <div id="pushStatus" class="push-status settings-status-v659">Перевірка…</div>
-          <label class="settings-row-v659 switch-row push-pref-row">
-            <span><b>Нові повідомлення в чаті</b><small>Повідомляти про нові повідомлення</small></span>
-            <input id="pushChatToggle" type="checkbox" checked disabled>
-          </label>
-          <label class="settings-row-v659 switch-row push-pref-row">
-            <span><b>Новий збір</b><small>Повідомляти про нові збори команди</small></span>
-            <input id="pushGatheringsToggle" type="checkbox" checked disabled>
-          </label>
-        </div>
-      </section>
-
-
-      <section id="settingsAnnouncementCreatorV818" class="settings-group-v659 hidden">
-        <div class="settings-group-heading-v659"><span>КОМАНДА</span><small>ПОВНОЕКРАННІ СПОВІЩЕННЯ</small></div>
-        <div class="settings-panel-v659 announcement-settings-card-v818">
-          <button type="button" id="createAnnouncementBtnV818" class="settings-primary-v659">СТВОРИТИ СПОВІЩЕННЯ</button>
-          <div class="settings-status-v659">Сповіщення з’явиться один раз при наступному вході кожного гравця.</div>
-        </div>
-      </section>
-
-      <section class="settings-group-v659">
-        <div class="settings-group-heading-v659"><span>МОВА</span><small>МОВА ІНТЕРФЕЙСУ</small></div>
-        <div class="settings-panel-v659">
-          <div class="language-row settings-language-v659">
-            <button class="lang active" data-viewer-allowed="true">🇺🇦 Українська</button>
-            <button class="lang" id="langRu" data-viewer-allowed="true">🇷🇺 Русский</button>
-            <button class="lang" id="langEn" data-viewer-allowed="true">🇬🇧 English</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="settings-group-v659">
-        <div class="settings-group-heading-v659"><span>ВИГЛЯД</span><small>ТЕМА ІНТЕРФЕЙСУ</small></div>
-        <div class="settings-panel-v659 theme-settings-card">
-          <div class="theme-switcher settings-theme-v659">
-            <button type="button" id="themeDarkBtn" class="theme-choice active" data-theme-value="dark" onclick="window.setCenturiaTheme && window.setCenturiaTheme('dark')" data-viewer-allowed="true">
-              <span class="theme-icon-v668 theme-icon-dark-v668" aria-hidden="true"></span><b>ТЕМНА</b>
-            </button>
-            <button type="button" id="themeLightBtn" class="theme-choice" data-theme-value="light" onclick="window.setCenturiaTheme && window.setCenturiaTheme('light')" data-viewer-allowed="true">
-              <span class="theme-icon-v668 theme-icon-light-v668" aria-hidden="true"></span><b>СВІТЛА</b>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div id="myPlayerSettingsCard" class="settings-card player-account-card settings-account-v659 hidden">
-        <h2>МІЙ ГРАВЕЦЬ</h2>
-        <p class="settings-hint">Твоя картка, статистика та нагороди. Зміни даних надсилаються адміністратору на підтвердження.</p>
-        <button type="button" id="openMyPlayerBtn" class="settings-primary-v659" data-viewer-allowed="true">ВІДКРИТИ МОГО ГРАВЦЯ</button>
-        <div id="myPlayerLinkStatus" class="settings-hint"></div>
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="screen inner-screen">
+    <header class="topbar">
+      <div>
+        <div class="brand-small">CENTURIA ATHLETICS</div>
+        <h1>НАЛАШТУВАННЯ</h1>
       </div>
+    </header>
 
-      <section id="settingsAdminPanelV659" class="settings-admin-v659 hidden">
-        <div class="settings-admin-head-v659">
-          <span>ADMIN</span>
-          <div><strong>АДМІН-ПАНЕЛЬ</strong><small>Керування доступом і тестовими функціями</small></div>
-        </div>
-        <div class="settings-admin-actions-v659">
-          <button type="button" id="settingsAccessJumpBtn" class="settings-action-v659" aria-expanded="false" aria-controls="adminSiteAccessCard">
-            <span><b>Користувачі та доступ</b><small>Підтвердження та блокування акаунтів</small></span><i aria-hidden="true">›</i>
-          </button>
-          <button type="button" id="settingsPlayerLinksBtn" class="settings-action-v659" aria-expanded="false" aria-controls="adminPlayerLinksCard">
-            <span><b>Прив’язка гравців</b><small>Прив’язати зареєстровані акаунти до карток гравців</small></span><i aria-hidden="true">›</i>
-          </button>
-          <button type="button" id="settingsArenaAdminBtn" class="settings-action-v659 settings-arena-action-v659">
-            <span><b>Arena · тестовий режим</b><small>Ручне додавання учасників і перевірка турнірів</small></span><i>›</i>
-          </button>
-        </div>
+    <div class="settings-card">
+      <h2>МОВА</h2>
+      <div class="language-row">
+        <button class="lang active">🇺🇦 Українська</button>
+        <button class="lang" id="langRu">🇷🇺 Русский</button>
+        <button class="lang" id="langEn">🇬🇧 English</button>
+      </div>
+    </div>
 
-        <div id="adminSiteAccessCard" class="settings-card player-account-card hidden" aria-hidden="true" hidden>
-          <h2>ДОСТУП ДО САЙТУ <span id="siteAccessPendingBadge" class="request-count-badge"></span></h2>
-          <p class="settings-hint">Нові акаунти спочатку очікують підтвердження. Тільки ADMIN може дозволити, заблокувати або повністю видалити акаунт.</p>
-          <div id="adminSiteAccessList" class="site-access-admin-list"></div>
-        </div>
+    <div class="settings-card">
+      <h2>МУЗИКА</h2>
+      <label class="switch-row">
+        <span>Фонова музика</span>
+        <input id="musicToggle" type="checkbox" checked>
+      </label>
+      <label class="volume-row">
+        <span>Гучність</span>
+        <input id="volumeRange" type="range" min="0" max="100" value="28">
+      </label>
+    </div>
 
-        <div id="adminPlayerLinksCard" class="settings-card player-account-card hidden" aria-hidden="true">
-          <h2>ПРИВ’ЯЗКА ГРАВЦІВ</h2>
-          <p class="settings-hint">Прив’яжи зареєстрований акаунт до картки гравця. Один акаунт — один гравець.</p>
-          <div id="adminPlayerLinksList" class="account-link-list"></div>
-        </div>
 
-        <div id="playerRequestsSettingsCard" class="settings-card player-account-card hidden">
-          <h2>ЗАПИТИ НА ЗМІНИ <span id="playerRequestCountBadge" class="request-count-badge"></span></h2>
-          <p class="settings-hint">Перевір зміни, які гравці запропонували для своїх карток.</p>
-          <button type="button" id="openPlayerRequestsBtn" class="settings-primary-v659">ВІДКРИТИ ЗАПИТИ</button>
-        </div>
-      </section>
+    
+    <div class="settings-card theme-settings-card">
+      <h2>ТЕМА САЙТУ</h2>
+      <p class="settings-hint">Вибери вигляд інтерфейсу для цього пристрою.</p>
+      <div class="theme-switcher">
+        <button type="button" id="themeDarkBtn" class="theme-choice active" data-theme-value="dark" onclick="window.setCenturiaTheme && window.setCenturiaTheme('dark')" data-viewer-allowed="true">
+          <span>🌙</span><b>ТЕМНА</b>
+        </button>
+        <button type="button" id="themeLightBtn" class="theme-choice" data-theme-value="light" onclick="window.setCenturiaTheme && window.setCenturiaTheme('light')" data-viewer-allowed="true">
+          <span>☀️</span><b>СВІТЛА</b>
+        </button>
+      </div>
+    </div>
 
-      <section class="settings-group-v659 settings-data-v659">
-        <div class="settings-group-heading-v659"><span>ДАНІ</span><small>СИСТЕМНІ ДІЇ</small></div>
-        <div class="settings-panel-v659 danger-zone">
-          <button type="button" id="clearPlayersBtn" class="danger-btn">ОЧИСТИТИ ВСІХ ГРАВЦІВ</button>
-          <button type="button" id="clearSquadsBtn" class="danger-btn">ОЧИСТИТИ ВСІ СКЛАДИ</button>
-        </div>
-      </section>
+<div class="settings-card push-settings-card">
+      <h2>СПОВІЩЕННЯ</h2>
+      <p class="settings-hint">Push-сповіщення на телефоні. На iPhone сайт має бути доданий на головний екран.</p>
+      <button type="button" id="pushToggleBtn" class="push-main-btn" data-viewer-allowed="true">УВІМКНУТИ СПОВІЩЕННЯ</button>
+      <div id="pushStatus" class="push-status">Перевірка…</div>
+      <label class="switch-row push-pref-row">
+        <span>💬 Нові повідомлення в чаті</span>
+        <input id="pushChatToggle" type="checkbox" checked disabled>
+      </label>
+      <label class="switch-row push-pref-row">
+        <span>📅 Новий збір</span>
+        <input id="pushGatheringsToggle" type="checkbox" checked disabled>
+      </label>
+    </div>
 
-      <footer class="settings-about-v659">
-        <span>CENTURIA ATHLETICS</span>
-        <strong>Автор: Daniil Osetskyi</strong>
-        <div class="settings-version" data-viewer-allowed="true">Версія <strong>v8.18 TEST</strong></div>
-      </footer>
+
+
+    <div id="adminSiteAccessCard" class="settings-card player-account-card hidden">
+      <h2>🔒 ДОСТУП ДО САЙТУ <span id="siteAccessPendingBadge" class="request-count-badge"></span></h2>
+      <p class="settings-hint">Нові акаунти спочатку очікують підтвердження. Тільки ADMIN може дозволити, заблокувати або повністю видалити акаунт.</p>
+      <div id="adminSiteAccessList" class="site-access-admin-list"></div>
+    </div>
+
+    <div id="myPlayerSettingsCard" class="settings-card player-account-card hidden">
+      <h2>👤 МІЙ ГРАВЕЦЬ</h2>
+      <p class="settings-hint">Переглядай свою картку, статистику та нагороди. Зміни даних надсилаються адміністратору на підтвердження.</p>
+      <button type="button" id="openMyPlayerBtn" class="gold-btn" data-viewer-allowed="true">ВІДКРИТИ МОГО ГРАВЦЯ</button>
+      <div id="myPlayerLinkStatus" class="settings-hint"></div>
+    </div>
+
+    <div id="adminPlayerLinksCard" class="settings-card player-account-card hidden">
+      <h2>🔗 ПРИВ’ЯЗКА ГРАВЦІВ</h2>
+      <p class="settings-hint">Прив’яжи зареєстрований акаунт до картки гравця. Один акаунт — один гравець.</p>
+      <div id="adminPlayerLinksList" class="account-link-list"></div>
+    </div>
+
+    <div id="playerRequestsSettingsCard" class="settings-card player-account-card hidden">
+      <h2>📥 ЗАПИТИ НА ЗМІНИ <span id="playerRequestCountBadge" class="request-count-badge"></span></h2>
+      <p class="settings-hint">Перевір зміни, які гравці запропонували для своїх карток.</p>
+      <button type="button" id="openPlayerRequestsBtn" class="gold-btn">ВІДКРИТИ ЗАПИТИ</button>
+    </div>
+
+    <div class="settings-card danger-zone">
+      <h2>ДАНІ</h2>
+      <button type="button" id="clearPlayersBtn" class="danger-btn">ОЧИСТИТИ ВСІХ ГРАВЦІВ</button>
+      <button type="button" id="clearSquadsBtn" class="danger-btn">ОЧИСТИТИ ВСІ СКЛАДИ</button>
+    </div>
+
+    <div class="settings-card author">
+      <span>АВТОР</span>
+      <strong>Daniil Osetskyi</strong>
+<div class="settings-version" data-viewer-allowed="true">Версія <strong>v6.16</strong></div>
     </div>
   </section>
 
-  <!-- NAV v7.49 — daily team sections + Arena -->
-  <nav id="bottomNav" class="bottom-nav hidden-nav" aria-label="Швидка навігація">
-    <button type="button" data-nav="players" aria-label="Гравці"><span>♟️</span><small>ГРАВЦІ</small></button>
-    <button type="button" data-nav="tactics" aria-label="Тактика"><span>⚽️</span><small>ТАКТИКА</small></button>
-    <button type="button" data-nav="chat" aria-label="Чат"><span>✏️</span><small>ЧАТ</small></button>
-    <button type="button" data-nav="gatherings" aria-label="Збори"><span>✅</span><small>ЗБОРИ</small></button>
-    <button type="button" data-nav="arena" aria-label="Арена"><span>⚔️</span><small>АРЕНА</small></button>
+  <!-- NAV -->
+  <nav id="bottomNav" class="bottom-nav hidden-nav">
+    <button data-nav="home"><span>⌂</span><small>ГОЛОВНА</small></button>
+    <button data-nav="players"><span>♟</span><small>ГРАВЦІ</small></button>
+    <button data-nav="tactics"><span>⚽</span><small>ТАКТИКА</small></button>
+    <button data-nav="squads"><span>▣</span><small>СКЛАДИ</small></button>
+    <button data-nav="chat"><span>●</span><small>ЧАТ</small></button>
+    <button data-nav="gatherings"><span>✓</span><small>ЗБОРИ</small></button>
+    <button data-nav="settings"><span>⚙</span><small>НАЛАШТУВАННЯ</small></button>
   </nav>
-</div>
-
-<!-- v8.02 THEMED LOGOUT CONFIRM -->
-<div id="settingsLogoutConfirmV802" class="settings-logout-confirm-v802 hidden" aria-hidden="true">
-  <div class="settings-logout-confirm-card-v802" role="dialog" aria-modal="true" aria-labelledby="settingsLogoutConfirmTitleV802">
-    <div class="settings-logout-confirm-brand-v802">CENTURIA ATHLETICS</div>
-    <h2 id="settingsLogoutConfirmTitleV802">ВИЙТИ З АКАУНТА?</h2>
-    <p>Ти точно хочеш вийти зі свого акаунта?</p>
-    <div class="settings-logout-confirm-actions-v802">
-      <button type="button" id="settingsLogoutCancelV802" class="settings-logout-cancel-v802">СКАСУВАТИ</button>
-      <button type="button" id="settingsLogoutApproveV802" class="settings-logout-approve-v802">ВИЙТИ</button>
-    </div>
-  </div>
 </div>
 
 <audio id="bgMusic" src="centuria-theme.mp3" loop preload="auto" playsinline></audio>
@@ -799,8 +664,8 @@
             </div>
           </div>
 
-          <div class="player-stats-single">
-            <section id="officialStatsPanel" class="player-stats-mode-panel hidden">
+          <div class="player-stats-columns">
+            <section>
               <h3>⚽ ОФІЦІЙНІ МАТЧІ</h3>
               <div class="stat-line"><span>Матчі</span><b id="statOfficialMatches">0</b></div>
               <div class="stat-line"><span>Голи</span><b id="statOfficialGoals">0</b></div>
@@ -810,12 +675,12 @@
               <div class="stat-line"><span>Найгірша оцінка</span><b id="statOfficialWorst">—</b></div>
               <div class="stat-line stat-line-mvp"><span>Кількість MVP</span><b id="statOfficialMvp"><em>MVP</em> 0</b></div>
               <div class="stat-form-block">
-                <small>ДИНАМІКА ОЦІНОК — ОФІЦІЙНІ МАТЧІ</small>
-                <div id="statOfficialForm" class="stat-form-row stat-rating-chart-host"></div>
+                <small>ФОРМА — ОСТАННІ 5</small>
+                <div id="statOfficialForm" class="stat-form-row"></div>
               </div>
             </section>
 
-            <section id="trainingStatsPanel" class="player-stats-mode-panel">
+            <section>
               <h3>🏋 ТРЕНУВАННЯ</h3>
               <div class="stat-line"><span>Матчі</span><b id="statTrainingMatches">0</b></div>
               <div class="stat-line"><span>Голи</span><b id="statTrainingGoals">0</b></div>
@@ -825,36 +690,27 @@
               <div class="stat-line"><span>Найгірша оцінка</span><b id="statTrainingWorst">—</b></div>
               <div class="stat-line stat-line-mvp"><span>Кількість MVP</span><b id="statTrainingMvp"><em>MVP</em> 0</b></div>
               <div class="stat-form-block">
-                <small>ДИНАМІКА ОЦІНОК — ЗБОРИ</small>
-                <div id="statTrainingForm" class="stat-form-row stat-rating-chart-host"></div>
+                <small>ФОРМА — ОСТАННІ 5</small>
+                <div id="statTrainingForm" class="stat-form-row"></div>
               </div>
             </section>
-          </div>
-
-          <div class="player-stats-mode-switch" role="group" aria-label="Тип статистики">
-            <button type="button" id="showOfficialStatsBtn">⚽ ОФІЦІЙНІ МАТЧІ</button>
-            <button type="button" id="showTrainingStatsBtn" class="active">🏋 ТРЕНУВАННЯ</button>
           </div>
           <div class="player-stats-swipe-note">‹ свайпни назад до інформації</div>
         </div>
       
         <div id="playerAwardsPane" class="player-view-slide player-awards-slide">
-          <div id="playerAwardsList" class="player-awards-grid"></div>
-
-          <div id="playerAwardAdminBox" class="player-award-admin hidden">
-            <h3>ДОДАТИ НАГОРОДУ</h3>
-            <div class="award-admin-grid">
-              <input id="awardTitleInput" type="text" maxlength="80" placeholder="Напр. Гравець місяця">
-              <input id="awardDateInput" type="date">
-              <input id="awardIconInput" type="text" maxlength="4" value="🏅" placeholder="🏅">
-              <input id="awardNoteInput" type="text" maxlength="120" placeholder="Примітка">
-            </div>
-            <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
-          </div>
-
-          <button type="button" id="openAddAwardBtn" class="gold-btn full player-add-award-btn hidden">＋ ДОДАТИ НАГОРОДУ</button>
-        </div>
-
+                          <div id="playerAwardsList" class="player-awards-grid"></div>
+                          <div id="playerAwardAdminBox" class="player-award-admin hidden">
+                            <h3>ДОДАТИ НАГОРОДУ</h3>
+                            <div class="award-admin-grid">
+                              <input id="awardTitleInput" type="text" maxlength="80" placeholder="Напр. Гравець місяця">
+                              <input id="awardDateInput" type="date">
+                              <input id="awardIconInput" type="text" maxlength="4" value="🏅" placeholder="🏅">
+                              <input id="awardNoteInput" type="text" maxlength="120" placeholder="Примітка">
+                            </div>
+                            <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
+                          </div>
+                        </div>
       </div>
 
       
@@ -995,42 +851,32 @@
     <div id="gatheringLineupPickerList" class="gathering-lineup-picker-list"></div>
   </div>
 </div>
+
+<button id="musicStartBtn" class="music-start hidden" type="button">▶ УВІМКНУТИ МУЗИКУ</button>
+
+<button id="authBtn" class="auth-btn" type="button" data-viewer-allowed="true">ВХІД / РЕЄСТРАЦІЯ</button>
+
 <div id="authModal" class="auth-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
   <div class="modal-backdrop" data-close-auth></div>
   <div class="modal-card auth-card">
     <button id="closeAuthModal" class="modal-close" type="button">✕</button>
     <div class="eyebrow">CENTURIA ATHLETICS</div>
     <h2 id="authTitle">ВХІД</h2>
-    <p id="authNote" class="auth-note">Увійди у свій акаунт або створи новий акаунт учасника Centuria Athletics.</p>
-
-    <div id="authLoginPanel">
-      <label>НІК У КОМАНДІ <span class="auth-signup-only">(для реєстрації)</span>
-        <input id="authNick" type="text" maxlength="24" autocomplete="nickname" placeholder="Donatello">
-        <small class="auth-nick-hint">Вказуйте нік такий, як у вас в EA ID</small>
-      </label>
-      <label>EMAIL
-        <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com">
-      </label>
-      <label>ПАРОЛЬ
-        <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
-      </label>
-      <div class="auth-actions">
-        <button id="signInBtn" class="primary-btn" type="button">УВІЙТИ</button>
-        <button id="signUpBtn" class="secondary-btn" type="button">СТВОРИТИ АКАУНТ</button>
-      </div>
-      <button id="forgotPasswordBtn" class="auth-forgot-btn auth-forgot-btn-v804" type="button">🔑 ЗАБУЛИ ПАРОЛЬ?</button>
+    <p class="auth-note">Увійди у свій акаунт або створи новий акаунт учасника Centuria Athletics.</p>
+    <label>НІК У КОМАНДІ <span class="auth-signup-only">(для реєстрації)</span>
+      <input id="authNick" type="text" maxlength="24" autocomplete="nickname" placeholder="Donatello">
+      <small class="auth-nick-hint">Вказуйте нік такий, як у вас в EA ID</small>
+    </label>
+    <label>EMAIL
+      <input id="authEmail" type="email" autocomplete="email" placeholder="name@example.com">
+    </label>
+    <label>ПАРОЛЬ
+      <input id="authPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+    </label>
+    <div class="auth-actions">
+      <button id="signInBtn" class="primary-btn" type="button">УВІЙТИ</button>
+      <button id="signUpBtn" class="secondary-btn" type="button">СТВОРИТИ АКАУНТ</button>
     </div>
-
-    <div id="authRecoveryPanel" class="auth-recovery-panel hidden">
-      <label>НОВИЙ ПАРОЛЬ
-        <input id="authNewPassword" type="password" autocomplete="new-password" placeholder="Мінімум 6 символів">
-      </label>
-      <label>ПОВТОРИ НОВИЙ ПАРОЛЬ
-        <input id="authNewPasswordConfirm" type="password" autocomplete="new-password" placeholder="Повтори пароль">
-      </label>
-      <button id="saveNewPasswordBtn" class="primary-btn full auth-save-password-btn" type="button">ЗБЕРЕГТИ НОВИЙ ПАРОЛЬ</button>
-    </div>
-
     <div id="authStatus" class="auth-status"></div>
   </div>
 </div>
@@ -1288,7 +1134,7 @@
             <button class="general-sort-btn" data-general-sort="mvp" type="button" data-viewer-allowed="true">🏆 MVP</button>
           </div>
           <div id="generalPlayersRanking" class="general-players-ranking"></div>
-</section>
+        </section>
 
         <section class="general-stats-slide">
           <div class="general-section-label">🔥 АКТИВНІ СЕРІЇ</div>
@@ -1335,7 +1181,7 @@
 
     <div class="profile-avatar-editor">
       <div id="profileAvatarPreview" class="profile-avatar-preview"><span>?</span></div>
-      <input id="profileAvatarInput" type="file" accept="image/*,.heic,.heif" hidden>
+      <input id="profileAvatarInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
       <button id="chooseAvatarBtn" class="secondary-btn" type="button" data-viewer-allowed="true">ЗМІНИТИ ФОТО</button>
     </div>
 
@@ -1348,48 +1194,10 @@
   </div>
 </div>
 
-
-<!-- v8.18 — team fullscreen announcements -->
-<div id="announcementCreateModalV818" class="announcement-editor-v818 hidden" aria-hidden="true">
-  <div class="announcement-editor-backdrop-v818" data-announcement-editor-close></div>
-  <div class="announcement-editor-card-v818" role="dialog" aria-modal="true" aria-labelledby="announcementEditorTitleV818">
-    <button type="button" class="announcement-editor-close-v818" data-announcement-editor-close aria-label="Закрити">×</button>
-    <div class="announcement-editor-kicker-v818">CENTURIA ATHLETICS</div>
-    <h2 id="announcementEditorTitleV818">СТВОРИТИ СПОВІЩЕННЯ</h2>
-    <label class="announcement-editor-field-v818">
-      <span>Текст</span>
-      <textarea id="announcementTextV818" maxlength="4000" rows="6" placeholder="Напиши повідомлення для команди..."></textarea>
-    </label>
-    <label class="announcement-photo-picker-v818" for="announcementImageV818">
-      <input id="announcementImageV818" type="file" accept="image/*" hidden>
-      <span class="announcement-photo-plus-v818">＋</span>
-      <span><b>ДОДАТИ ФОТО</b><small>Необов’язково · JPG, PNG, HEIC/WEBP</small></span>
-    </label>
-    <div id="announcementImagePreviewWrapV818" class="announcement-image-preview-wrap-v818 hidden">
-      <img id="announcementImagePreviewV818" alt="Попередній перегляд фото">
-      <button id="announcementImageRemoveV818" type="button">ПРИБРАТИ ФОТО</button>
-    </div>
-    <div id="announcementEditorStatusV818" class="announcement-editor-status-v818"></div>
-    <button id="announcementSendBtnV818" type="button" class="announcement-send-v818">ВІДПРАВИТИ</button>
-  </div>
-</div>
-
-<div id="siteAnnouncementOverlayV818" class="site-announcement-overlay-v818 hidden" aria-hidden="true">
-  <div class="site-announcement-screen-v818" role="dialog" aria-modal="true" aria-labelledby="siteAnnouncementTitleV818">
-    <div class="site-announcement-brand-v818">CENTURIA ATHLETICS</div>
-    <div class="site-announcement-label-v818">ВАЖЛИВЕ СПОВІЩЕННЯ</div>
-    <div id="siteAnnouncementAuthorV818" class="site-announcement-author-v818"></div>
-    <div id="siteAnnouncementImageWrapV818" class="site-announcement-image-wrap-v818 hidden"><img id="siteAnnouncementImageV818" alt="Фото до сповіщення"></div>
-    <h2 id="siteAnnouncementTitleV818">СПОВІЩЕННЯ</h2>
-    <div id="siteAnnouncementTextV818" class="site-announcement-text-v818"></div>
-    <button id="siteAnnouncementAcknowledgeV818" type="button" class="site-announcement-ack-v818">ЗРОЗУМІЛО</button>
-  </div>
-</div>
-
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=8.46-main-arena-locked"></script>
+<script src="app.js?v=6.36-seamless-top"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
@@ -1398,80 +1206,6 @@
     <img id="fullscreenImageTarget" alt="Перегляд зображення">
   </div>
 </div>
-
-
-<!-- v6.51 — iPhone / PWA standalone install helper -->
-<div id="pwaInstallHint" class="pwa-install-hint" hidden>
-  <div class="pwa-install-hint__text">
-    <b>ВІДКРИТИ ЯК ЗАСТОСУНОК</b>
-    <span>Без адресного рядка браузера</span>
-  </div>
-  <button id="pwaInstallHowBtn" type="button">ЯК?</button>
-  <button id="pwaInstallDismissBtn" class="pwa-install-hint__close" type="button" aria-label="Закрити">×</button>
-</div>
-
-<div id="pwaInstallModal" class="pwa-install-modal" hidden aria-hidden="true">
-  <div class="pwa-install-modal__backdrop" data-pwa-close></div>
-  <div class="pwa-install-modal__card" role="dialog" aria-modal="true" aria-labelledby="pwaInstallTitle">
-    <button class="pwa-install-modal__close" type="button" data-pwa-close aria-label="Закрити">×</button>
-    <div class="pwa-install-modal__eyebrow">CENTURIA ATHLETICS</div>
-    <h2 id="pwaInstallTitle">ВІДКРИТИ БЕЗ РЯДКА БРАУЗЕРА</h2>
-    <ol>
-      <li>Відкрий цей сайт саме у <b>Safari</b>.</li>
-      <li>Натисни <b>Поділитися</b> <span class="pwa-share-symbol">□↑</span>.</li>
-      <li>Обери <b>«На початковий екран»</b>.</li>
-      <li>Після цього запускай сайт через іконку <b>Centuria</b> на екрані iPhone.</li>
-    </ol>
-    <p>Тоді Centuria відкриватиметься у standalone-режимі — без пошукового/адресного рядка.</p>
-  </div>
-</div>
-
-<script>
-(function(){
-  function isStandalone(){
-    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  }
-  function isIOS(){
-    return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  }
-  function setupPwaHint(){
-    document.documentElement.classList.toggle('centuria-standalone', isStandalone());
-    if(isStandalone()) return;
-    const hint=document.getElementById('pwaInstallHint');
-    const modal=document.getElementById('pwaInstallModal');
-    if(!hint || !modal) return;
-    let dismissed=false;
-    try{ dismissed=sessionStorage.getItem('centuria_pwa_hint_dismissed')==='1'; }catch(_e){}
-    if(isIOS() && !dismissed) hint.hidden=false;
-    function openModal(){ modal.hidden=false; modal.setAttribute('aria-hidden','false'); document.body.classList.add('pwa-modal-open'); }
-    function closeModal(){ modal.hidden=true; modal.setAttribute('aria-hidden','true'); document.body.classList.remove('pwa-modal-open'); }
-    document.getElementById('pwaInstallHowBtn')?.addEventListener('click',openModal);
-    document.getElementById('pwaInstallDismissBtn')?.addEventListener('click',function(){
-      hint.hidden=true;
-      try{sessionStorage.setItem('centuria_pwa_hint_dismissed','1');}catch(_e){}
-    });
-    modal.querySelectorAll('[data-pwa-close]').forEach(el=>el.addEventListener('click',closeModal));
-    window.matchMedia('(display-mode: standalone)').addEventListener?.('change',function(){ if(isStandalone()){hint.hidden=true;closeModal();} });
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',setupPwaHint); else setupPwaHint();
-})();
-</script>
-
-
-<script>
-(function centuriaPortraitLockV846(){
-  async function tryLock(){
-    try{
-      if(screen.orientation && typeof screen.orientation.lock==='function'){
-        await screen.orientation.lock('portrait');
-      }
-    }catch(_e){}
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',tryLock,{once:true}); else tryLock();
-  window.addEventListener('orientationchange',tryLock,{passive:true});
-  document.addEventListener('pointerup',tryLock,{passive:true});
-})();
-</script>
 
 </body>
 </html>
