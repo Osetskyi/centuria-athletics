@@ -1456,12 +1456,14 @@ async function loadPlayerStatistics(playerId){
     });
   }
   if(trainingIds.length){
-    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating").in("training_day_id",trainingIds);
+    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating,matches_played").in("training_day_id",trainingIds);
     const grouped={};
     (data||[]).forEach(r=>(grouped[r.training_day_id]??=[]).push(r));
     trainingIds.forEach(id=>{
-      const mine=grouped[id]?.find(r=>r.player_id===playerId);
-      const max=Math.max(...(grouped[id]||[]).map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+      const dayTotal=Number(training.find(r=>r.training_day_id===id)?.training_days?.matches_played)||0;
+      const eligible=trainingMvpEligibleRows({id,matches_played:dayTotal},grouped[id]||[]);
+      const mine=eligible.find(r=>r.player_id===playerId);
+      const max=Math.max(...eligible.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
       if(mine && Number(mine.rating)===max)trainingMvp++;
     });
   }
@@ -5120,8 +5122,20 @@ function trainingForGathering(gatheringId){return trainingDays.find(t=>t.gatheri
 function statsForTraining(id){return trainingStats.filter(s=>s.training_day_id===id && s.rating!=null);}
 function statsForMatch(id){return officialMatchStats.filter(s=>s.match_id===id);}
 
+/* MVP збору: претендент має зіграти щонайменше 50% матчів збору. */
+function trainingMvpEligibleRows(day,rows=statsForTraining(day?.id)){
+  const total=Math.max(0,Number(day?.matches_played)||0);
+  if(!total)return rows||[];
+  const minimum=Math.ceil(total/2);
+  return (rows||[]).filter(r=>{
+    const raw=r?.matches_played;
+    const played=(raw===null||raw===undefined||raw==='')?total:Number(raw);
+    return Number.isFinite(played)&&played>=minimum;
+  });
+}
+
 function trainingMvp(day){
-  const rows=statsForTraining(day.id);
+  const rows=trainingMvpEligibleRows(day);
   if(!rows.length)return null;
   const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite));
   const row=rows.find(r=>Number(r.rating)===max);
@@ -5266,9 +5280,9 @@ function renderTrainingView(day){
 
   const rows=statsForTraining(day.id).sort((a,b)=>Number(b.rating)-Number(a.rating));
   const avg=averageRating(rows);
-  const mvp=trainingMvp(day);
-  const topRating=rows.length?Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
-  const mvpRows=topRating==null?[]:rows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
+  const eligibleMvpRows=trainingMvpEligibleRows(day,rows);
+  const topRating=eligibleMvpRows.length?Math.max(...eligibleMvpRows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
+  const mvpRows=topRating==null?[]:eligibleMvpRows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
   const mvpNames=mvpRows.map(r=>players.find(p=>p.id===r.player_id)?.name).filter(Boolean);
   $("trainingViewMvp").textContent=mvpNames.length?mvpNames.join(" • "):"—";
   $("trainingViewMvpRating").textContent=topRating!=null?fmtRating(topRating):"—";
@@ -5276,7 +5290,7 @@ function renderTrainingView(day){
 
   $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
-    const isMvp=topRating!=null && Math.abs(Number(r.rating)-topRating)<0.000001;
+    const isMvp=topRating!=null && eligibleMvpRows.includes(r) && Math.abs(Number(r.rating)-topRating)<0.000001;
     return `<div class="training-rank-row ${isMvp?"mvp":""}">
       <span class="rank-place">${i+1}</span>
       <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${isMvp?`<small>🏆 MVP</small>`:""}</span>
@@ -6390,8 +6404,11 @@ function generalEventMvpMap(){
   });
   const result={};
   Object.entries(grouped).forEach(([id,rows])=>{
-    const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
-    result[id]=new Set(rows.filter(r=>Number(r.rating)===max).map(r=>r.player_id));
+    const eligibleRows=generalStatsMode==="training"
+      ?trainingMvpEligibleRows(trainingDays.find(d=>d.id===id)||{id},rows)
+      :rows;
+    const max=Math.max(...eligibleRows.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+    result[id]=new Set(eligibleRows.filter(r=>Number(r.rating)===max).map(r=>r.player_id));
   });
   return result;
 }
@@ -9168,7 +9185,7 @@ let homeVipTouchX=null;
 function latestVipEventV642(){
   const events=[];
   (trainingDays||[]).forEach(day=>{
-    const rows=(trainingStats||[]).filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating)));
+    const rows=trainingMvpEligibleRows(day,(trainingStats||[]).filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating))));
     if(!rows.length)return;
     const max=Math.max(...rows.map(r=>Number(r.rating)));
     events.push({date:day.training_date||"",type:"training",rating:max,winners:rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001)});
