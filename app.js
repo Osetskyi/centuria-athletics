@@ -15,7 +15,8 @@ const PLAYER_STATUSES = [
   ["","Без статусу"],
   ["Капітан","Капітан"],
   ["Віце-капітан","Віце-капітан"],
-  ["Перегляд","Перегляд"]
+  ["Перегляд","Перегляд"],
+  ["Головний скаут","Головний скаут"]
 ];
 
 function decodePlayerNote(raw){
@@ -23,10 +24,11 @@ function decodePlayerNote(raw){
   if(text.startsWith("~C~")) return {status:"Капітан",note:text.slice(3)};
   if(text.startsWith("~V~")) return {status:"Віце-капітан",note:text.slice(3)};
   if(text.startsWith("~P~")) return {status:"Перегляд",note:text.slice(3)};
+  if(text.startsWith("~S~")) return {status:"Головний скаут",note:text.slice(3)};
   return {status:"",note:text};
 }
 function encodePlayerNote(status,note){
-  const marker=status==="Капітан"?"~C~":status==="Віце-капітан"?"~V~":status==="Перегляд"?"~P~":"";
+  const marker=status==="Капітан"?"~C~":status==="Віце-капітан"?"~V~":status==="Перегляд"?"~P~":status==="Головний скаут"?"~S~":"";
   const maxLen=100-marker.length;
   return marker+(note||"").slice(0,maxLen);
 }
@@ -1754,7 +1756,7 @@ function renderPitch(){
     const comp=p?compatibility(p,pos):"";
     const slot=document.createElement("div");slot.className="slot";slot.style.left=x+"%";slot.style.top=y+"%";
     slot.innerHTML=`
-      ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
+      ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":p.status==="Головний скаут"?"scout":"trial"}">${esc(p.status)}</div>`:""}
       <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="tactics-runtime-shine" aria-hidden="true"></span>`:"＋"}</button>
       <div class="slot-name">${p?esc(p.name):""}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
@@ -2732,7 +2734,7 @@ function gatheringLineupSlotHtml(g,formationKey,slot,index){
   const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
   const editable=canEditSite()&&!gatheringIsPast(g);
   return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
-    ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
+    ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":p.status==="Головний скаут"?"scout":"trial"}">${esc(p.status)}</div>`:""}
     <button type="button" class="gathering-lineup-card ${p?"filled live-player-card":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
       ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
     </button>

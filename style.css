@@ -697,6 +697,7 @@ body.auth-open{
 .slot-status-captain{color:#f1cf62}
 .slot-status-vice{color:#ddd}
 .slot-status-trial{color:#ffad55}
+.slot-status-scout{color:#8fc7ff}
 
 @media(max-width:520px){
   .player-select-columns{
