@@ -6636,11 +6636,22 @@ function renderGeneralRecords(){
   const single=[];
   players.forEach(player=>generalPlayerRows(player.id).forEach(row=>single.push({player,row})));
 
+  // Для рекорду «Найвища оцінка за збір» застосовуємо те саме
+  // правило участі, що й для MVP: з 01.09.2026 гравець має
+  // зіграти щонайменше 50% матчів конкретного збору.
+  const ratingRecordItems=generalStatsMode==="training"
+    ? single.filter(x=>{
+        const day=trainingDays.find(d=>d.id===x.row.training_day_id)||{id:x.row.training_day_id};
+        const eligible=trainingMvpEligibleRows(day,statsForTraining(x.row.training_day_id));
+        return eligible.some(r=>r.player_id===x.player.id);
+      })
+    : single;
+
   const specs=[
     [
       "⭐",
       generalStatsMode==="training"?"НАЙВИЩА ОЦІНКА ЗА ЗБІР":"НАЙВИЩА ОЦІНКА",
-      single,
+      ratingRecordItems,
       x=>Number(x.row.rating)||0,
       x=>(Number(x.row.rating)||0).toFixed(1)
     ]
