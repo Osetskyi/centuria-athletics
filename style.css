@@ -19732,3 +19732,12 @@ html[data-site-theme="light"] .training-rank-row .mvp-ineligible-note,
 html.light-theme .training-rank-row .mvp-ineligible-note{
   color:#8b6f2b!important;
 }
+
+
+/* v8.46 head scout follow-up — light theme readable label for status "Перегляд" */
+html[data-site-theme="light"] .slot-status-trial,
+html.light-theme .slot-status-trial,
+body.light .slot-status-trial{
+  color:#fff6dc!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.42);
+}
