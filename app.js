@@ -15,8 +15,7 @@ const PLAYER_STATUSES = [
   ["","Без статусу"],
   ["Капітан","Капітан"],
   ["Віце-капітан","Віце-капітан"],
-  ["Перегляд","Перегляд"],
-  ["Головний скаут","Головний скаут"]
+  ["Перегляд","Перегляд"]
 ];
 
 function decodePlayerNote(raw){
@@ -24,11 +23,10 @@ function decodePlayerNote(raw){
   if(text.startsWith("~C~")) return {status:"Капітан",note:text.slice(3)};
   if(text.startsWith("~V~")) return {status:"Віце-капітан",note:text.slice(3)};
   if(text.startsWith("~P~")) return {status:"Перегляд",note:text.slice(3)};
-  if(text.startsWith("~S~")) return {status:"Головний скаут",note:text.slice(3)};
   return {status:"",note:text};
 }
 function encodePlayerNote(status,note){
-  const marker=status==="Капітан"?"~C~":status==="Віце-капітан"?"~V~":status==="Перегляд"?"~P~":status==="Головний скаут"?"~S~":"";
+  const marker=status==="Капітан"?"~C~":status==="Віце-капітан"?"~V~":status==="Перегляд"?"~P~":"";
   const maxLen=100-marker.length;
   return marker+(note||"").slice(0,maxLen);
 }
@@ -725,6 +723,14 @@ async function refreshAuth(){
   // Statistics can finish before the players query. Repaint MVP once both
   // critical datasets have settled so the player ID can always resolve.
   try{ await loadLatestMvp(); }catch(err){ console.warn("Home MVP refresh error",err); }
+
+  // v8.46 player-request reliability fix: refresh the account/player request
+  // system only after the authenticated profile and player list are ready.
+  // This removes the page-load race where ADMIN could keep an empty request
+  // cache even though requests already existed in Supabase.
+  try{
+    if(typeof loadPlayerAccountSystemV589==="function") await loadPlayerAccountSystemV589();
+  }catch(err){ console.warn("Player request refresh error",err); }
 
   refreshTacticalBoardPermissions();
   if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
@@ -1458,14 +1464,12 @@ async function loadPlayerStatistics(playerId){
     });
   }
   if(trainingIds.length){
-    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating,matches_played").in("training_day_id",trainingIds);
+    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating").in("training_day_id",trainingIds);
     const grouped={};
     (data||[]).forEach(r=>(grouped[r.training_day_id]??=[]).push(r));
     trainingIds.forEach(id=>{
-      const dayTotal=Number(training.find(r=>r.training_day_id===id)?.training_days?.matches_played)||0;
-      const eligible=trainingMvpEligibleRows({id,matches_played:dayTotal},grouped[id]||[]);
-      const mine=eligible.find(r=>r.player_id===playerId);
-      const max=Math.max(...eligible.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+      const mine=grouped[id]?.find(r=>r.player_id===playerId);
+      const max=Math.max(...(grouped[id]||[]).map(r=>Number(r.rating)).filter(Number.isFinite),-1);
       if(mine && Number(mine.rating)===max)trainingMvp++;
     });
   }
@@ -1756,7 +1760,7 @@ function renderPitch(){
     const comp=p?compatibility(p,pos):"";
     const slot=document.createElement("div");slot.className="slot";slot.style.left=x+"%";slot.style.top=y+"%";
     slot.innerHTML=`
-      ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":p.status==="Головний скаут"?"scout":"trial"}">${esc(p.status)}</div>`:""}
+      ${p&&p.status?`<div class="slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
       <button class="slot-card ${p?"filled":""}">${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}"><span class="tactics-runtime-shine" aria-hidden="true"></span>`:"＋"}</button>
       <div class="slot-name">${p?esc(p.name):""}</div>
       <span class="slot-position ${p?comp:"empty"}">${POS_LABEL[pos]}</span>`;
@@ -2734,7 +2738,7 @@ function gatheringLineupSlotHtml(g,formationKey,slot,index){
   const p=row?.player_id ? players.find(x=>x.id===row.player_id) : null;
   const editable=canEditSite()&&!gatheringIsPast(g);
   return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
-    ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":p.status==="Головний скаут"?"scout":"trial"}">${esc(p.status)}</div>`:""}
+    ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":"trial"}">${esc(p.status)}</div>`:""}
     <button type="button" class="gathering-lineup-card ${p?"filled live-player-card":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
       ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
     </button>
@@ -5124,28 +5128,8 @@ function trainingForGathering(gatheringId){return trainingDays.find(t=>t.gatheri
 function statsForTraining(id){return trainingStats.filter(s=>s.training_day_id===id && s.rating!=null);}
 function statsForMatch(id){return officialMatchStats.filter(s=>s.match_id===id);}
 
-/* MVP збору: з 01.09.2026 претендент має зіграти щонайменше 50% матчів збору.
-   Правило застосовується ретроактивно до всіх вересневих зборів і до всіх наступних. */
-const FAIR_TRAINING_MVP_FROM_DATE="2026-09-01";
-function fairTrainingMvpRuleApplies(day){
-  const resolvedDate=day?.training_date||trainingDays.find(d=>d.id===day?.id)?.training_date||"";
-  return Boolean(resolvedDate)&&String(resolvedDate)>=FAIR_TRAINING_MVP_FROM_DATE;
-}
-function trainingMvpEligibleRows(day,rows=statsForTraining(day?.id)){
-  const source=rows||[];
-  if(!fairTrainingMvpRuleApplies(day))return source;
-  const total=Math.max(0,Number(day?.matches_played)||Number(trainingDays.find(d=>d.id===day?.id)?.matches_played)||0);
-  if(!total)return source;
-  const minimum=Math.ceil(total/2);
-  return source.filter(r=>{
-    const raw=r?.matches_played;
-    const played=(raw===null||raw===undefined||raw==='')?total:Number(raw);
-    return Number.isFinite(played)&&played>=minimum;
-  });
-}
-
 function trainingMvp(day){
-  const rows=trainingMvpEligibleRows(day);
+  const rows=statsForTraining(day.id);
   if(!rows.length)return null;
   const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite));
   const row=rows.find(r=>Number(r.rating)===max);
@@ -5290,30 +5274,21 @@ function renderTrainingView(day){
 
   const rows=statsForTraining(day.id).sort((a,b)=>Number(b.rating)-Number(a.rating));
   const avg=averageRating(rows);
-  const eligibleMvpRows=trainingMvpEligibleRows(day,rows);
-  const topRating=eligibleMvpRows.length?Math.max(...eligibleMvpRows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
-  const mvpRows=topRating==null?[]:eligibleMvpRows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
+  const mvp=trainingMvp(day);
+  const topRating=rows.length?Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
+  const mvpRows=topRating==null?[]:rows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
   const mvpNames=mvpRows.map(r=>players.find(p=>p.id===r.player_id)?.name).filter(Boolean);
   $("trainingViewMvp").textContent=mvpNames.length?mvpNames.join(" • "):"—";
   $("trainingViewMvpRating").textContent=topRating!=null?fmtRating(topRating):"—";
   $("trainingViewTeamAvg").textContent=fmtRating(avg);
 
-  const totalMatches=Math.max(0,Number(day.matches_played)||0);
-  const minimumMvpMatches=totalMatches?Math.ceil(totalMatches/2):0;
-  const fairMvpRule=fairTrainingMvpRuleApplies(day);
   $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
-    const rawPlayed=r?.matches_played;
-    const played=(rawPlayed===null||rawPlayed===undefined||rawPlayed==='')?totalMatches:Number(rawPlayed);
-    const mvpEligible=!fairMvpRule || !totalMatches || (Number.isFinite(played)&&played>=minimumMvpMatches);
-    const isMvp=topRating!=null && mvpEligible && Math.abs(Number(r.rating)-topRating)<0.000001;
-    const eligibilityNote=fairMvpRule&&!mvpEligible
-      ?`<small class="mvp-ineligible-note">⏱️ Недостатньо матчів · ${Number.isFinite(played)?played:0}/${totalMatches} · мін. ${minimumMvpMatches}</small>`
-      :(isMvp?`<small class="mvp-eligible-note">🏆 MVP</small>`:"");
-    return `<div class="training-rank-row ${isMvp?"mvp":""} ${!mvpEligible?"mvp-ineligible":""}">
+    const isMvp=topRating!=null && Math.abs(Number(r.rating)-topRating)<0.000001;
+    return `<div class="training-rank-row ${isMvp?"mvp":""}">
       <span class="rank-place">${i+1}</span>
-      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${eligibilityNote}</span>
-      <small class="rank-extra">🎮 ${Number.isFinite(played)?played:(day.matches_played||0)} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
+      <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${isMvp?`<small>🏆 MVP</small>`:""}</span>
+      <small class="rank-extra">🎮 ${r.matches_played??day.matches_played??0} · ⚽ ${r.goals||0} · 🅰 ${r.assists||0}</small>
       <strong>${fmtRating(Number(r.rating))}</strong>
     </div>`;
   }).join(""):`<div class="empty-state"><strong>СТАТИСТИКИ ЩЕ НЕМАЄ</strong><span>Редактор може внести оцінки.</span></div>`;
@@ -6423,11 +6398,8 @@ function generalEventMvpMap(){
   });
   const result={};
   Object.entries(grouped).forEach(([id,rows])=>{
-    const eligibleRows=generalStatsMode==="training"
-      ?trainingMvpEligibleRows(trainingDays.find(d=>d.id===id)||{id},rows)
-      :rows;
-    const max=Math.max(...eligibleRows.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
-    result[id]=new Set(eligibleRows.filter(r=>Number(r.rating)===max).map(r=>r.player_id));
+    const max=Math.max(...rows.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
+    result[id]=new Set(rows.filter(r=>Number(r.rating)===max).map(r=>r.player_id));
   });
   return result;
 }
@@ -6636,22 +6608,11 @@ function renderGeneralRecords(){
   const single=[];
   players.forEach(player=>generalPlayerRows(player.id).forEach(row=>single.push({player,row})));
 
-  // Для рекорду «Найвища оцінка за збір» застосовуємо те саме
-  // правило участі, що й для MVP: з 01.09.2026 гравець має
-  // зіграти щонайменше 50% матчів конкретного збору.
-  const ratingRecordItems=generalStatsMode==="training"
-    ? single.filter(x=>{
-        const day=trainingDays.find(d=>d.id===x.row.training_day_id)||{id:x.row.training_day_id};
-        const eligible=trainingMvpEligibleRows(day,statsForTraining(x.row.training_day_id));
-        return eligible.some(r=>r.player_id===x.player.id);
-      })
-    : single;
-
   const specs=[
     [
       "⭐",
       generalStatsMode==="training"?"НАЙВИЩА ОЦІНКА ЗА ЗБІР":"НАЙВИЩА ОЦІНКА",
-      ratingRecordItems,
+      single,
       x=>Number(x.row.rating)||0,
       x=>(Number(x.row.rating)||0).toFixed(1)
     ]
@@ -7413,6 +7374,10 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"official_match_player_stats"},async()=>{await loadStatisticsData();})
     .on("postgres_changes",{event:"*",schema:"public",table:"player_awards"},async()=>{
       if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
+    })
+    .on("postgres_changes",{event:"*",schema:"public",table:"player_change_requests"},async()=>{
+      if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
+      if(!$('playerRequestsModal')?.classList.contains('hidden'))renderPlayerRequestsV589();
     })
     .on("postgres_changes",{event:"*",schema:"public",table:"gatherings"},async()=>{
       if($("screen-calendar")?.classList.contains("active"))await loadCalendarData();
@@ -8769,7 +8734,15 @@ function occupiedShirtNumberV631(number,excludePlayerId=null){
 
 async function submitMyPlayerRequestV589(e){
   e.preventDefault();
-  const p=myLinkedPlayerV589();if(!p)return;
+  let p=myLinkedPlayerV589();
+  if(!p){
+    try{ await refreshAuth(); }catch(_e){}
+    p=myLinkedPlayerV589();
+  }
+  if(!p){
+    showToast("Не вдалося знайти прив’язаного гравця. Онови сторінку.");
+    return;
+  }
   const fd=new FormData(e.currentTarget);
 
   const numberRaw=String(fd.get("shirt_number")??"").trim();
@@ -8809,12 +8782,23 @@ async function submitMyPlayerRequestV589(e){
     note:String(fd.get("note")||"").trim(),
     card_image_url:cardUrl
   };
-  const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
-  if(error){
-    console.error(error);
-    if(isOccupiedNumberErrorV632(error) || String(error.message||"").toLowerCase().includes("зайнятий")){
+  const submitBtn=e.currentTarget.querySelector('button[type="submit"]');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.oldText=submitBtn.textContent;submitBtn.textContent="НАДСИЛАННЯ…";}
+
+  const {data:created,error}=await sb.from("player_change_requests")
+    .insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed})
+    .select("id,status,created_at")
+    .single();
+
+  if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=submitBtn.dataset.oldText||"НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ";}
+
+  if(error || !created?.id){
+    console.error("player change request insert",error);
+    if(isOccupiedNumberErrorV632(error) || String(error?.message||"").toLowerCase().includes("зайнятий")){
       showOccupiedNumberMessageV632(requestedNumber);
       e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+    }else if(String(error?.message||"").toLowerCase().includes("row-level security")){
+      showToast("Не вдалося надіслати: онови сторінку та увійди знову");
     }else{
       showToast("Не вдалося надіслати зміни");
     }
@@ -8866,8 +8850,9 @@ function renderPlayerRequestsV589(){
   box.querySelectorAll("[data-approve-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.approveRequest,true));
   box.querySelectorAll("[data-reject-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.rejectRequest,false));
 }
-function openPlayerRequestsV589(){
+async function openPlayerRequestsV589(){
   applyPermissions?.();
+  try{ await loadPlayerAccountSystemV589(); }catch(err){ console.error("player requests refresh",err); }
   renderPlayerRequestsV589();
   $("playerRequestsModal")?.classList.remove("hidden");
 }
@@ -9215,7 +9200,7 @@ let homeVipTouchX=null;
 function latestVipEventV642(){
   const events=[];
   (trainingDays||[]).forEach(day=>{
-    const rows=trainingMvpEligibleRows(day,(trainingStats||[]).filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating))));
+    const rows=(trainingStats||[]).filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating)));
     if(!rows.length)return;
     const max=Math.max(...rows.map(r=>Number(r.rating)));
     events.push({date:day.training_date||"",type:"training",rating:max,winners:rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001)});
