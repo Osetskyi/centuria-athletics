@@ -1,5 +1,5 @@
 // v7.55 Bottom navigation lowered globally
-const CACHE_VERSION="centuria-pwa-v846-player-requests-fix";
+const CACHE_VERSION="centuria-pwa-v846-player-requests-50pct-record-fix";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();
