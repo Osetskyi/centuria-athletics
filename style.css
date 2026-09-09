@@ -19732,3 +19732,24 @@ html[data-site-theme="light"] .training-rank-row .mvp-ineligible-note,
 html.light-theme .training-rank-row .mvp-ineligible-note{
   color:#8b6f2b!important;
 }
+
+
+/* v8.99 — permanent Goalkeeper of the Month slot */
+.general-goalkeeper-empty{
+  min-height:108px;
+}
+.general-goalkeeper-empty .general-award-empty-space{
+  display:block;
+  width:50px;
+  height:50px;
+}
+.general-goalkeeper-empty .general-award-empty-label{
+  color:#777;
+  font-size:7px;
+  line-height:1.25;
+  text-transform:uppercase;
+}
+html[data-site-theme="light"] .general-goalkeeper-empty .general-award-empty-label,
+html.light-theme .general-goalkeeper-empty .general-award-empty-label{
+  color:#8e867a;
+}

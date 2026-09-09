@@ -6869,7 +6869,19 @@ function renderGeneralAwards(){
   if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
   if(assistant)awardCards.push(card("🎯","АСИСТЕНТ",assistant,`${assistant.stats.assists}`));
   if(defenderOfMonth)awardCards.push(card("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth,defenderOfMonth.adjusted.toFixed(2)));
-  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,Number(goalkeeperOfMonth.stats.average||0).toFixed(2)));
+
+  // Goalkeeper of the Month is always visible in the monthly awards grid.
+  // If no goalkeeper has reached the monthly minimum yet, keep the slot empty
+  // and show a clear status instead of hiding the award completely.
+  if(goalkeeperOfMonth){
+    awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,Number(goalkeeperOfMonth.stats.average||0).toFixed(2)));
+  }else{
+    awardCards.push(`<div class="general-award-card general-goalkeeper-empty">
+      <small>🧤 ВОРОТАР МІСЯЦЯ</small>
+      <span class="general-award-empty-space" aria-hidden="true"></span>
+      <strong class="general-award-empty-label">НЕДОСТАТНЬО МАТЧІВ</strong>
+    </div>`);
+  }
   if(generalMonthlyMvpWinners.length){
     const first=generalMonthlyMvpWinners[0];
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
@@ -6881,9 +6893,9 @@ function renderGeneralAwards(){
     </div>`);
   }
 
-  $("generalAwardsList").innerHTML=data.length
-    ?(awardCards.join("")||`<div class="empty-state"><strong>НЕМАЄ ГРАВЦІВ, ЯКІ ЗІГРАЛИ 30% МАТЧІВ</strong><span>Потрібно мінімум ${minMatches} матчів.</span></div>`)
-    :`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
+  // The goalkeeper award slot is permanent, so render the award grid even
+  // before anyone reaches the monthly minimum.
+  $("generalAwardsList").innerHTML=awardCards.join("");
 
   if(generalMonthlyMvpWinners.length){paintGeneralMonthlyMvp();bindGeneralMonthlyMvp();restartGeneralMonthlyMvp();}
   $("generalAwardsNext").disabled=generalMonthKey(generalAwardsMonthCursor)>=generalMonthKey(now);
