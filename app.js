@@ -6709,6 +6709,13 @@ function renderGeneralRecords(){
 }
 
 function generalMonthKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;}
+
+// Goalkeeper recognition for monthly awards. Older player rows can contain
+// either the internal code (GK) or the visible Ukrainian label (ВРТ).
+function generalIsGoalkeeper(player){
+  const pos=String(player?.primaryPos ?? player?.primary_position ?? "").trim().toUpperCase();
+  return pos==="GK" || pos==="ВРТ" || pos==="ГК" || pos==="GOALKEEPER";
+}
 function generalMonthAggregate(player,date){
   const key=generalMonthKey(date);
   const rows=generalPlayerRows(player.id).filter(r=>{
@@ -6840,8 +6847,9 @@ function renderGeneralAwards(){
   };
   const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
-  const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-  // Goalkeeper of the Month is decided by the goalkeeper's average rating only.
+  // The same monthly minimum applies to goalkeepers. Among eligible
+  // goalkeepers the winner is selected ONLY by raw average rating.
+  const goalkeepers=eligible.filter(x=>generalIsGoalkeeper(x.player));
   const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
 
   const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
@@ -6962,8 +6970,9 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     };
     const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
-    const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-    // Goalkeeper of the Month is decided by the goalkeeper's average rating only.
+    // The same monthly minimum applies to goalkeepers. Among eligible
+    // goalkeepers the winner is selected ONLY by raw average rating.
+    const goalkeepers=eligible.filter(x=>generalIsGoalkeeper(x.player));
     const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
 
     const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
