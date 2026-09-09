@@ -6841,8 +6841,8 @@ function renderGeneralAwards(){
   const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
   const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-  const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
-  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+  // Goalkeeper of the Month is decided by the goalkeeper's average rating only.
+  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
 
   const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
   generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -6861,7 +6861,7 @@ function renderGeneralAwards(){
   if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
   if(assistant)awardCards.push(card("🎯","АСИСТЕНТ",assistant,`${assistant.stats.assists}`));
   if(defenderOfMonth)awardCards.push(card("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth,defenderOfMonth.adjusted.toFixed(2)));
-  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,goalkeeperOfMonth.adjusted.toFixed(2)));
+  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,Number(goalkeeperOfMonth.stats.average||0).toFixed(2)));
   if(generalMonthlyMvpWinners.length){
     const first=generalMonthlyMvpWinners[0];
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
@@ -6963,8 +6963,8 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
     const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-    const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
-    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+    // Goalkeeper of the Month is decided by the goalkeeper's average rating only.
+    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
 
     const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
     const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -6976,7 +6976,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     push(scorer,"Бомбардир місяця","⚽",`${modeLabel} • ${scorer?.stats?.goals||0} голів`);
     push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
     push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • ${Number(defenderOfMonth?.awardScore||0).toFixed(1)} бала`);
-    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • ${Number(goalkeeperOfMonth?.awardScore||0).toFixed(1)} бала`);
+    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • рейтинг ${Number(goalkeeperOfMonth?.stats?.average||0).toFixed(2)}`);
     mvpWinners.forEach(x=>push(x,"MVP місяця","🏆",`${modeLabel} • ${x.stats.mvp||0} MVP`));
 
     return {teamMatches,minMatches,awards};
