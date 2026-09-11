@@ -19753,8 +19753,3 @@ html[data-site-theme="light"] .general-goalkeeper-empty .general-award-empty-lab
 html.light-theme .general-goalkeeper-empty .general-award-empty-label{
   color:#8e867a;
 }
-
-
-/* v9.00 — safe player-change request target */
-.request-target-player{margin:8px 0 10px;padding:9px 11px;border-radius:10px;background:rgba(127,127,127,.10);font-size:12px;letter-spacing:.03em}
-.request-link-mismatch{outline:2px solid rgba(220,70,70,.65)}
