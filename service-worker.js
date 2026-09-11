@@ -1,5 +1,5 @@
 // v7.55 Bottom navigation lowered globally
-const CACHE_VERSION="centuria-pwa-v899-gk-month-always-visible";
+const CACHE_VERSION="centuria-pwa-v900-player-request-link-fix";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();

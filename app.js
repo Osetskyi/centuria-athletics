@@ -8730,13 +8730,53 @@ async function deletePlayerAwardV589(id){
 }
 $("addPlayerAwardBtn")?.addEventListener("click",addPlayerAwardV589);
 
-function openMyPlayerModalV589(){
+async function getLiveLinkedPlayerForRequestV900(){
+  if(!sb||!authUser)return null;
+
+  // Always resolve the link from Supabase immediately before showing/sending
+  // a change request. This prevents a stale authProfile from targeting a
+  // different footballer after an admin changes account↔player linkage.
+  const {data:profile,error:profileError}=await sb.from("profiles")
+    .select("user_id,display_name,avatar_url,role,player_id,access_status,created_at")
+    .eq("user_id",authUser.id)
+    .maybeSingle();
+  if(profileError){
+    console.error("v9.00 live player profile",profileError);
+    return null;
+  }
+  if(!profile?.player_id){
+    if(profile)authProfile={...(authProfile||{}),...profile};
+    return null;
+  }
+
+  authProfile={...(authProfile||{}),...profile};
+
+  const {data:dbPlayer,error:playerError}=await sb.from("players")
+    .select("*")
+    .eq("id",profile.player_id)
+    .maybeSingle();
+  if(playerError){
+    console.error("v9.00 live linked player",playerError);
+    return null;
+  }
+  if(!dbPlayer)return null;
+
+  const livePlayer=playerFromDb(dbPlayer);
+  const idx=players.findIndex(x=>x.id===livePlayer.id);
+  if(idx>=0)players[idx]=livePlayer;
+  else players.push(livePlayer);
+  return livePlayer;
+}
+
+async function openMyPlayerModalV589(){
   const modal=$("myPlayerModal"),box=$("myPlayerModalBody");
   if(!modal||!box)return;
-  const p=myLinkedPlayerV589();
+  box.innerHTML='<div class="empty-state"><strong>ЗАВАНТАЖЕННЯ…</strong></div>';
+  modal.classList.remove("hidden");
+  const p=await getLiveLinkedPlayerForRequestV900();
   if(!p){
     box.innerHTML='<div class="empty-state"><strong>АКАУНТ ЩЕ НЕ ПРИВ’ЯЗАНИЙ</strong><span>Адміністратор має прив’язати твій акаунт до картки гравця.</span></div>';
-    modal.classList.remove("hidden");return;
+    return;
   }
   const pending=playerChangeRequestsV589.some(r=>r.player_id===p.id&&r.user_id===authUser.id&&r.status==="pending");
   const posOptions=POSITIONS.map(([v,l])=>`<option value="${v}" ${p.primaryPos===v?"selected":""}>${l}</option>`).join("");
@@ -8746,7 +8786,7 @@ function openMyPlayerModalV589(){
   box.innerHTML=`
     <div class="my-player-summary"><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><div><strong>${esc(p.name)}</strong><span>${POS_LABEL[p.primaryPos]||p.primaryPos} · #${p.number||"—"}</span></div></div>
     ${pending?'<div class="pending-request">⏳ Є запит, який очікує підтвердження.</div>':""}
-    <form id="myPlayerRequestForm" class="my-player-edit-grid">
+    <form id="myPlayerRequestForm" class="my-player-edit-grid" data-player-id="${esc(p.id)}">
       <label>НІК / ІМ’Я<input name="name" value="${esc(p.name||"")}" required></label>
       <label>НОМЕР<input name="shirt_number" type="number" min="0" max="99" value="${p.number??""}"></label>
       <label>ВІК<input name="age" type="number" min="10" max="99" value="${p.age??""}"></label>
@@ -8802,29 +8842,36 @@ function occupiedShirtNumberV631(number,excludePlayerId=null){
 
 async function submitMyPlayerRequestV589(e){
   e.preventDefault();
-  let p=myLinkedPlayerV589();
+  const form=e.currentTarget;
+  const formPlayerId=String(form?.dataset?.playerId||"");
+  const p=await getLiveLinkedPlayerForRequestV900();
   if(!p){
-    try{ await refreshAuth(); }catch(_e){}
-    p=myLinkedPlayerV589();
-  }
-  if(!p){
-    showToast("Не вдалося знайти прив’язаного гравця. Онови сторінку.");
+    showToast("Не вдалося знайти актуальну прив’язку гравця");
     return;
   }
-  const fd=new FormData(e.currentTarget);
+
+  // The form may have been opened before an admin changed this account link.
+  // Never submit the old form against the new (or another) player.
+  if(!formPlayerId || formPlayerId!==String(p.id)){
+    showToast("Прив’язка гравця змінилась. Форму оновлено.");
+    await openMyPlayerModalV589();
+    return;
+  }
+
+  const fd=new FormData(form);
 
   const numberRaw=String(fd.get("shirt_number")??"").trim();
   const requestedNumber=numberRaw===""?null:Number(numberRaw);
   if(requestedNumber!==null){
     if(!Number.isInteger(requestedNumber) || requestedNumber<0 || requestedNumber>99){
       showToast("Номер має бути від 0 до 99");
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      form.querySelector('[name="shirt_number"]')?.focus();
       return;
     }
     const occupied=occupiedShirtNumberV631(requestedNumber,p.id);
     if(occupied){
       showToast(`Номер #${requestedNumber} вже зайнятий`);
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      form.querySelector('[name="shirt_number"]')?.focus();
       return;
     }
   }
@@ -8850,7 +8897,7 @@ async function submitMyPlayerRequestV589(e){
     note:String(fd.get("note")||"").trim(),
     card_image_url:cardUrl
   };
-  const submitBtn=e.currentTarget.querySelector('button[type="submit"]');
+  const submitBtn=form.querySelector('button[type="submit"]');
   if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.oldText=submitBtn.textContent;submitBtn.textContent="НАДСИЛАННЯ…";}
 
   const {data:created,error}=await sb.from("player_change_requests")
@@ -8864,7 +8911,7 @@ async function submitMyPlayerRequestV589(e){
     console.error("player change request insert",error);
     if(isOccupiedNumberErrorV632(error) || String(error?.message||"").toLowerCase().includes("зайнятий")){
       showOccupiedNumberMessageV632(requestedNumber);
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      form.querySelector('[name="shirt_number"]')?.focus();
     }else if(String(error?.message||"").toLowerCase().includes("row-level security")){
       showToast("Не вдалося надіслати: онови сторінку та увійди знову");
     }else{
@@ -8874,7 +8921,7 @@ async function submitMyPlayerRequestV589(e){
   }
   showToast("Зміни надіслано адміністратору");
   await loadPlayerAccountSystemV589();
-  openMyPlayerModalV589();
+  await openMyPlayerModalV589();
 }
 
 function closeMyPlayerModalV589(){$("myPlayerModal")?.classList.add("hidden")}
@@ -8890,6 +8937,7 @@ function renderPlayerRequestsV589(){
   box.innerHTML=rows.map(r=>{
     const p=players.find(x=>x.id===r.player_id);
     const prof=accountProfilesV589.find(x=>x.user_id===r.user_id);
+    const linkMismatch=!!(prof && String(prof.player_id||"")!==String(r.player_id||""));
     const d=r.proposed_data||{};
     const diffs=Object.entries(d).map(([k,v])=>{
       let oldv="";
@@ -8906,11 +8954,13 @@ function renderPlayerRequestsV589(){
       const nv=Array.isArray(v)?v.join(", "):(k==="card_image_url"?(v?"Нова картка":"Немає"):String(v??"—"));
       return `<div class="request-diff"><span>${fieldLabelV589(k)}</span><small>${esc(String(oldv??"—"))}</small><b>→ ${esc(nv)}</b></div>`;
     }).join("");
-    return `<div class="player-request-card">
-      <div class="request-head"><strong>${esc(prof?.display_name||p?.name||"Гравець")}</strong><span>${new Date(r.created_at).toLocaleString("uk-UA")}</span></div>
+    return `<div class="player-request-card${linkMismatch?" request-link-mismatch":""}">
+      <div class="request-head"><strong>${esc(prof?.display_name||"Гравець")}</strong><span>${new Date(r.created_at).toLocaleString("uk-UA")}</span></div>
+      <div class="request-target-player">ФУТБОЛІСТ: <b>${esc(p?.name||"Невідомий / видалений")}</b>${p?.number!==undefined&&p?.number!==""?` · #${esc(p.number)}`:""}</div>
+      ${linkMismatch?'<div class="pending-request">⚠️ КОНФЛІКТ ПРИВ’ЯЗКИ: цей запит вказує не на того футболіста, який зараз прив’язаний до акаунта. Підтвердження заблоковано.</div>':""}
       ${diffs}
       ${canReview?`<div class="request-actions player-request-actions">
-        <button type="button" class="gold-btn request-approve-btn" data-approve-request="${r.id}">ПІДТВЕРДИТИ</button>
+        ${linkMismatch?"":`<button type="button" class="gold-btn request-approve-btn" data-approve-request="${r.id}">ПІДТВЕРДИТИ</button>`}
         <button type="button" class="danger-btn request-reject-btn" data-reject-request="${r.id}">ВІДХИЛИТИ</button>
       </div>`:""}
     </div>`;
@@ -8932,6 +8982,23 @@ async function reviewPlayerRequestV589(id,approve){
   if(!(isAdminV589()||authRole==="editor"))return;
   const r=playerChangeRequestsV589.find(x=>x.id===id);if(!r)return;
   if(approve){
+    // Re-check the sender's current account↔player link at approval time.
+    // A mismatched request must never be able to modify another footballer.
+    const {data:senderProfile,error:senderProfileError}=await sb.from("profiles")
+      .select("user_id,player_id")
+      .eq("user_id",r.user_id)
+      .maybeSingle();
+    if(senderProfileError){
+      console.error("v9.00 request sender link",senderProfileError);
+      showToast("Не вдалося перевірити прив’язку відправника");
+      return;
+    }
+    if(!senderProfile || String(senderProfile.player_id||"")!==String(r.player_id||"")){
+      showToast("Запит заблоковано: футболіст не збігається з прив’язкою акаунта");
+      await loadPlayerAccountSystemV589();
+      renderPlayerRequestsV589();
+      return;
+    }
     const d=r.proposed_data||{};
     const note=encodePlayerNote(d.status||"",d.note||"");
     const payload={
