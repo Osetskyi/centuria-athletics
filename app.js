@@ -170,7 +170,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.0",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.1",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -11815,12 +11815,12 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.0 — keep the Settings footer in sync with the deployed build. */
-function syncSettingsVersionV1200(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.0");
+/* v12.1 — keep the Settings footer in sync with the deployed build. */
+function syncSettingsVersionV1210(){
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.1");
 }
 if(document.readyState==="loading"){
-  document.addEventListener("DOMContentLoaded",syncSettingsVersionV1200);
+  document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
 }else{
-  syncSettingsVersionV1200();
+  syncSettingsVersionV1210();
 }

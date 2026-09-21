@@ -1309,6 +1309,47 @@
     };
     reader.readAsDataURL(file);
   });
+  // v12.1: Tournament covers are NOT club crests. Preserve enough pixels for
+  // Retina screens; keep encoded size modest because covers live in Arena state.
+  const readTournamentCoverFile=file=>new Promise((resolve,reject)=>{
+    if(!file||!/^image\//.test(String(file.type||""))){reject(new Error("Обери зображення для обкладинки"));return;}
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("Не вдалося прочитати файл"));
+    reader.onload=()=>{
+      const image=new Image();
+      image.onerror=()=>reject(new Error("Не вдалося відкрити зображення. Спробуй JPG або PNG"));
+      image.onload=()=>{
+        try{
+          const iw=image.naturalWidth||0,ih=image.naturalHeight||0;
+          if(!iw||!ih)throw new Error("Не вдалося визначити розмір фото");
+          const canvas=document.createElement("canvas");
+          const ctx=canvas.getContext("2d");
+          if(!ctx)throw new Error("Не вдалося обробити фото");
+          ctx.imageSmoothingEnabled=true;
+          ctx.imageSmoothingQuality="high";
+          const longSide=Math.max(iw,ih);
+          // A landscape 1600px cover stays crisp at typical mobile 2x/3x DPR.
+          for(const limit of [1600,1440,1280,1120]){
+            const scale=Math.min(1,limit/longSide);
+            canvas.width=Math.max(1,Math.round(iw*scale));
+            canvas.height=Math.max(1,Math.round(ih*scale));
+            ctx.imageSmoothingEnabled=true;
+            ctx.imageSmoothingQuality="high";
+            ctx.drawImage(image,0,0,canvas.width,canvas.height);
+            for(const quality of [.92,.86,.79]){
+              let result=canvas.toDataURL("image/webp",quality);
+              if(!result.startsWith("data:image/webp"))result=canvas.toDataURL("image/jpeg",quality);
+              // Approximately <= 825 kB encoded, without bloating shared state.
+              if(result.length<=1100000){resolve(result);return;}
+            }
+          }
+          throw new Error("Фото занадто велике. Спробуй JPG або PNG меншого розміру");
+        }catch(err){reject(err);}
+      };
+      image.src=String(reader.result||"");
+    };
+    reader.readAsDataURL(file);
+  });
   loadClubDatabase();
   // v9.95: no placeholder winners. History starts empty until a real tournament finishes.
   runHistoryClearMigrationV994();
@@ -1946,7 +1987,8 @@
       const formatLabel=leagueFormatLabelV1093[testCompetition.leagueFormat]||'ОДНЕ КОЛО';
       const cover=testCompetition.cover?`<div class="arena-league-cover-v1093"><img src="${esc(testCompetition.cover)}" alt="${esc(testCompetition.title)}"></div>`:'';
       const drawButton=testCompetition.draw?.kind==='league' ? `<div class="arena-league-draw-trigger-v1095"><button type="button" class="arena-cup-draw-toggle-v1032" onclick="ArenaV852.openLeagueDrawAnimationV1095()"><span>🎲 ПЕРЕГЛЯНУТИ ЖЕРЕБКУВАННЯ</span><small>ЗАФІКСОВАНІ ГРАВЦІ ТА КЛУБИ · БЕЗ ПЕРЕТАСУВАННЯ</small></button></div>` : '';
-      return `${cover}<div class="arena-route-head-v920 arena-league-head-v920"><h2>${esc(testCompetition.title||"CENTURIA LEAGUE")}</h2><p class="arena-gold-v852">${testCompetition.participants.length} УЧАСНИКІВ • ${esc(formatLabel)} • ТУР ${round?.round||testCompetition.rounds.length}/${testCompetition.leagueFormat==='swiss'?testCompetition.swissRounds:testCompetition.rounds.length}</p></div>${drawButton}${tabs(t)}${tabStage(body+(tab==='round'?swissRepairButton:'')+advanceButton,t,tab,'ArenaV852.setTab')}`;
+      const replaceCover=isArenaAdmin()?`<div class="arena-live-cover-edit-v121"><button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaLeagueLiveCoverV121')?.click()">🖼 ЗАМІНИТИ ФОТО ЛІГИ</button><input id="arenaLeagueLiveCoverV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'league','live')"></div>`:'';
+      return `${cover}${replaceCover}<div class="arena-route-head-v920 arena-league-head-v920"><h2>${esc(testCompetition.title||"CENTURIA LEAGUE")}</h2><p class="arena-gold-v852">${testCompetition.participants.length} УЧАСНИКІВ • ${esc(formatLabel)} • ТУР ${round?.round||testCompetition.rounds.length}/${testCompetition.leagueFormat==='swiss'?testCompetition.swissRounds:testCompetition.rounds.length}</p></div>${drawButton}${tabs(t)}${tabStage(body+(tab==='round'?swissRepairButton:'')+advanceButton,t,tab,'ArenaV852.setTab')}`;
     }
     if(leagueSignupPoll){
       const poll=leagueSignupPoll,ready=poll.phase==='ready'||!cupPollStillActive(poll);
@@ -1961,7 +2003,7 @@
       const admin=isArenaAdmin()?`<div class="arena-cup-poll-admin-actions-v1026">${ready
         ? `<button type="button" class="arena-primary-v852" onclick="ArenaV852.launchLeagueV1093()">🎲 ПРОВЕСТИ ЖЕРЕБКУВАННЯ ТА ЗАПУСТИТИ</button>`
         : `<button type="button" class="arena-secondary-v852" onclick="ArenaV852.closeLeagueRegistrationV1093()">ЗАВЕРШИТИ РЕЄСТРАЦІЮ ДОСТРОКОВО</button>`}
-        <button type="button" class="arena-secondary-v852" onclick="ArenaV852.cancelLeagueRegistrationV1093()">СКАСУВАТИ РЕЄСТРАЦІЮ</button></div>`:'';
+        <button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaLeagueCoverReplaceV121')?.click()">🖼 ЗАМІНИТИ ФОТО</button><input id="arenaLeagueCoverReplaceV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'league')"><button type="button" class="arena-secondary-v852" onclick="ArenaV852.cancelLeagueRegistrationV1093()">СКАСУВАТИ РЕЄСТРАЦІЮ</button></div>`:'';
       const voteActions=me&&!ready?`<div class="arena-cup-poll-actions-v1026"><button type="button" class="arena-primary-v852" onclick="ArenaV852.voteLeagueV1093('yes')">✅ БЕРУ УЧАСТЬ</button><button type="button" class="arena-secondary-v852" onclick="ArenaV852.voteLeagueV1093('no')">✖ НЕ БЕРУ</button></div>`:'';
       const clubsOpen=`<details class="arena-league-registration-section-v1093"><summary>⚽ КОМАНДИ ЛІГИ · ${(poll.allowedClubs||[]).length}</summary><div class="arena-cup-poll-clubs-grid-v1028">${clubLabels}</div></details>`;
       const playersOpen=`<details class="arena-league-registration-section-v1093"><summary>👥 УЧАСНИКИ · ${confirmed.length} ПІДТВЕРДИЛИ</summary><div class="arena-cup-poll-list-v1026">${labels||'Поки немає учасників'}</div></details>`;
@@ -2002,7 +2044,9 @@
       const drawRows=draw?((draw.pairs||[]).map(pair=>`<div class="arena-cup-draw-pair-v1032"><div>${crestBadge(pair.homeClub,'')}<span><strong>${esc(pair.home)}</strong><small>${esc(pair.homeClub)}</small></span></div><b>VS</b><div>${crestBadge(pair.awayClub,'')}<span><strong>${esc(pair.away)}</strong><small>${esc(pair.awayClub)}</small></span></div></div>`).join('')+(draw.byes||[]).map(x=>`<div class="arena-cup-draw-pair-v1032 bye"><div>${crestBadge(x.club,'')}<span><strong>${esc(x.player)}</strong><small>${esc(x.club)}</small></span></div><b>BYE</b><div><span><strong>Без суперника</strong><small>Прохід далі</small></span></div></div>`).join('')):'';
       const drawBlock=draw?`<div class="arena-cup-draw-shell-v1032"><button class="arena-cup-draw-toggle-v1032 ${cupDrawAnimationOpenV1033?'on':''}" type="button" onclick="ArenaV852.openCupDrawAnimation()"><span>🎲 ЖЕРЕБКУВАННЯ</span><small>ПУСТА СІТКА → РУЛЕТКА → ПАРИ ТА КОМАНДИ</small></button></div>`:'';
       const meta=testCompetition.champion?`${testCompetition.participants.length} УЧАСНИКІВ • ЗАВЕРШЕНО`:`${testCompetition.participants.length} УЧАСНИКІВ • ${r?.label||"АКТИВНИЙ КУБОК"}`;
-      return `${cupHero(testCompetition.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${drawBlock}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`;
+      const liveCover=testCompetition.cover?`<div class="arena-cup-poll-cover-v1026 arena-live-cup-cover-v121"><img src="${esc(testCompetition.cover)}" alt="${esc(testCompetition.title||'CENTURIA CUP')}"></div>`:'';
+      const replaceCover=isArenaAdmin()?`<div class="arena-live-cover-edit-v121"><button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaCupLiveCoverV121')?.click()">🖼 ЗАМІНИТИ ФОТО КУБКА</button><input id="arenaCupLiveCoverV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'cup','live')"></div>`:'';
+      return `${cupHero(testCompetition.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${liveCover}${replaceCover}${drawBlock}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`;
     }
     if(cupSignupPoll){
       const poll=cupSignupPoll;
@@ -2025,7 +2069,7 @@
       const playersPanel=cupPollPanelV1031==='players'?`<div class="arena-cup-poll-detail-panel-v1031"><div class="arena-gold-v852">УЧАСНИКИ ГОЛОСУВАННЯ</div><div class="arena-cup-poll-list-v1026">${participantsHtml||`<div class="arena-cup-poll-detail-empty-v1031">Поки ніхто не долучився.</div>`}</div></div>`:'';
       const drawReady=poll.phase==='draw_ready'||!cupPollStillActive(poll);
       const voteBox=`<div class="arena-cup-poll-actions-v1026">${canVote && !drawReady?`<button class="arena-primary-v852" type="button" onclick="ArenaV852.voteCupSignup('yes')">✅ БЕРУ УЧАСТЬ</button><button class="arena-secondary-v852" type="button" onclick="ArenaV852.voteCupSignup('no')">✖ НЕ БЕРУ</button>`:''}${!canVote&&!drawReady?`<div class="arena-cup-poll-note-v1026">Щоб голосувати, акаунт має бути прив’язаний до твого гравця.</div>`:''}${canVote&&myVote?`<div class="arena-cup-poll-note-v1026">Твій голос: <b>${myVote==='yes'?'беру участь':'не беру участь'}</b>${drawReady?'. Реєстрацію вже завершено.':'. Його можна змінити до завершення голосування.'}</div>`:''}${drawReady&&!isArenaAdmin()?`<div class="arena-cup-draw-wait-v1032"><b>🎲 ОЧІКУЄМО ЖЕРЕБКУВАННЯ</b><span>ADMIN проведе жереб. Після цього тут з’являться твоя команда та суперник.</span></div>`:''}</div>`;
-      const adminActions=isArenaAdmin()?`<div class="arena-cup-poll-admin-actions-v1026">${drawReady?`<button class="arena-primary-v852 arena-cup-draw-now-v1032" type="button" onclick="ArenaV852.conductCupDraw()">🎲 ПРОВЕСТИ ЖЕРЕБКУВАННЯ</button>`:`<button class="arena-secondary-v852" type="button" onclick="ArenaV852.finalizeCupSignupPoll(true)">ЗАВЕРШИТИ РЕЄСТРАЦІЮ ДОСТРОКОВО</button>`}<button class="arena-secondary-v852" type="button" onclick="ArenaV852.cancelCupSignupPoll()">СКАСУВАТИ ГОЛОСУВАННЯ</button></div>`:'';
+      const adminActions=isArenaAdmin()?`<div class="arena-cup-poll-admin-actions-v1026">${drawReady?`<button class="arena-primary-v852 arena-cup-draw-now-v1032" type="button" onclick="ArenaV852.conductCupDraw()">🎲 ПРОВЕСТИ ЖЕРЕБКУВАННЯ</button>`:`<button class="arena-secondary-v852" type="button" onclick="ArenaV852.finalizeCupSignupPoll(true)">ЗАВЕРШИТИ РЕЄСТРАЦІЮ ДОСТРОКОВО</button>`}<button class="arena-secondary-v852 arena-cover-replace-v121" type="button" onclick="document.getElementById('arenaCupCoverReplaceV121')?.click()">🖼 ЗАМІНИТИ ФОТО</button><input id="arenaCupCoverReplaceV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'cup')"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.cancelCupSignupPoll()">СКАСУВАТИ ГОЛОСУВАННЯ</button></div>`:'';
       const stageLead=drawReady?'Реєстрацію завершено. Учасники очікують жеребкування команд і пар першого раунду.':(tab==='bracket'?'Сітка з’явиться після жеребкування.':tab==='round'?'Пари раунду з’являться після жеребкування.':'Поки триває голосування, гравці підтверджують свою участь у Кубку.');
       const body=`<div class="arena-card-v852 arena-cup-poll-card-v1026 ${drawReady?'is-draw-ready-v1032':''}">${poll.cover?`<div class="arena-cup-poll-cover-v1026"><img src="${esc(poll.cover)}" alt="${esc(poll.title||'CENTURIA CUP')}"></div>`:''}<div class="arena-cup-poll-top-v1026"><div><div class="arena-gold-v852">${drawReady?'РЕЄСТРАЦІЮ ЗАВЕРШЕНО':'ГОЛОСУВАННЯ НА КУБОК'}</div><h3>${esc(poll.title||'CENTURIA CUP')}</h3><p class="arena-muted-v852">${stageLead}</p></div><div class="arena-cup-poll-timer-v1026"><strong>${drawReady?'🎲':formatCupPollTimeLeft(poll)}</strong><small>${drawReady?'ЧЕКАЄМО ЖЕРЕБ':'ДО ЗАВЕРШЕННЯ'}</small></div></div>${pollDetailsButtons}${clubsPanel}${playersPanel}<div class="arena-cup-poll-stats-v1026"><span><b>${confirmed.length}</b><small>ПІДТВЕРДИЛИ</small></span><span><b>${pendingVotes.length}</b><small>ОЧІКУЮТЬ</small></span><span><b>${declined.length}</b><small>ВІДМОВИЛИСЬ</small></span></div>${voteBox}${adminActions}</div>`;
       const meta=`${confirmed.length} ПІДТВЕРДИЛИ • ${drawReady?'ОЧІКУЄ ЖЕРЕБКУВАННЯ':`ГОЛОСУВАННЯ ${formatCupPollTimeLeft(poll)}`}`;
@@ -3401,8 +3445,58 @@
       if(!isArenaAdmin())return;
       const file=input?.files?.[0];
       if(!file)return;
-      tournamentDraftCover=await readClubLogoFile(file);
-      renderTournamentCoverPreviewV1026();
+      try{
+        tournamentDraftCover=await readTournamentCoverFile(file);
+        renderTournamentCoverPreviewV1026();
+      }catch(err){
+        input.value='';
+        try{window.showToast?.(String(err?.message||'Не вдалося обробити фото'))}catch(_e){}
+      }
+    },
+    async replaceTournamentCover(input,kind,scope='poll'){
+      if(!isArenaAdmin())return;
+      const file=input?.files?.[0];
+      if(!file)return;
+      const pollKind=kind==='league'?'league':'cup';
+      const isLive=scope==='live';
+      const original=isLive?testCompetition:(pollKind==='league'?leagueSignupPoll:cupSignupPoll);
+      const originalId=String(original?.id||'');
+      if(!originalId||String(original.kind)!==pollKind){
+        input.value='';window.showToast?.('Цей турнір уже змінився. Онови сторінку');return;
+      }
+      input.disabled=true;
+      try{
+        const cover=await readTournamentCoverFile(file);
+        const api=arenaStateApiV1012();
+        if(!api?.isReady?.()||!api?.canWrite?.()||!api?.get||!api?.save){
+          throw new Error('Потрібне підключення до Arena для збереження фото');
+        }
+        clearTimeout(remoteArenaStateSaveTimerV1012);
+        await remoteArenaStateSaveInFlightV1061;
+        const current=await api.get();
+        if(!current)throw new Error('Не вдалося завантажити актуальний турнір');
+        const event=current.active_event;
+        const remotePoll=event?.signup_poll;
+        const remoteComp=current.active_competition;
+        const target=isLive?remoteComp:remotePoll;
+        if(String(target?.id||'')!==originalId||String(target?.kind||'')!==pollKind){
+          throw new Error('Турнір змінився. Онови сторінку і спробуй знову');
+        }
+        const updated=await api.save({
+          activeCompetition:isLive?{...remoteComp,cover}:remoteComp,
+          historyArchive:current.history_archive||{cup:[],league:[]},
+          activeEvent:isLive?event:{...event,signup_poll:{...remotePoll,cover}}
+        });
+        if(!updated||updated.state_key!=='global')throw new Error('Сервер не підтвердив збереження фото');
+        applyRemoteArenaStateV1012(updated,false);
+        draw();
+        window.showToast?.('Обкладинку замінено без скидання турніру та голосів');
+      }catch(err){
+        console.warn('Arena cover replacement',err);
+        window.showToast?.(String(err?.message||'Не вдалося зберегти фото'));
+      }finally{
+        input.value='';input.disabled=false;
+      }
     },
     clearTournamentCover(){
       if(!isArenaAdmin())return;

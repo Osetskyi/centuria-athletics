@@ -35071,3 +35071,9 @@ html[data-site-theme="light"] .toast.player-request-success-v1159,
 html.light-theme .toast.player-request-success-v1159{
   border-color:rgba(44,138,76,.55)!important;
 }
+
+/* v12.1 — keep cover replacement controls compact and file pickers invisible. */
+#screen-arena .arena-cover-replace-v121{font-size:12px!important;min-height:40px!important;}
+#screen-arena input[type=file][hidden]{display:none!important;}
+#screen-arena .arena-live-cover-edit-v121{margin:0 0 12px!important;display:flex!important;justify-content:center!important;}
+#screen-arena .arena-live-cup-cover-v121{margin:0 0 12px!important;width:100%!important;}
