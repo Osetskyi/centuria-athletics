@@ -85,6 +85,7 @@ const FORMATIONS = {
 
 let db;
 let players = [];
+window.getCenturiaArenaPlayers=()=>Array.isArray(players)?players.map(p=>({id:p?.id||"",name:String(p?.name||"").trim(),cardImage:p?.cardImage||"",number:p?.number||"",primaryPos:p?.primaryPos||"",status:p?.status||""})).filter(p=>p.name):[];
 let squads = [];
 
 const LOCAL_SQUADS_FALLBACK_KEY="ca_saved_squads_fallback_v780";
@@ -167,7 +168,9 @@ function pushSupported(){
 async function registerPushServiceWorker(){
   if(!pushSupported())return null;
   try{
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js",{scope:"/",updateViaCache:"none"});
+    const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
+    await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.0",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -417,6 +420,14 @@ function applyPermissions(){
       btn.textContent = "ВХІД / РЕЄСТРАЦІЯ";
       btn.classList.remove("is-admin","is-editor");
     }
+  }
+
+  // v10.05 — Arena role badge is real-account based, never hard-coded.
+  const arenaAdminBadge=$("arenaAdminBadgeV1005");
+  if(arenaAdminBadge){
+    const isAdmin=authRole==="admin";
+    arenaAdminBadge.hidden=!isAdmin;
+    arenaAdminBadge.style.display=isAdmin?"":"none";
   }
 }
 
@@ -726,19 +737,8 @@ async function refreshAuth(){
   // critical datasets have settled so the player ID can always resolve.
   try{ await loadLatestMvp(); }catch(err){ console.warn("Home MVP refresh error",err); }
 
-  // v8.46 player-request reliability fix: refresh the account/player request
-  // system only after the authenticated profile and player list are ready.
-  // This removes the page-load race where ADMIN could keep an empty request
-  // cache even though requests already existed in Supabase.
-  try{
-    if(typeof loadPlayerAccountSystemV589==="function") await loadPlayerAccountSystemV589();
-  }catch(err){ console.warn("Player request refresh error",err); }
-
   refreshTacticalBoardPermissions();
   if($("screen-tactical-board")?.classList.contains("active")){ await loadTacticalBoards(); renderTacticalBoard(); }
-  if(authUser && $("screen-chat")?.classList.contains("active")){
-    await maybeWeeklyChatCleanup();
-  }
 
   const rest=await Promise.allSettled([squadsPromise,secondaryPromise]);
   rest.forEach(r=>{if(r.status==="rejected")console.error("Cloud refresh error",r.reason);});
@@ -1057,28 +1057,45 @@ async function clearStore(store){
 }
 function uid(){return (crypto.randomUUID && crypto.randomUUID()) || (Date.now()+"-"+Math.random().toString(16).slice(2))}
 function esc(s=""){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
-function showToast(text){
-  const t=$("toast");t.textContent=text;t.classList.add("show");
-  clearTimeout(showToast._t);showToast._t=setTimeout(()=>t.classList.remove("show"),2500);
+function showToast(text,{duration=2500,playerRequestSuccess=false}={}){
+  const t=$("toast");if(!t)return;
+  t.textContent=text;
+  t.classList.toggle("player-request-success-v1159",playerRequestSuccess);
+  t.classList.add("show");
+  clearTimeout(showToast._t);
+  showToast._t=setTimeout(()=>t.classList.remove("show","player-request-success-v1159"),duration);
 }
 function formationName(k){return ({"451":"4-5-1","352":"3-5-2","4411":"4-4-1-1"})[k] || "4-5-1"}
 
 function openArenaV664(mode=""){
-  // Production v8.46: Arena is intentionally closed until the section is finished.
-  showToast('Розділ «Арена» поки недоступний');
+  /* v8.52 — Arena is now a normal SPA section, exactly like Players/Tactics/Chat/Gatherings. */
+  if(window.ArenaV852?.open) window.ArenaV852.open(mode);
+  navigate("arena");
 }
 window.openArenaV664=openArenaV664;
 
-function navigate(name){
-  if(name==="arena"){
-    openArenaV664();
-    return;
-  }
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-  $("screen-"+name).classList.add("active");
+function syncBottomNavV964(targetName=""){
   const nav=$("bottomNav");
-  nav.classList.toggle("hidden-nav",name==="home" || name==="calendar" || name==="settings" || name==="tactical-board" || name==="squads");
-  nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",b.dataset.nav===(name==="tactical-board"?"tactics":name)));
+  if(!nav) return;
+  let name=targetName;
+  if(!name){
+    const active=document.querySelector(".screen.active");
+    name=active?.id?.replace(/^screen-/,"") || "";
+  }
+  const visibleTabs=new Set(["players","tactics","chat","gatherings","arena"]);
+  const activeKey=(name==="tactical-board" || name==="squads") ? "tactics" : name;
+  const show=visibleTabs.has(activeKey);
+  nav.classList.toggle("hidden-nav",!show);
+  nav.querySelectorAll("button").forEach(b=>b.classList.toggle("active",show && b.dataset.nav===activeKey));
+}
+window.syncBottomNavV964=syncBottomNavV964;
+
+function navigate(name){
+  const screen=$("screen-"+name);
+  if(!screen) return;
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  screen.classList.add("active");
+  syncBottomNavV964(name);
   if(name==="home") loadHomeNextEvent();
   if(name==="players") renderPlayers();
   if(name==="tactics") renderPitch();
@@ -1087,12 +1104,27 @@ function navigate(name){
   if(name==="gatherings") openGatheringsScreen();
   if(name==="calendar") openCalendarScreen();
   if(name==="tactical-board") openTacticalBoardScreen();
+  if(name==="arena") window.ArenaV852?.draw?.();
   if(name==="settings"){
     setTimeout(refreshPlayerLinkSettingsV590,0);
     setTimeout(syncSettingsV659,0);
   }
 }
 document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.nav)));
+window.navigateCenturia=navigate;
+
+(function setupBottomNavSyncV964(){
+  const run=()=>setTimeout(()=>syncBottomNavV964(),0);
+  window.addEventListener("load",run);
+  window.addEventListener("pageshow",run);
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) run(); });
+  const screens=[...document.querySelectorAll(".screen")];
+  if(window.MutationObserver && screens.length){
+    const observer=new MutationObserver(run);
+    screens.forEach(screen=>observer.observe(screen,{attributes:true,attributeFilter:["class"]}));
+  }
+  run();
+})();
 
 function setupFormOptions(){
   const primary=$("primaryPos");
@@ -2559,32 +2591,54 @@ if(music){
   }
 }
 
-async function startMusicFromSettings(){
-  if(!music || !toggle?.checked)return false;
-  await initWebAudioVolume();
-  setBackgroundVolume(volume?.value||35);
+function startMusicFromSettings(){
+  if(!music || !toggle?.checked)return Promise.resolve(false);
+
+  /*
+    iOS/Safari requires media.play() to happen synchronously inside the
+    user's tap/change gesture. Do not await AudioContext setup before play(),
+    otherwise the browser may treat playback as autoplay and block it.
+  */
   try{
-    await music.play();
+    music.loop=true;
+    music.muted=false;
     setBackgroundVolume(volume?.value||35);
-    setTimeout(()=>setBackgroundVolume(volume?.value||35),60);
-    return true;
+
+    const playPromise=music.play();
+
+    return Promise.resolve(playPromise).then(async()=>{
+      /* Web Audio is only for the in-app volume slider. It is deliberately
+         initialised AFTER playback has already been authorised by the tap. */
+      await initWebAudioVolume();
+      setBackgroundVolume(volume?.value||35);
+      setTimeout(()=>setBackgroundVolume(volume?.value||35),60);
+      return true;
+    }).catch(err=>{
+      console.warn("Music playback blocked",err);
+      return false;
+    });
   }catch(err){
-    console.warn("Music playback blocked",err);
-    return false;
+    console.warn("Music playback failed",err);
+    return Promise.resolve(false);
   }
 }
 
 if(toggle){
-  toggle.addEventListener("change",async()=>{
-    localStorage.setItem("ca_music",toggle.checked?"on":"off");
+  toggle.addEventListener("change",()=>{
     if(toggle.checked){
-      const ok=await startMusicFromSettings();
-      if(!ok){
-        toggle.checked=false;
-        localStorage.setItem("ca_music","off");
-        showToast("Не вдалося увімкнути музику. Перевір гучність пристрою.");
-      }
+      /* startMusicFromSettings() calls music.play() before the current user
+         gesture is allowed to unwind — important for iPhone/PWA Safari. */
+      const startPromise=startMusicFromSettings();
+      localStorage.setItem("ca_music","on");
+      startPromise.then(ok=>{
+        if(!ok){
+          toggle.checked=false;
+          localStorage.setItem("ca_music","off");
+          showToast("Не вдалося увімкнути музику. Спробуй ще раз після натискання на екран.");
+        }
+      });
     }else if(music){
+      localStorage.setItem("ca_music","off");
       music.pause();
     }
   });
@@ -4692,52 +4746,10 @@ async function refreshChatAuthState(){
 }
 
 
-function warsawTodayInfo(){
-  const parts=new Intl.DateTimeFormat("en-CA",{
-    timeZone:"Europe/Warsaw",
-    year:"numeric",
-    month:"2-digit",
-    day:"2-digit",
-    weekday:"short"
-  }).formatToParts(new Date());
-
-  const get=type=>parts.find(p=>p.type===type)?.value||"";
-  return {
-    date:`${get("year")}-${get("month")}-${get("day")}`,
-    weekday:get("weekday")
-  };
-}
-
-async function maybeWeeklyChatCleanup(){
-  if(!sb || !authUser || authRole!=="admin")return false;
-
-  const today=warsawTodayInfo();
-  if(today.weekday!=="Sun")return false;
-
-  const key="ca_chat_cleanup_"+today.date;
-  if(localStorage.getItem(key)==="done")return false;
-
-  try{
-    const {error}=await sb.from("messages").delete().not("id","is",null);
-    if(error)throw error;
-
-    localStorage.setItem(key,"done");
-    chatMessages=[];
-    chatLastSignature="";
-    renderChatMessages(true);
-    showToast("Щотижневе очищення чату виконано");
-    return true;
-  }catch(err){
-    console.error("Weekly chat cleanup failed",err);
-    return false;
-  }
-}
-
 async function openChatScreen(){
   setChatSection("chat");
   await refreshChatAuthState();
   if(authUser){
-    await maybeWeeklyChatCleanup();
     await loadChatMessages(true);
     /* Keep the divider from the previous last-seen point on screen,
        but reset the nav badge after the user actually opens Chat. */
@@ -6709,13 +6721,6 @@ function renderGeneralRecords(){
 }
 
 function generalMonthKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;}
-
-// Goalkeeper recognition for monthly awards. Older player rows can contain
-// either the internal code (GK) or the visible Ukrainian label (ВРТ).
-function generalIsGoalkeeper(player){
-  const pos=String(player?.primaryPos ?? player?.primary_position ?? "").trim().toUpperCase();
-  return pos==="GK" || pos==="ВРТ" || pos==="ГК" || pos==="GOALKEEPER";
-}
 function generalMonthAggregate(player,date){
   const key=generalMonthKey(date);
   const rows=generalPlayerRows(player.id).filter(r=>{
@@ -6847,10 +6852,9 @@ function renderGeneralAwards(){
   };
   const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
-  // The same monthly minimum applies to goalkeepers. Among eligible
-  // goalkeepers the winner is selected ONLY by raw average rating.
-  const goalkeepers=eligible.filter(x=>generalIsGoalkeeper(x.player));
-  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
+  const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
+  const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
+  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
 
   const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
   generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -6869,19 +6873,7 @@ function renderGeneralAwards(){
   if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
   if(assistant)awardCards.push(card("🎯","АСИСТЕНТ",assistant,`${assistant.stats.assists}`));
   if(defenderOfMonth)awardCards.push(card("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth,defenderOfMonth.adjusted.toFixed(2)));
-
-  // Goalkeeper of the Month is always visible in the monthly awards grid.
-  // If no goalkeeper has reached the monthly minimum yet, keep the slot empty
-  // and show a clear status instead of hiding the award completely.
-  if(goalkeeperOfMonth){
-    awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,Number(goalkeeperOfMonth.stats.average||0).toFixed(2)));
-  }else{
-    awardCards.push(`<div class="general-award-card general-goalkeeper-empty">
-      <small>🧤 ВОРОТАР МІСЯЦЯ</small>
-      <span class="general-award-empty-space" aria-hidden="true"></span>
-      <strong class="general-award-empty-label">НЕДОСТАТНЬО МАТЧІВ</strong>
-    </div>`);
-  }
+  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,goalkeeperOfMonth.adjusted.toFixed(2)));
   if(generalMonthlyMvpWinners.length){
     const first=generalMonthlyMvpWinners[0];
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
@@ -6893,9 +6885,9 @@ function renderGeneralAwards(){
     </div>`);
   }
 
-  // The goalkeeper award slot is permanent, so render the award grid even
-  // before anyone reaches the monthly minimum.
-  $("generalAwardsList").innerHTML=awardCards.join("");
+  $("generalAwardsList").innerHTML=data.length
+    ?(awardCards.join("")||`<div class="empty-state"><strong>НЕМАЄ ГРАВЦІВ, ЯКІ ЗІГРАЛИ 30% МАТЧІВ</strong><span>Потрібно мінімум ${minMatches} матчів.</span></div>`)
+    :`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
 
   if(generalMonthlyMvpWinners.length){paintGeneralMonthlyMvp();bindGeneralMonthlyMvp();restartGeneralMonthlyMvp();}
   $("generalAwardsNext").disabled=generalMonthKey(generalAwardsMonthCursor)>=generalMonthKey(now);
@@ -6982,10 +6974,9 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     };
     const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
 
-    // The same monthly minimum applies to goalkeepers. Among eligible
-    // goalkeepers the winner is selected ONLY by raw average rating.
-    const goalkeepers=eligible.filter(x=>generalIsGoalkeeper(x.player));
-    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>Number(x.stats.average)||0);
+    const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
+    const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
+    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
 
     const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
     const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -6997,7 +6988,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     push(scorer,"Бомбардир місяця","⚽",`${modeLabel} • ${scorer?.stats?.goals||0} голів`);
     push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
     push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • ${Number(defenderOfMonth?.awardScore||0).toFixed(1)} бала`);
-    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • рейтинг ${Number(goalkeeperOfMonth?.stats?.average||0).toFixed(2)}`);
+    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • ${Number(goalkeeperOfMonth?.awardScore||0).toFixed(1)} бала`);
     mvpWinners.forEach(x=>push(x,"MVP місяця","🏆",`${modeLabel} • ${x.stats.mvp||0} MVP`));
 
     return {teamMatches,minMatches,awards};
@@ -7443,10 +7434,6 @@ if(sb){
     .on("postgres_changes",{event:"*",schema:"public",table:"player_awards"},async()=>{
       if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
     })
-    .on("postgres_changes",{event:"*",schema:"public",table:"player_change_requests"},async()=>{
-      if(typeof loadPlayerAccountSystemV589==="function")await loadPlayerAccountSystemV589();
-      if(!$('playerRequestsModal')?.classList.contains('hidden'))renderPlayerRequestsV589();
-    })
     .on("postgres_changes",{event:"*",schema:"public",table:"gatherings"},async()=>{
       if($("screen-calendar")?.classList.contains("active"))await loadCalendarData();
     })
@@ -7476,7 +7463,7 @@ if(sb){
 
     await pushWorkerPromise;
     const openTarget=new URLSearchParams(location.search).get("open");
-    if(["players","tactics","squads","chat","gatherings"].includes(openTarget)){
+    if(["players","tactics","chat","gatherings"].includes(openTarget)){
       navigate(openTarget);
     }
   }catch(err){
@@ -8476,10 +8463,580 @@ let playerAwardsV589=[];
 let currentAwardsPlayerIdV589=null;
 
 function isAdminV589(){ return authRole==="admin"; }
+window.getCenturiaAuthRole=()=>String(authRole||"viewer");
+function syncArenaAdminBadgeV1005(){
+  const badge=document.getElementById('arenaAdminBadgeV1005');
+  if(!badge) return;
+  const isAdmin=String(authRole||'viewer').toLowerCase()==='admin';
+  badge.hidden=!isAdmin;
+  badge.style.display=isAdmin?'':'none';
+}
+window.syncArenaAdminBadgeV1005=syncArenaAdminBadgeV1005;
+document.addEventListener('DOMContentLoaded',syncArenaAdminBadgeV1005);
+document.addEventListener('click',e=>{ if(e.target.closest?.('[data-nav="arena"]')) setTimeout(syncArenaAdminBadgeV1005,0); },true);
 function linkedPlayerForProfileV589(profile){
   return profile?.player_id ? players.find(p=>p.id===profile.player_id)||null : null;
 }
 function myLinkedPlayerV589(){ return linkedPlayerForProfileV589(authProfile); }
+
+window.getCenturiaCurrentPlayerName=()=>String(myLinkedPlayerV589()?.name||"").trim();
+window.getCenturiaCurrentPlayerId=()=>String(myLinkedPlayerV589()?.id||"").trim();
+
+/* ==========================================================
+   v10.07 — Supabase-backed Arena friendly challenges
+   Cross-account delivery: sender -> recipient -> choose club -> confirm.
+   ========================================================== */
+let arenaFriendlyRealtimeChannelV1007=null;
+
+async function resolveArenaFriendlyRecipientV1007(playerName){
+  if(!sb || !authUser) return null;
+  const wanted=String(playerName||"").trim().toLocaleLowerCase("uk-UA");
+  if(!wanted) return null;
+
+  let player=(Array.isArray(players)?players:[]).find(
+    p=>String(p?.name||"").trim().toLocaleLowerCase("uk-UA")===wanted
+  )||null;
+
+  if(!player){
+    const {data,error}=await sb.from("players")
+      .select("id,name")
+      .ilike("name",String(playerName||"").trim())
+      .limit(1)
+      .maybeSingle();
+    if(error) throw error;
+    player=data||null;
+  }
+  if(!player?.id) return null;
+
+  const {data:profile,error}=await sb.from("profiles")
+    .select("user_id,display_name,role,player_id,access_status")
+    .eq("player_id",player.id)
+    .limit(1)
+    .maybeSingle();
+  if(error) throw error;
+  if(!profile?.user_id) return null;
+  if(profile.access_status!=="approved" && profile.role!=="admin") return null;
+
+  return {
+    user_id:profile.user_id,
+    display_name:profile.display_name||player.name,
+    player_id:player.id,
+    player_name:player.name
+  };
+}
+
+window.CenturiaArenaFriendlyApi={
+  isReady(){
+    return !!(sb && authUser);
+  },
+  me(){
+    return authUser ? {
+      user_id:authUser.id,
+      display_name:authProfile?.display_name||authUser.email?.split("@")[0]||"Гравець",
+      player_name:String(myLinkedPlayerV589()?.name||"").trim(),
+      role:String(authRole||"viewer")
+    } : null;
+  },
+  async list(){
+    if(!sb || !authUser) return [];
+    const {data,error}=await sb.from("arena_friendly_challenges")
+      .select("*")
+      .order("created_at",{ascending:false});
+    if(error) throw error;
+    return Array.isArray(data)?data:[];
+  },
+  async send({recipientPlayer,senderPlayer,senderClub}={}){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const recipient=await resolveArenaFriendlyRecipientV1007(recipientPlayer);
+    if(!recipient) throw new Error("У цього гравця немає прив’язаного активного акаунта");
+    if(recipient.user_id===authUser.id) throw new Error("Не можна надіслати виклик самому собі");
+
+    const payload={
+      sender_user_id:authUser.id,
+      recipient_user_id:recipient.user_id,
+      sender_player:String(senderPlayer||myLinkedPlayerV589()?.name||"").trim(),
+      recipient_player:String(recipient.player_name||recipientPlayer||"").trim(),
+      sender_club:String(senderClub||"Centuria").trim()||"Centuria",
+      recipient_club:null,
+      status:"pending"
+    };
+
+    const {data,error}=await sb.from("arena_friendly_challenges")
+      .insert(payload)
+      .select("*")
+      .single();
+    if(error) throw error;
+    return data;
+  },
+  async accept(id,recipientClub){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const club=String(recipientClub||"").trim();
+    if(!club) throw new Error("Вибери команду");
+    const {data,error}=await sb.rpc("arena_friendly_accept",{p_challenge_id:id,p_club:club});
+    if(error) throw error;
+    return data;
+  },
+  async decline(id){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const {data,error}=await sb.rpc("arena_friendly_decline",{p_challenge_id:id});
+    if(error) throw error;
+    return data;
+  },
+  async proposeResult(id,homeScore,awayScore){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const hs=Number(homeScore), as=Number(awayScore);
+    if(!Number.isInteger(hs)||!Number.isInteger(as)||hs<0||as<0) throw new Error("Некоректний рахунок");
+    const {data,error}=await sb.rpc("arena_friendly_propose_result",{
+      p_challenge_id:id,
+      p_home_score:hs,
+      p_away_score:as
+    });
+    if(error) throw error;
+    return data;
+  },
+  async confirmResult(id){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const {data,error}=await sb.rpc("arena_friendly_confirm_result",{p_challenge_id:id});
+    if(error) throw error;
+    return data;
+  },
+  async rejectResult(id){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    const {data,error}=await sb.rpc("arena_friendly_reject_result",{p_challenge_id:id});
+    if(error) throw error;
+    return data;
+  },
+  async adminResolveResult(id,accept){
+    if(!sb||!authUser||String(authRole||'').toLowerCase()!=='admin')throw new Error('Тільки ADMIN');
+    const {data,error}=await sb.rpc('centuria_arena_friendly_admin_resolve_v1067',{
+      p_challenge_id:id,p_accept:!!accept
+    });
+    if(error)throw new Error(error.message||'Не вдалося підтвердити результат');
+    return data;
+  },
+  async saveResult(id,homeScore,awayScore){
+    if(!sb || !authUser) throw new Error("Потрібно увійти в акаунт");
+    if(String(authRole||"viewer").toLowerCase()!=="admin") throw new Error("Тільки ADMIN може внести результат одразу");
+    const hs=Number(homeScore), as=Number(awayScore);
+    if(!Number.isInteger(hs)||!Number.isInteger(as)||hs<0||as<0) throw new Error("Некоректний рахунок");
+    const {data,error}=await sb.rpc("arena_friendly_admin_set_result",{
+      p_challenge_id:id,
+      p_home_score:hs,
+      p_away_score:as
+    });
+    if(error) throw error;
+    return data;
+  },
+  subscribe(onChange){
+    if(!sb || !authUser || typeof onChange!=="function") return null;
+    try{
+      if(arenaFriendlyRealtimeChannelV1007){
+        sb.removeChannel(arenaFriendlyRealtimeChannelV1007);
+        arenaFriendlyRealtimeChannelV1007=null;
+      }
+      arenaFriendlyRealtimeChannelV1007=sb.channel(`arena-friendly-${authUser.id}-${Date.now()}`)
+        .on("postgres_changes",{
+          event:"*",
+          schema:"public",
+          table:"arena_friendly_challenges"
+        },()=>onChange())
+        .subscribe();
+      return arenaFriendlyRealtimeChannelV1007;
+    }catch(_e){
+      return null;
+    }
+  },
+  unsubscribe(){
+    try{
+      if(sb && arenaFriendlyRealtimeChannelV1007) sb.removeChannel(arenaFriendlyRealtimeChannelV1007);
+    }catch(_e){}
+    arenaFriendlyRealtimeChannelV1007=null;
+  }
+};
+
+/* ==========================================================
+   v10.09 — shared Arena Club Database via Supabase
+   ADMIN writes the canonical club names/emblems; every approved
+   account reads the same club database, so emblems are cross-account.
+   ========================================================== */
+const normalizeArenaClubNameV1009=name=>String(name||'').toLowerCase().trim().replace(/\s+/g,' ');
+
+window.CenturiaArenaClubApi={
+  isReady(){
+    return !!(sb && authUser);
+  },
+  canWrite(){
+    return String(authRole||'viewer').toLowerCase()==='admin';
+  },
+  async list(){
+    if(!sb || !authUser) return [];
+    const {data,error}=await sb.from('arena_clubs')
+      .select('normalized_name,name,logo,updated_at')
+      .order('name',{ascending:true});
+    if(error) throw error;
+    return Array.isArray(data)?data:[];
+  },
+  async upsert({name,logo='',renameFrom=''}={}){
+    if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
+    if(String(authRole||'viewer').toLowerCase()!=='admin') throw new Error('Тільки ADMIN може змінювати базу клубів');
+    const cleanName=String(name||'').trim();
+    if(!cleanName) throw new Error('Вкажи назву клубу');
+    const old=String(renameFrom||'').trim();
+    const newKey=normalizeArenaClubNameV1009(cleanName);
+    const oldKey=normalizeArenaClubNameV1009(old);
+    if(oldKey && oldKey!==newKey){
+      const {error:deleteError}=await sb.from('arena_clubs').delete().eq('normalized_name',oldKey);
+      if(deleteError) throw deleteError;
+    }
+    const {data,error}=await sb.from('arena_clubs')
+      .upsert({
+        normalized_name:newKey,
+        name:cleanName,
+        logo:String(logo||''),
+        updated_at:new Date().toISOString(),
+        updated_by:authUser.id
+      },{onConflict:'normalized_name'})
+      .select('normalized_name,name,logo,updated_at')
+      .single();
+    if(error) throw error;
+    return data;
+  },
+  async upsertMany(clubs=[]){
+    if(!sb || !authUser) return [];
+    if(String(authRole||'viewer').toLowerCase()!=='admin') return [];
+    const rows=(Array.isArray(clubs)?clubs:[])
+      .map(c=>({
+        normalized_name:normalizeArenaClubNameV1009(c?.name),
+        name:String(c?.name||'').trim(),
+        logo:String(c?.logo||''),
+        updated_at:new Date().toISOString(),
+        updated_by:authUser.id
+      }))
+      .filter(r=>r.normalized_name&&r.name);
+    if(!rows.length) return [];
+    // v10.60: this method is used only for one-time migrations of local clubs.
+    // Never let an older browser's blank or stale logo overwrite the shared DB.
+    // Explicit ADMIN edits still go through upsert() above and can update logos.
+    const {data,error}=await sb.from('arena_clubs')
+      .upsert(rows,{onConflict:'normalized_name',ignoreDuplicates:true})
+      .select('normalized_name,name,logo,updated_at');
+    if(error) throw error;
+    return Array.isArray(data)?data:[];
+  },
+  async remove(name){
+    if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
+    if(String(authRole||'viewer').toLowerCase()!=='admin') throw new Error('Тільки ADMIN може змінювати базу клубів');
+    const key=normalizeArenaClubNameV1009(name);
+    if(!key) return;
+    const {error}=await sb.from('arena_clubs').delete().eq('normalized_name',key);
+    if(error) throw error;
+  }
+};
+
+/* ==========================================================
+   v10.11 — shared Arena favorite clubs via Supabase
+   Every approved account reads the same player -> favorite club mapping.
+   Players can update only their own linked player; ADMIN can update anyone.
+   ========================================================== */
+window.CenturiaArenaPlayerPrefsApi={
+  isReady(){
+    return !!(sb && authUser);
+  },
+  canAdminWrite(){
+    return String(authRole||'viewer').toLowerCase()==='admin';
+  },
+  async list(){
+    if(!sb || !authUser) return [];
+    const {data:prefs,error}=await sb.from('arena_player_preferences')
+      .select('player_id,favorite_team,updated_at')
+      .order('updated_at',{ascending:false});
+    if(error) throw error;
+    const rows=Array.isArray(prefs)?prefs:[];
+    const ids=[...new Set(rows.map(r=>r?.player_id).filter(Boolean))];
+    if(!ids.length) return [];
+    const {data:plist,error:perr}=await sb.from('players')
+      .select('id,name')
+      .in('id',ids);
+    if(perr) throw perr;
+    const names=new Map((plist||[]).map(r=>[r.id,r.name]));
+    return rows.map(r=>({
+      player_id:r.player_id,
+      player_name:String(names.get(r.player_id)||'').trim(),
+      favorite_team:String(r.favorite_team||'Centuria').trim()||'Centuria',
+      updated_at:r.updated_at
+    })).filter(r=>r.player_name);
+  },
+  async resolvePlayer(playerName){
+    if(!sb || !authUser) return null;
+    const wanted=String(playerName||'').trim();
+    if(!wanted) return null;
+    let player=(Array.isArray(players)?players:[]).find(p=>String(p?.name||'').trim().toLocaleLowerCase('uk-UA')===wanted.toLocaleLowerCase('uk-UA'))||null;
+    if(!player){
+      const {data,error}=await sb.from('players').select('id,name').ilike('name',wanted).limit(1).maybeSingle();
+      if(error) throw error;
+      player=data||null;
+    }
+    return player?.id?{id:player.id,name:player.name}:null;
+  },
+  async save(playerName,favoriteTeam){
+    if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
+    const player=await this.resolvePlayer(playerName);
+    if(!player) throw new Error('Гравця не знайдено');
+    const team=String(favoriteTeam||'').trim();
+    if(!team) throw new Error('Вкажи улюблений клуб');
+    const {data,error}=await sb.from('arena_player_preferences')
+      .upsert({
+        player_id:player.id,
+        favorite_team:team,
+        updated_at:new Date().toISOString(),
+        updated_by:authUser.id
+      },{onConflict:'player_id'})
+      .select('player_id,favorite_team,updated_at')
+      .single();
+    if(error) throw error;
+    return {...data,player_name:player.name};
+  },
+  async seedMissing(localPrefs={}){
+    if(!sb || !authUser) return [];
+    if(String(authRole||'viewer').toLowerCase()!=='admin') return [];
+    const entries=Object.entries(localPrefs||{})
+      .map(([playerName,pref])=>({playerName:String(playerName||'').trim(),favoriteTeam:String(pref?.favoriteTeam||'').trim()}))
+      .filter(x=>x.playerName&&x.favoriteTeam);
+    if(!entries.length) return [];
+
+    const {data:existing,error:e1}=await sb.from('arena_player_preferences').select('player_id');
+    if(e1) throw e1;
+    const existingIds=new Set((existing||[]).map(r=>r.player_id));
+    const out=[];
+    for(const item of entries){
+      const player=await this.resolvePlayer(item.playerName);
+      if(!player?.id || existingIds.has(player.id)) continue;
+      const {data,error}=await sb.from('arena_player_preferences')
+        .insert({
+          player_id:player.id,
+          favorite_team:item.favoriteTeam,
+          updated_at:new Date().toISOString(),
+          updated_by:authUser.id
+        })
+        .select('player_id,favorite_team,updated_at')
+        .single();
+      if(error) throw error;
+      existingIds.add(player.id);
+      out.push({...data,player_name:player.name});
+    }
+    return out;
+  },
+  async renameClub(oldName,newName){
+    if(!sb || !authUser) return [];
+    if(String(authRole||'viewer').toLowerCase()!=='admin') return [];
+    const oldTeam=String(oldName||'').trim();
+    const newTeam=String(newName||'').trim();
+    if(!oldTeam || !newTeam || oldTeam===newTeam) return [];
+    const {data,error}=await sb.from('arena_player_preferences')
+      .update({favorite_team:newTeam,updated_at:new Date().toISOString(),updated_by:authUser.id})
+      .eq('favorite_team',oldTeam)
+      .select('player_id,favorite_team,updated_at');
+    if(error) throw error;
+    return Array.isArray(data)?data:[];
+  }
+};
+
+
+/* ==========================================================
+   v10.29 — Arena Cup participation voting
+   Every authenticated player with a linked footballer can vote on an
+   active Cup poll. Votes are stored separately so normal users never get
+   write access to the ADMIN-only Arena global state row.
+   ========================================================== */
+window.CenturiaArenaCupVoteApi={
+  isReady(){ return !!(sb && authUser); },
+  async list(pollId){
+    if(!sb || !authUser || !pollId)return [];
+    const {data,error}=await sb.from('arena_cup_votes')
+      .select('poll_id,user_id,player_id,player_name,vote,updated_at')
+      .eq('poll_id',String(pollId));
+    if(error){
+      const msg=String(error?.message||'');
+      const code=String(error?.code||'');
+      if(code==='PGRST205' || /arena_cup_votes/i.test(msg) && /schema cache|could not find/i.test(msg))return [];
+      throw error;
+    }
+    return Array.isArray(data)?data:[];
+  },
+  async vote(pollId,vote){
+    if(!sb || !authUser)throw new Error('Потрібно увійти в акаунт');
+    const player=myLinkedPlayerV589();
+    if(!player?.id || !player?.name)throw new Error('Привʼяжи свого гравця до акаунта');
+    const cleanVote=String(vote||'').toLowerCase()==='no'?'no':'yes';
+    const payload={
+      poll_id:String(pollId||''),
+      user_id:authUser.id,
+      player_id:player.id,
+      player_name:String(player.name).trim(),
+      vote:cleanVote,
+      updated_at:new Date().toISOString()
+    };
+    if(!payload.poll_id)throw new Error('Голосування не знайдено');
+    const {data,error}=await sb.from('arena_cup_votes')
+      .upsert(payload,{onConflict:'poll_id,user_id'})
+      .select('poll_id,user_id,player_id,player_name,vote,updated_at')
+      .single();
+    if(error){
+      const msg=String(error?.message||'');
+      const code=String(error?.code||'');
+      if(code==='PGRST205' || /arena_cup_votes/i.test(msg) && /schema cache|could not find/i.test(msg)){
+        throw new Error('Таблиця голосування Кубка ще не створена в Supabase. Виконай SQL SUPABASE_v1030_CUP_OPEN_VOTING.sql один раз.');
+      }
+      throw error;
+    }
+    return data;
+  }
+};
+
+/* ==========================================================
+   v10.34 — per-account Cup draw first-view tracking
+   A completed draw is auto-played once per authenticated account.
+   ========================================================== */
+window.CenturiaArenaCupDrawViewApi={
+  isReady(){ return !!(sb && authUser); },
+  async hasSeen(drawKey){
+    if(!sb || !authUser || !drawKey) return false;
+    const {data,error}=await sb.from('arena_cup_draw_views')
+      .select('draw_key')
+      .eq('draw_key',String(drawKey))
+      .eq('user_id',authUser.id)
+      .maybeSingle();
+    if(error){
+      const msg=String(error?.message||'');
+      const code=String(error?.code||'');
+      if(code==='PGRST205' || /arena_cup_draw_views/i.test(msg) && /schema cache|could not find/i.test(msg)) return false;
+      throw error;
+    }
+    return !!data;
+  },
+  async markSeen(drawKey){
+    if(!sb || !authUser || !drawKey) return null;
+    const player=myLinkedPlayerV589?.()||null;
+    const payload={
+      draw_key:String(drawKey),
+      user_id:authUser.id,
+      player_id:player?.id||null,
+      seen_at:new Date().toISOString()
+    };
+    const {data,error}=await sb.from('arena_cup_draw_views')
+      .upsert(payload,{onConflict:'draw_key,user_id'})
+      .select('draw_key,user_id,seen_at')
+      .single();
+    if(error) throw error;
+    return data;
+  }
+};
+
+/* ==========================================================
+   v10.12 — fully shared Arena global state + realtime bridge
+   Active league/cup, tournament results, active event and History are
+   canonical in Supabase. Clubs, favorite clubs and friendlies are also
+   listened to through one Arena-wide realtime channel.
+   ========================================================== */
+let centuriaArenaFullSyncChannelV1012=null;
+
+window.CenturiaArenaStateApi={
+  isReady(){
+    return !!(sb && authUser);
+  },
+  canWrite(){
+    return String(authRole||'viewer').toLowerCase()==='admin';
+  },
+  async matchAction({action,competitionId,matchId,leg=1,homeScore=null,awayScore=null,tiebreakWinner=null}={}){
+    if(!sb||!authUser)throw new Error('Увійди в акаунт');
+    const {data,error}=await sb.rpc('centuria_arena_match_action_v1067',{
+      p_action:String(action||''),p_competition_id:String(competitionId||''),
+      p_match_id:String(matchId||''),p_leg:Number(leg)||1,
+      p_home_score:homeScore==null?null:Number(homeScore),
+      p_away_score:awayScore==null?null:Number(awayScore),
+      p_tiebreak_winner:tiebreakWinner||null
+    });
+    if(error)throw new Error(error.message||'Не вдалося зберегти результат');
+    return Array.isArray(data)?data[0]:data;
+  },
+  async clearKind(kind){
+    if(!sb||!authUser||String(authRole||'').toLowerCase()!=='admin')throw new Error('Доступ тільки для ADMIN');
+    if(!['cup','league'].includes(kind))throw new Error('Невірний тип турніру');
+    // The server performs the entire cleanup atomically, including remote votes.
+    const {data,error}=await sb.rpc('centuria_arena_clear_kind_v1061',{p_kind:kind});
+    if(error)throw new Error(String(error.message||'Не вдалося видалити турніри'));
+    return Array.isArray(data)?data[0]:data;
+  },
+  async get(){
+    if(!sb || !authUser) return null;
+    const {data,error}=await sb.from('arena_global_state')
+      .select('state_key,active_competition,history_archive,active_event,schema_version,updated_at,updated_by')
+      .eq('state_key','global')
+      .maybeSingle();
+    if(error) throw error;
+    return data||null;
+  },
+  async save({activeCompetition=null,historyArchive={cup:[],league:[]},activeEvent=null}={}){
+    if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
+    if(String(authRole||'viewer').toLowerCase()!=='admin') throw new Error('Тільки ADMIN може змінювати спільний стан Arena');
+    const payload={
+      state_key:'global',
+      active_competition:activeCompetition||null,
+      history_archive:(historyArchive && typeof historyArchive==='object')?historyArchive:{cup:[],league:[]},
+      active_event:activeEvent||null,
+      schema_version:1012,
+      updated_at:new Date().toISOString(),
+      updated_by:authUser.id
+    };
+    const {data,error}=await sb.from('arena_global_state')
+      .upsert(payload,{onConflict:'state_key'})
+      .select('state_key,active_competition,history_archive,active_event,schema_version,updated_at,updated_by')
+      .single();
+    if(error) throw error;
+    return data;
+  }
+};
+
+window.CenturiaArenaRealtimeApi={
+  isReady(){ return !!(sb && authUser); },
+  subscribe(onChange){
+    if(!sb || !authUser || typeof onChange!=='function') return null;
+    try{
+      if(centuriaArenaFullSyncChannelV1012){
+        sb.removeChannel(centuriaArenaFullSyncChannelV1012);
+        centuriaArenaFullSyncChannelV1012=null;
+      }
+      const channel=sb.channel(`arena-full-sync-${authUser.id}-${Date.now()}`);
+      [
+        'arena_global_state',
+        'arena_clubs',
+        'arena_player_preferences',
+        'arena_friendly_challenges',
+        'arena_cup_votes'
+      ].forEach(table=>{
+        channel.on('postgres_changes',{
+          event:'*',
+          schema:'public',
+          table
+        },payload=>{
+          try{onChange(table,payload)}catch(_e){}
+        });
+      });
+      centuriaArenaFullSyncChannelV1012=channel.subscribe();
+      return centuriaArenaFullSyncChannelV1012;
+    }catch(_e){
+      return null;
+    }
+  },
+  unsubscribe(){
+    try{
+      if(sb && centuriaArenaFullSyncChannelV1012) sb.removeChannel(centuriaArenaFullSyncChannelV1012);
+    }catch(_e){}
+    centuriaArenaFullSyncChannelV1012=null;
+  }
+};
+
+
 
 async function loadPlayerAccountSystemV589(){
   if(!sb||!authUser){
@@ -8802,79 +9359,88 @@ function occupiedShirtNumberV631(number,excludePlayerId=null){
 
 async function submitMyPlayerRequestV589(e){
   e.preventDefault();
-  let p=myLinkedPlayerV589();
-  if(!p){
-    try{ await refreshAuth(); }catch(_e){}
-    p=myLinkedPlayerV589();
-  }
-  if(!p){
-    showToast("Не вдалося знайти прив’язаного гравця. Онови сторінку.");
-    return;
-  }
-  const fd=new FormData(e.currentTarget);
+  const form=e.currentTarget;
+  // Prevent repeated taps from submitting duplicate change requests.
+  if(form.dataset.submitting==="true")return;
+  const p=myLinkedPlayerV589();if(!p)return;
+  const fd=new FormData(form);
 
   const numberRaw=String(fd.get("shirt_number")??"").trim();
   const requestedNumber=numberRaw===""?null:Number(numberRaw);
   if(requestedNumber!==null){
     if(!Number.isInteger(requestedNumber) || requestedNumber<0 || requestedNumber>99){
       showToast("Номер має бути від 0 до 99");
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      form.querySelector('[name="shirt_number"]')?.focus();
       return;
     }
     const occupied=occupiedShirtNumberV631(requestedNumber,p.id);
     if(occupied){
       showToast(`Номер #${requestedNumber} вже зайнятий`);
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
+      form.querySelector('[name="shirt_number"]')?.focus();
       return;
     }
   }
 
-  let cardUrl=p.cardImage||null;
-  const file=$("myPlayerCardFile")?.files?.[0];
-  if(file){
-    try{
-      const data=await resizeImage(file,500,760,.86);
-      cardUrl=await uploadDataImage(`player-requests/${authUser.id}-${Date.now()}.png`,data);
-    }catch(err){showToast("Не вдалося завантажити картку");return;}
+  form.dataset.submitting="true";
+  const sendButton=form.querySelector('button[type="submit"]');
+  if(sendButton){
+    sendButton.disabled=true;
+    sendButton.textContent="НАДСИЛАЄМО…";
   }
-  const rawStatus=String(fd.get("status")||"");
-  const proposed={
-    name:String(fd.get("name")||"").trim(),
-    shirt_number:requestedNumber,
-    age:fd.get("age")===""?null:Number(fd.get("age")),
-    platform:String(fd.get("platform")||"")||null,
-    primary_position:String(fd.get("primary_position")||""),
-    extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean).slice(0,3),
-    archetype:String(fd.get("archetype")||"")||null,
-    status:rawStatus,
-    note:String(fd.get("note")||"").trim(),
-    card_image_url:cardUrl
-  };
-  const submitBtn=e.currentTarget.querySelector('button[type="submit"]');
-  if(submitBtn){submitBtn.disabled=true;submitBtn.dataset.oldText=submitBtn.textContent;submitBtn.textContent="НАДСИЛАННЯ…";}
-
-  const {data:created,error}=await sb.from("player_change_requests")
-    .insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed})
-    .select("id,status,created_at")
-    .single();
-
-  if(submitBtn){submitBtn.disabled=false;submitBtn.textContent=submitBtn.dataset.oldText||"НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ";}
-
-  if(error || !created?.id){
-    console.error("player change request insert",error);
-    if(isOccupiedNumberErrorV632(error) || String(error?.message||"").toLowerCase().includes("зайнятий")){
-      showOccupiedNumberMessageV632(requestedNumber);
-      e.currentTarget.querySelector('[name="shirt_number"]')?.focus();
-    }else if(String(error?.message||"").toLowerCase().includes("row-level security")){
-      showToast("Не вдалося надіслати: онови сторінку та увійди знову");
-    }else{
-      showToast("Не вдалося надіслати зміни");
+  try{
+    let cardUrl=p.cardImage||null;
+    const file=$("myPlayerCardFile")?.files?.[0];
+    if(file){
+      try{
+        const data=await resizeImage(file,500,760,.86);
+        cardUrl=await uploadDataImage(`player-requests/${authUser.id}-${Date.now()}.png`,data);
+      }catch(err){
+        console.error("Player card upload failed",err);
+        showToast("Не вдалося завантажити картку");
+        return;
+      }
     }
-    return;
+    const rawStatus=String(fd.get("status")||"");
+    const proposed={
+      name:String(fd.get("name")||"").trim(),
+      shirt_number:requestedNumber,
+      age:fd.get("age")===""?null:Number(fd.get("age")),
+      platform:String(fd.get("platform")||"")||null,
+      primary_position:String(fd.get("primary_position")||""),
+      extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean).slice(0,3),
+      archetype:String(fd.get("archetype")||"")||null,
+      status:rawStatus,
+      note:String(fd.get("note")||"").trim(),
+      card_image_url:cardUrl
+    };
+    const {error}=await sb.from("player_change_requests").insert({player_id:p.id,user_id:authUser.id,proposed_data:proposed});
+    if(error){
+      console.error(error);
+      if(isOccupiedNumberErrorV632(error) || String(error.message||"").toLowerCase().includes("зайнятий")){
+        showOccupiedNumberMessageV632(requestedNumber);
+        form.querySelector('[name="shirt_number"]')?.focus();
+      }else{
+        showToast("Не вдалося надіслати зміни");
+      }
+      return;
+    }
+
+    // Only a confirmed database insert closes the form. Do not reopen it.
+    if(form.contains(document.activeElement))document.activeElement.blur();
+    closeMyPlayerModalV589();
+    showToast("✓ Запит на зміни надіслано адміністратору",{duration:4500,playerRequestSuccess:true});
+    // Refresh pending requests in the background without blocking the confirmation.
+    loadPlayerAccountSystemV589().catch(err=>console.error("Player request refresh failed",err));
+  }catch(err){
+    console.error("Player request failed",err);
+    showToast("Не вдалося надіслати зміни");
+  }finally{
+    form.dataset.submitting="false";
+    if(sendButton){
+      sendButton.disabled=false;
+      sendButton.textContent="НАДІСЛАТИ ЗМІНИ НА ПІДТВЕРДЖЕННЯ";
+    }
   }
-  showToast("Зміни надіслано адміністратору");
-  await loadPlayerAccountSystemV589();
-  openMyPlayerModalV589();
 }
 
 function closeMyPlayerModalV589(){$("myPlayerModal")?.classList.add("hidden")}
@@ -8918,9 +9484,8 @@ function renderPlayerRequestsV589(){
   box.querySelectorAll("[data-approve-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.approveRequest,true));
   box.querySelectorAll("[data-reject-request]").forEach(b=>b.onclick=()=>reviewPlayerRequestV589(b.dataset.rejectRequest,false));
 }
-async function openPlayerRequestsV589(){
+function openPlayerRequestsV589(){
   applyPermissions?.();
-  try{ await loadPlayerAccountSystemV589(); }catch(err){ console.error("player requests refresh",err); }
   renderPlayerRequestsV589();
   $("playerRequestsModal")?.classList.remove("hidden");
 }
@@ -9521,8 +10086,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       }
     }
   });
-  document.getElementById("settingsArenaAdminBtn")?.addEventListener("click",()=>{
-    openArenaV664("test-admin");
+  document.getElementById("settingsClubDatabaseBtn")?.addEventListener("click",()=>{
+    if(authRole!=="admin")return;
+    if(window.ArenaV852?.openClubDatabase) window.ArenaV852.openClubDatabase();
+    else showToast("База клубів ще завантажується");
   });
   document.getElementById("settingsAccessJumpBtn")?.addEventListener("click",()=>{
     const panel=document.getElementById("adminSiteAccessCard");
@@ -10386,7 +10953,11 @@ if(document.readyState==="loading"){
 
   function getButton(target){
     const btn=target?.closest?.('button');
-    return btn && !btn.disabled ? btn : null;
+    if(!btn || btn.disabled) return null;
+    /* v8.89: Arena buttons must stay completely static.
+       GIF files provide the only motion inside Arena. */
+    if(btn.closest?.('#screen-arena')) return null;
+    return btn;
   }
 
   function press(btn){
@@ -10649,3 +11220,607 @@ if(document.readyState==="loading"){
     [menu,context,attachment].filter(Boolean).forEach(n=>mo.observe(n,{attributes:true,attributeFilter:['class','style'],childList:true}));
   }
 })();
+
+
+/* ==========================================================
+   v9.98 — generic iPhone form keyboard guard for bottom quick menu
+   Any non-chat input / textarea / select temporarily hides the bottom dock
+   so it cannot jump upward after iOS keyboard interactions.
+   ========================================================== */
+(()=>{
+  return; // v10.06: disabled legacy menu manager
+
+  const body=document.body;
+  if(!body) return;
+  let blurTimer=0;
+
+  const isEditableField=(el)=>{
+    if(!el || !(el instanceof Element)) return false;
+    if(el.closest('#screen-chat')) return false;
+    return el.matches('input, textarea, select') || el.isContentEditable===true;
+  };
+
+  const sync=()=>{
+    clearTimeout(blurTimer);
+    const active=document.activeElement;
+    body.classList.toggle('ca-form-keyboard-open', isEditableField(active));
+  };
+
+  document.addEventListener('focusin',(e)=>{
+    if(isEditableField(e.target)) sync();
+  },true);
+
+  document.addEventListener('focusout',(e)=>{
+    if(!isEditableField(e.target)) return;
+    blurTimer=setTimeout(sync,140);
+  },true);
+
+  window.visualViewport?.addEventListener('resize',()=>setTimeout(sync,20),{passive:true});
+  window.visualViewport?.addEventListener('scroll',()=>setTimeout(sync,20),{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(sync,180),{passive:true});
+  window.addEventListener('pageshow',sync,{passive:true});
+})();
+
+
+/* ==========================================================
+   v9.99 — HARD LOCK bottom quick menu after iPhone keyboard
+   Stores the dock's correct pre-keyboard bottom offset and restores exactly
+   that pixel position after any non-chat form field loses focus.
+   ========================================================== */
+(()=>{
+  return; // v10.01: disabled — tab-specific cached offsets caused the jump
+  const nav=document.getElementById('bottomNav');
+  const body=document.body;
+  const vv=window.visualViewport;
+  if(!nav || !body) return;
+
+  let stableBottom=null;
+  let stableViewport=Math.max(window.innerHeight||0,document.documentElement.clientHeight||0,vv?.height||0);
+  let activeNonChatField=false;
+  let timers=[];
+
+  const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
+  const isField=el=>!!(el && el instanceof Element && !el.closest('#screen-chat') && (el.matches('input,textarea,select') || el.isContentEditable===true));
+  const keyboardOpen=()=>Math.max(0,stableViewport-(vv?.height||window.innerHeight||stableViewport))>90;
+  const navVisible=()=>!nav.classList.contains('hidden-nav') && getComputedStyle(nav).display!=='none';
+
+  const rememberCorrectPosition=()=>{
+    if(activeNonChatField || keyboardOpen() || !navVisible()) return;
+    const h=window.innerHeight||document.documentElement.clientHeight||0;
+    const r=nav.getBoundingClientRect();
+    if(!h || !Number.isFinite(r.bottom) || r.height<20) return;
+    stableBottom=Math.round(h-r.bottom);
+    stableViewport=Math.max(stableViewport,h,vv?.height||0);
+  };
+
+  const applyCorrectPosition=()=>{
+    if(stableBottom===null) return;
+    const b=`${stableBottom}px`;
+    nav.style.setProperty('position','fixed','important');
+    nav.style.setProperty('left','50%','important');
+    nav.style.setProperty('right','auto','important');
+    nav.style.setProperty('top','auto','important');
+    nav.style.setProperty('bottom',b,'important');
+    nav.style.setProperty('inset',`auto auto ${b} 50%`,'important');
+    nav.style.setProperty('transform','translateX(-50%)','important');
+    nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+    nav.style.setProperty('margin','0','important');
+    void nav.offsetHeight;
+    window.syncBottomNavV964?.();
+  };
+
+  const settleRestore=()=>{
+    clearTimers();
+    const restore=()=>{
+      if(activeNonChatField || keyboardOpen()) return;
+      body.classList.remove('ca-form-keyboard-open');
+      body.classList.remove('arena-nav-keyboard-settling-v986');
+      applyCorrectPosition();
+    };
+    [80,180,320,520,800,1200].forEach(ms=>timers.push(setTimeout(restore,ms)));
+  };
+
+  // Capture the correct dock geometry before the keyboard can alter the viewport.
+  document.addEventListener('focusin',e=>{
+    if(!isField(e.target)) return;
+    rememberCorrectPosition();
+    activeNonChatField=true;
+    body.classList.add('ca-form-keyboard-open');
+  },true);
+
+  document.addEventListener('focusout',e=>{
+    if(!isField(e.target)) return;
+    timers.push(setTimeout(()=>{
+      activeNonChatField=isField(document.activeElement);
+      if(!activeNonChatField) settleRestore();
+    },50));
+  },true);
+
+  vv?.addEventListener('resize',()=>{
+    if(activeNonChatField){
+      body.classList.add('ca-form-keyboard-open');
+    }else if(!keyboardOpen()){
+      settleRestore();
+    }
+  },{passive:true});
+  vv?.addEventListener('scroll',()=>{
+    if(!activeNonChatField && !keyboardOpen()) settleRestore();
+  },{passive:true});
+
+  // Re-learn only after real navigation / orientation, when geometry is stable.
+  document.getElementById('bottomNav')?.addEventListener('click',()=>{
+    clearTimers();
+    activeNonChatField=false;
+    body.classList.remove('ca-form-keyboard-open');
+    timers.push(setTimeout(()=>{ rememberCorrectPosition(); applyCorrectPosition(); },80));
+  },true);
+  window.addEventListener('pageshow',()=>timers.push(setTimeout(()=>{rememberCorrectPosition();applyCorrectPosition();},120)),{passive:true});
+  window.addEventListener('orientationchange',()=>{
+    stableBottom=null;
+    stableViewport=0;
+    timers.push(setTimeout(()=>{stableViewport=Math.max(window.innerHeight||0,vv?.height||0);rememberCorrectPosition();applyCorrectPosition();},500));
+  },{passive:true});
+
+  requestAnimationFrame(()=>{rememberCorrectPosition();applyCorrectPosition();});
+  setTimeout(()=>{rememberCorrectPosition();applyCorrectPosition();},250);
+})();
+
+
+/* ==========================================================
+   v10.00 — UNIVERSAL bottom-nav root lock
+   Move the shared dock to document.body so iOS keyboard viewport changes
+   cannot leave it offset inside #app. After every focus/blur/viewport change,
+   force the exact canonical bottom geometry on every main tab.
+   ========================================================== */
+(()=>{
+  return; // v10.06: disabled legacy menu manager
+
+  const nav=document.getElementById('bottomNav');
+  const body=document.body;
+  const vv=window.visualViewport;
+  if(!nav || !body) return;
+
+  // Root-level fixed positioning is much more stable on iOS than keeping
+  // the fixed element inside an app container whose viewport can be panned.
+  if(nav.parentElement!==body) body.appendChild(nav);
+
+  const CANONICAL_BOTTOM='calc(0px - max(12px, env(safe-area-inset-bottom,0px)))';
+  let timers=[];
+  const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
+
+  const isMainTabActive=()=>!!document.querySelector('#screen-players.active,#screen-tactics.active,#screen-chat.active,#screen-gatherings.active,#screen-arena.active');
+  const keyboardClassActive=()=>body.classList.contains('ca-chat-keyboard-open') || body.classList.contains('ca-form-keyboard-open');
+
+  const forceCanonical=()=>{
+    // Never show on hub / utility screens or while intentionally hidden.
+    if(!isMainTabActive() || nav.classList.contains('hidden-nav')) return;
+
+    nav.style.setProperty('position','fixed','important');
+    nav.style.setProperty('left','50%','important');
+    nav.style.setProperty('right','auto','important');
+    nav.style.setProperty('top','auto','important');
+    nav.style.setProperty('bottom',CANONICAL_BOTTOM,'important');
+    nav.style.setProperty('inset',`auto auto ${CANONICAL_BOTTOM} 50%`,'important');
+    nav.style.setProperty('transform','translateX(-50%)','important');
+    nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+    nav.style.setProperty('margin','0','important');
+    nav.style.setProperty('width','min(900px,100%)','important');
+    nav.style.setProperty('max-width','none','important');
+    nav.style.setProperty('z-index','2147483646','important');
+    nav.style.setProperty('will-change','auto','important');
+
+    // When the keyboard is closed, force the dock visibly back immediately.
+    if(!keyboardClassActive() && !body.classList.contains('arena-modal-open-v940')){
+      nav.style.setProperty('display','grid','important');
+      nav.style.setProperty('opacity','1','important');
+      nav.style.setProperty('visibility','visible','important');
+      nav.style.setProperty('pointer-events','auto','important');
+    }
+
+    // Force Safari to recalculate the fixed box now, not on the next tap.
+    void nav.offsetHeight;
+    const old=nav.style.transform;
+    nav.style.setProperty('transform','translateX(-50%) translateZ(0)','important');
+    void nav.offsetHeight;
+    requestAnimationFrame(()=>{
+      nav.style.setProperty('transform','translateX(-50%)','important');
+      nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+      void nav.offsetHeight;
+    });
+  };
+
+  const settle=()=>{
+    clearTimers();
+    // Re-apply several times because iOS closes the keyboard in stages.
+    [0,40,90,160,260,420,650,950,1300].forEach(ms=>timers.push(setTimeout(forceCanonical,ms)));
+  };
+
+  // Any field in any section can trigger Safari's visual viewport pan.
+  document.addEventListener('focusin',()=>{
+    forceCanonical();
+  },true);
+
+  document.addEventListener('focusout',()=>{
+    settle();
+  },true);
+
+  // Every real navigation click gets the same immediate reset, not only Players.
+  nav.addEventListener('click',()=>{
+    settle();
+  },true);
+
+  // Also react when a section is switched programmatically.
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('[data-nav],.section-home-btn,[onclick*="showScreen"],[onclick*="ArenaV852.go"]')) settle();
+  },true);
+
+  vv?.addEventListener('resize',settle,{passive:true});
+  vv?.addEventListener('scroll',settle,{passive:true});
+  window.addEventListener('resize',settle,{passive:true});
+  window.addEventListener('scroll',()=>{ if(!keyboardClassActive()) forceCanonical(); },{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(settle,220),{passive:true});
+  window.addEventListener('pageshow',settle,{passive:true});
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) settle(); },{passive:true});
+  document.addEventListener('touchend',()=>{ if(!keyboardClassActive()) requestAnimationFrame(forceCanonical); },{passive:true});
+
+  // Watch active-screen changes and restore without requiring any extra tap.
+  if('MutationObserver' in window){
+    const mo=new MutationObserver(()=>settle());
+    document.querySelectorAll('.screen').forEach(s=>mo.observe(s,{attributes:true,attributeFilter:['class']}));
+  }
+
+  settle();
+})();
+
+
+/* ==========================================================
+   v10.01 — UNIVERSAL keyboard-close repaint for shared quick menu
+   Recreates the layout refresh that manually tapping Players used to trigger,
+   but stays on the current tab and preserves its internal scroll.
+   ========================================================== */
+(()=>{
+  return; // v10.06: disabled legacy menu manager
+
+  const nav=document.getElementById('bottomNav');
+  const body=document.body;
+  const vv=window.visualViewport;
+  if(!nav || !body) return;
+
+  const MAIN_IDS=new Set(['screen-players','screen-tactics','screen-gatherings','screen-arena']);
+  const CANONICAL_BOTTOM='calc(0px - max(12px, env(safe-area-inset-bottom,0px)))';
+  let baseline=Math.max(window.innerHeight||0,document.documentElement.clientHeight||0,vv?.height||0);
+  let timers=[];
+
+  const clearTimers=()=>{timers.forEach(clearTimeout);timers=[];};
+  const fieldFocused=()=>{
+    const el=document.activeElement;
+    return !!(el && el instanceof Element && (el.matches('input,textarea,select') || el.isContentEditable===true));
+  };
+  const keyboardClosed=()=>{
+    const h=vv?.height||window.innerHeight||0;
+    baseline=Math.max(baseline,window.innerHeight||0,document.documentElement.clientHeight||0,h);
+    return !fieldFocused() && (baseline-h)<90 && !body.classList.contains('ca-chat-keyboard-open');
+  };
+  const forceNavGeometry=()=>{
+    if(nav.classList.contains('hidden-nav')) return;
+    nav.style.setProperty('position','fixed','important');
+    nav.style.setProperty('left','50%','important');
+    nav.style.setProperty('right','auto','important');
+    nav.style.setProperty('top','auto','important');
+    nav.style.setProperty('bottom',CANONICAL_BOTTOM,'important');
+    nav.style.setProperty('inset',`auto auto ${CANONICAL_BOTTOM} 50%`,'important');
+    nav.style.setProperty('transform','translateX(-50%)','important');
+    nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+    nav.style.setProperty('margin','0','important');
+    nav.style.setProperty('width','min(900px,100%)','important');
+    nav.style.setProperty('z-index','2147483646','important');
+    nav.style.setProperty('display','grid','important');
+    nav.style.setProperty('opacity','1','important');
+    nav.style.setProperty('visibility','visible','important');
+    nav.style.setProperty('pointer-events','auto','important');
+    void nav.offsetHeight;
+  };
+  const repaintCurrentTab=()=>{
+    if(!keyboardClosed()) return;
+    body.classList.remove('ca-form-keyboard-open','arena-nav-keyboard-settling-v986');
+    const screen=document.querySelector('.screen.active');
+    let savedScroll=0;
+    if(screen && MAIN_IDS.has(screen.id)){
+      savedScroll=screen.scrollTop;
+      screen.classList.remove('active');
+      void screen.offsetHeight;
+      screen.classList.add('active');
+    }
+    // Clear Safari's hidden document pan while main sections keep their own scroll.
+    try{window.scrollTo(0,0)}catch(_e){}
+    document.documentElement.scrollTop=0;
+    body.scrollTop=0;
+    if(screen && MAIN_IDS.has(screen.id)) screen.scrollTop=savedScroll;
+    window.syncBottomNavV964?.();
+    forceNavGeometry();
+    requestAnimationFrame(()=>{
+      forceNavGeometry();
+      if(screen && MAIN_IDS.has(screen.id)) screen.scrollTop=savedScroll;
+    });
+  };
+  const settle=()=>{
+    clearTimers();
+    [80,160,280,450,700,1000,1400].forEach(ms=>timers.push(setTimeout(repaintCurrentTab,ms)));
+  };
+
+  document.addEventListener('focusout',e=>{
+    const el=e.target;
+    if(el instanceof Element && !el.closest('#screen-chat') && (el.matches('input,textarea,select') || el.isContentEditable===true)) settle();
+  },true);
+  vv?.addEventListener('resize',()=>{if(!fieldFocused()) settle();},{passive:true});
+  vv?.addEventListener('scroll',()=>{if(!fieldFocused()) settle();},{passive:true});
+  window.addEventListener('resize',()=>{if(!fieldFocused()) settle();},{passive:true});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden) settle();});
+  window.addEventListener('pageshow',settle,{passive:true});
+})();
+
+
+/* ==========================================================
+   v10.04 — strict quick-menu scope
+   Show the shared bottom nav only on Players / Tactics / Chat /
+   Gatherings / Arena. Hide it everywhere else, even if another script
+   temporarily repaints the dock after keyboard close.
+   ========================================================== */
+(()=>{
+  return; // v10.06: disabled legacy menu manager
+
+  const nav=document.getElementById('bottomNav');
+  const body=document.body;
+  if(!nav || !body) return;
+  const ALLOWED=new Set(['players','tactics','chat','gatherings','arena']);
+
+  const currentName=()=>document.querySelector('.screen.active')?.id?.replace(/^screen-/,'') || '';
+  const apply=()=>{
+    const name=currentName();
+    const show=ALLOWED.has(name);
+    nav.classList.toggle('hidden-nav', !show);
+    nav.querySelectorAll('button[data-nav]').forEach(btn=>btn.classList.toggle('active', show && btn.dataset.nav===name));
+    if(show){
+      nav.style.setProperty('display','grid','important');
+      nav.style.setProperty('opacity','1','important');
+      nav.style.setProperty('visibility','visible','important');
+      nav.style.setProperty('pointer-events','auto','important');
+    }else{
+      nav.style.setProperty('display','none','important');
+      nav.style.setProperty('opacity','0','important');
+      nav.style.setProperty('visibility','hidden','important');
+      nav.style.setProperty('pointer-events','none','important');
+    }
+  };
+
+  const mo=new MutationObserver(apply);
+  document.querySelectorAll('.screen').forEach(screen=>mo.observe(screen,{attributes:true,attributeFilter:['class']}));
+  document.addEventListener('click',()=>setTimeout(apply,0),true);
+  window.addEventListener('pageshow',apply,{passive:true});
+  window.addEventListener('resize',()=>setTimeout(apply,0),{passive:true});
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) apply(); });
+  requestAnimationFrame(apply);
+  setTimeout(apply,80);
+  setTimeout(apply,260);
+})();
+
+
+/* ==========================================================
+   v10.06 — single authoritative quick-menu keyboard controller
+   - visible only on Players / Tactics / Chat / Gatherings / Arena
+   - hidden while the iPhone keyboard is actually open
+   - forcibly restored to the canonical bottom position after keyboard close
+   - replaces the overlapping v9.98 / v10.00 / v10.01 / v10.04 managers
+   ========================================================== */
+(()=>{
+  const nav=document.getElementById('bottomNav');
+  const body=document.body;
+  const vv=window.visualViewport;
+  if(!nav || !body) return;
+
+  const ALLOWED=new Set(['players','tactics','chat','gatherings','arena']);
+  const CANONICAL_BOTTOM='calc(0px - max(12px, env(safe-area-inset-bottom,0px)))';
+
+  // Keep the fixed dock outside scrollable app containers.
+  if(nav.parentElement!==body) body.appendChild(nav);
+
+  let baseline=Math.max(
+    window.innerHeight||0,
+    document.documentElement.clientHeight||0,
+    vv?.height||0
+  );
+  let nonChatFieldFocused=false;
+  let timers=[];
+
+  const clearTimers=()=>{
+    timers.forEach(clearTimeout);
+    timers=[];
+  };
+
+  const activeName=()=>document.querySelector('.screen.active')?.id?.replace(/^screen-/,'') || '';
+  const allowedNow=()=>ALLOWED.has(activeName());
+
+  const isEditable=el=>!!(
+    el &&
+    el instanceof Element &&
+    (el.matches('input,textarea,select') || el.isContentEditable===true)
+  );
+
+  const isNonChatEditable=el=>isEditable(el) && !el.closest('#screen-chat');
+
+  const refreshBaseline=()=>{
+    const h=Math.max(
+      window.innerHeight||0,
+      document.documentElement.clientHeight||0,
+      vv?.height||0
+    );
+    if(!nonChatFieldFocused && !body.classList.contains('ca-chat-keyboard-open')){
+      baseline=Math.max(baseline,h);
+    }
+  };
+
+  const keyboardVisiblyOpen=()=>{
+    if(body.classList.contains('ca-chat-keyboard-open')) return true;
+    const h=vv?.height||window.innerHeight||baseline;
+    const shrink=Math.max(0,baseline-h);
+    return nonChatFieldFocused && shrink>90;
+  };
+
+  const setButtonState=()=>{
+    const name=activeName();
+    nav.querySelectorAll('button[data-nav]').forEach(btn=>{
+      btn.classList.toggle('active', allowedNow() && btn.dataset.nav===name);
+    });
+  };
+
+  const hideNav=()=>{
+    nav.style.setProperty('display','none','important');
+    nav.style.setProperty('opacity','0','important');
+    nav.style.setProperty('visibility','hidden','important');
+    nav.style.setProperty('pointer-events','none','important');
+  };
+
+  const forceCanonical=()=>{
+    refreshBaseline();
+    const allowed=allowedNow();
+
+    nav.classList.toggle('hidden-nav',!allowed);
+    setButtonState();
+
+    if(!allowed){
+      hideNav();
+      return;
+    }
+
+    if(
+      body.classList.contains('arena-modal-open-v940') ||
+      keyboardVisiblyOpen()
+    ){
+      hideNav();
+      return;
+    }
+
+    // The keyboard is gone. Clear all stale keyboard flags that can keep
+    // CSS hiding the dock after iOS has already restored its viewport.
+    body.classList.remove('ca-form-keyboard-open','arena-nav-keyboard-settling-v986');
+
+    nav.classList.remove('hidden-nav');
+    nav.style.setProperty('position','fixed','important');
+    nav.style.setProperty('left','50%','important');
+    nav.style.setProperty('right','auto','important');
+    nav.style.setProperty('top','auto','important');
+    nav.style.setProperty('bottom',CANONICAL_BOTTOM,'important');
+    nav.style.setProperty('inset',`auto auto ${CANONICAL_BOTTOM} 50%`,'important');
+    nav.style.setProperty('transform','translateX(-50%)','important');
+    nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+    nav.style.setProperty('margin','0','important');
+    nav.style.setProperty('width','min(900px,100%)','important');
+    nav.style.setProperty('max-width','none','important');
+    nav.style.setProperty('z-index','2147483646','important');
+    nav.style.setProperty('display','grid','important');
+    nav.style.setProperty('opacity','1','important');
+    nav.style.setProperty('visibility','visible','important');
+    nav.style.setProperty('pointer-events','auto','important');
+
+    // iOS sometimes leaves the layout viewport panned after keyboard close.
+    // Reset only the document pan; section scroll stays untouched.
+    try{window.scrollTo(0,0)}catch(_e){}
+    document.documentElement.scrollTop=0;
+    body.scrollTop=0;
+
+    // Force an immediate fixed-position repaint, then one more on next frame.
+    void nav.offsetHeight;
+    nav.style.setProperty('transform','translateX(-50%) translateZ(0)','important');
+    void nav.offsetHeight;
+    requestAnimationFrame(()=>{
+      nav.style.setProperty('transform','translateX(-50%)','important');
+      nav.style.setProperty('-webkit-transform','translateX(-50%)','important');
+      void nav.offsetHeight;
+    });
+  };
+
+  const restoreAfterKeyboard=()=>{
+    clearTimers();
+    [0,60,130,220,360,540,800,1100,1500,1900].forEach(ms=>{
+      timers.push(setTimeout(()=>{
+        const active=document.activeElement;
+        nonChatFieldFocused=isNonChatEditable(active);
+        forceCanonical();
+      },ms));
+    });
+  };
+
+  document.addEventListener('focusin',e=>{
+    if(!isNonChatEditable(e.target)) return;
+    refreshBaseline();
+    nonChatFieldFocused=true;
+    body.classList.add('ca-form-keyboard-open');
+    hideNav();
+  },true);
+
+  document.addEventListener('focusout',e=>{
+    if(!isNonChatEditable(e.target)) return;
+    setTimeout(()=>{
+      nonChatFieldFocused=isNonChatEditable(document.activeElement);
+      if(!nonChatFieldFocused) restoreAfterKeyboard();
+    },40);
+  },true);
+
+  vv?.addEventListener('resize',()=>{
+    if(keyboardVisiblyOpen()){
+      hideNav();
+    }else{
+      restoreAfterKeyboard();
+    }
+  },{passive:true});
+
+  vv?.addEventListener('scroll',()=>{
+    if(!keyboardVisiblyOpen()) restoreAfterKeyboard();
+  },{passive:true});
+
+  // React to chat keyboard class and any stale menu/body class changes.
+  if('MutationObserver' in window){
+    const bodyObserver=new MutationObserver(()=>restoreAfterKeyboard());
+    bodyObserver.observe(body,{attributes:true,attributeFilter:['class']});
+
+    const screensObserver=new MutationObserver(()=>restoreAfterKeyboard());
+    document.querySelectorAll('.screen').forEach(screen=>{
+      screensObserver.observe(screen,{attributes:true,attributeFilter:['class']});
+    });
+  }
+
+  document.addEventListener('click',e=>{
+    if(e.target?.closest?.('[data-nav],.section-home-btn,[onclick*="navigate"],[onclick*="ArenaV852.go"]')){
+      restoreAfterKeyboard();
+    }
+  },true);
+
+  window.addEventListener('resize',restoreAfterKeyboard,{passive:true});
+  window.addEventListener('orientationchange',()=>setTimeout(restoreAfterKeyboard,220),{passive:true});
+  window.addEventListener('pageshow',restoreAfterKeyboard,{passive:true});
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) restoreAfterKeyboard();
+  });
+
+  restoreAfterKeyboard();
+})();
+
+
+/* v10.08 — force installed iPhone/PWA to fetch this build immediately */
+(()=>{
+  const key='ca_v1008_force_asset_refresh';
+  if(sessionStorage.getItem(key)==='1') return;
+  sessionStorage.setItem(key,'1');
+  try{navigator.serviceWorker?.getRegistration?.().then(reg=>reg?.update?.()).catch(()=>{});}catch(_e){}
+  try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
+})();
+
+/* v12.0 — keep the Settings footer in sync with the deployed build. */
+function syncSettingsVersionV1200(){
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.0");
+}
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",syncSettingsVersionV1200);
+}else{
+  syncSettingsVersionV1200();
+}

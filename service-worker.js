@@ -1,5 +1,5 @@
-// v7.55 Bottom navigation lowered globally
-const CACHE_VERSION="centuria-pwa-v899-gk-month-always-visible";
+// v10.80 light cup bracket card in Arena
+const CACHE_VERSION="centuria-pwa-v1200-release";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();

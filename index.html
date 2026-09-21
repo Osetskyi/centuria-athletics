@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#120c05">
+  <meta name="centuria-build" content="12.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,9 +26,9 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=8.99-gk-month-min-rating-fix">
+<link rel="stylesheet" href="style.css?v=12.0">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest.webmanifest?v=12.0">
 
 <script>
 (function(){
@@ -545,6 +546,18 @@
     </div>
   </section>
 
+
+  <!-- ARENA v8.52 — integrated into the same SPA as the other sections -->
+  <section id="screen-arena" class="screen inner-screen arena-screen-v852">
+    <div class="arena-shell-v852">
+      <header class="arena-header-v852">
+        <button type="button" class="arena-back-v852" data-nav="home" data-viewer-allowed="true" aria-label="На головну"><span class="arena-back-arrow-v856" aria-hidden="true">←</span><span>НАЗАД</span></button>
+        <b id="arenaAdminBadgeV1005" hidden>ADMIN</b>
+      </header>
+      <main id="arenaApp" class="arena-app-v852"></main>
+    </div>
+  </section>
+
   <!-- SETTINGS v6.59 REDESIGN -->
   <section id="screen-settings" class="screen inner-screen settings-screen-v659">
     <div class="settings-v659-shell">
@@ -642,7 +655,7 @@
       <section id="settingsAdminPanelV659" class="settings-admin-v659 hidden">
         <div class="settings-admin-head-v659">
           <span>ADMIN</span>
-          <div><strong>АДМІН-ПАНЕЛЬ</strong><small>Керування доступом і тестовими функціями</small></div>
+          <div><strong>АДМІН-ПАНЕЛЬ</strong><small>Керування доступом, гравцями та Arena</small></div>
         </div>
         <div class="settings-admin-actions-v659">
           <button type="button" id="settingsAccessJumpBtn" class="settings-action-v659" aria-expanded="false" aria-controls="adminSiteAccessCard">
@@ -651,8 +664,8 @@
           <button type="button" id="settingsPlayerLinksBtn" class="settings-action-v659" aria-expanded="false" aria-controls="adminPlayerLinksCard">
             <span><b>Прив’язка гравців</b><small>Прив’язати зареєстровані акаунти до карток гравців</small></span><i aria-hidden="true">›</i>
           </button>
-          <button type="button" id="settingsArenaAdminBtn" class="settings-action-v659 settings-arena-action-v659">
-            <span><b>Arena · тестовий режим</b><small>Ручне додавання учасників і перевірка турнірів</small></span><i>›</i>
+          <button type="button" id="settingsClubDatabaseBtn" class="settings-action-v659 settings-clubdb-action-v945">
+            <span><b>База клубів</b><small>Назви та емблеми, які підтягуються в Arena</small></span><i>›</i>
           </button>
         </div>
 
@@ -686,7 +699,7 @@
       <footer class="settings-about-v659">
         <span>CENTURIA ATHLETICS</span>
         <strong>Автор: Daniil Osetskyi</strong>
-        <div class="settings-version" data-viewer-allowed="true">Версія <strong>v8.18 TEST</strong></div>
+        <div class="settings-version" data-viewer-allowed="true">Версія <strong>v12.0</strong></div>
       </footer>
     </div>
   </section>
@@ -1386,10 +1399,11 @@
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=8.99-gk-month-always-visible"></script>
+<script src="app.js?v=12.0"></script>
+<script src="arena.js?v=12.0"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
@@ -1473,5 +1487,128 @@
 })();
 </script>
 
+<!-- v11.51: quick nav restores after player editor Cancel and modal closes. -->
+<script>
+(function centuriaQuickNavV1151(){
+  const body=document.body;
+  const vv=window.visualViewport;
+  const nav=()=>document.getElementById('bottomNav');
+  const typingTypes=new Set(['text','search','email','password','number','tel','url','date','datetime-local','time','month','week']);
+  let keyboardSession=false, sessionAt=0, releaseTimer=0, frame=0, observedNav=null;
+  const mainRoute=()=>!!document.querySelector('#screen-players.active,#screen-tactics.active,#screen-chat.active,#screen-gatherings.active,#screen-arena.active');
+  function liveModal(el){
+    if(!el.isConnected||el.hidden||el.closest('[hidden],[aria-hidden="true"]')||el.getAttribute('aria-hidden')==='true')return false;
+    const s=getComputedStyle(el);
+    return s.display!=='none'&&s.visibility!=='hidden'&&el.getClientRects().length>0;
+  }
+  function activeModals(){
+    return [...document.querySelectorAll('.arena-modal-v852,dialog[open]')].filter(liveModal);
+  }
+  // A player card with its team editor collapsed is a profile VIEW.
+  // Cancel only collapses #arenaPlayerTeamEditorV941, it doesn't close
+  // the surrounding .arena-modal-v852. Don't leave the dock hidden.
+  function profileView(modals){
+    if(modals.length!==1||!modals[0].classList.contains('arena-modal-v852'))return false;
+    const profile=modals[0].querySelector('.arena-player-modal-v932');
+    if(!profile)return false;
+    const editor=profile.querySelector('#arenaPlayerTeamEditorV941');
+    return !editor||editor.hidden;
+  }
+  function typing(el){
+    if(!el||!el.matches||!el.isConnected||el.disabled||el.readOnly||el.closest?.('#bottomNav,[hidden],[aria-hidden="true"]'))return false;
+    if(el.isContentEditable||el.closest?.('[contenteditable="true"],[contenteditable=""],[contenteditable="plaintext-only"]'))return true;
+    return el.matches('textarea,select')||(el.matches('input')&&typingTypes.has((el.getAttribute('type')||'text').toLowerCase()));
+  }
+  function tidyPosition(){
+    const el=nav();if(!el)return;
+    for(const prop of ['inset','top','right','bottom','left','position','transform','-webkit-transform','translate']){
+      if(el.style.getPropertyValue(prop))el.style.removeProperty(prop);
+    }
+  }
+  function setSuppressed(value){
+    body.classList.toggle('ca-nav-suppressed-v1151',value);
+    const el=nav();if(!el)return;
+    if(value){
+      if(el.style.getPropertyValue('display')!=='none'||el.style.getPropertyPriority('display')!=='important')el.style.setProperty('display','none','important');
+    }else{
+      if(el.style.getPropertyValue('display')==='none')el.style.removeProperty('display');
+      tidyPosition();
+    }
+  }
+  function sync(){
+    const modals=activeModals();
+    const view=profileView(modals);
+    body.classList.toggle('ca-arena-profile-view-v1151',view);
+    const blocked=modals.length>0&&!view;
+    const focused=typing(document.activeElement);
+    const now=performance.now();
+    if(focused){
+      if(!keyboardSession)sessionAt=now;
+      keyboardSession=true;
+      clearTimeout(releaseTimer);releaseTimer=0;
+      setSuppressed(true);return;
+    }
+    const keyboardStillClosing=keyboardSession&&vv&&
+      ((window.innerHeight||0)-(vv.height||0)>130)&&now-sessionAt<1800;
+    if(keyboardStillClosing){
+      setSuppressed(true);
+      if(!releaseTimer)releaseTimer=setTimeout(()=>{releaseTimer=0;sync();},180);
+      return;
+    }
+    keyboardSession=false;
+    clearTimeout(releaseTimer);releaseTimer=0;
+    setSuppressed(blocked||!mainRoute());
+  }
+  function scheduleSync(){
+    if(frame)return;
+    frame=requestAnimationFrame(()=>{frame=0;sync();});
+  }
+  // Undo stale inline display/offset left by the older app navigation.
+  const navObserver=new MutationObserver(()=>scheduleSync());
+  function observeNav(){
+    const el=nav();if(el===observedNav)return;
+    navObserver.disconnect();observedNav=el;
+    if(el)navObserver.observe(el,{attributes:true,attributeFilter:['style','class','hidden']});
+  }
+  document.addEventListener('focusin',e=>{if(typing(e.target)){keyboardSession=true;sessionAt=performance.now();setSuppressed(true);scheduleSync();}},true);
+  document.addEventListener('focusout',e=>{if(typing(e.target))scheduleSync();},true);
+  document.addEventListener('input',e=>{if(typing(e.target))setSuppressed(true);},true);
+  document.addEventListener('pointerdown',scheduleSync,true);
+  document.addEventListener('click',e=>{
+    // Navigating away from the player profile must not leave its modal
+    // covering the new route. Normal profile controls keep their behavior.
+    if(e.target.closest?.('#bottomNav')){
+      for(const m of activeModals())if(m.querySelector('.arena-player-modal-v932'))m.remove();
+    }
+    scheduleSync();
+  },true);
+  vv?.addEventListener('resize',scheduleSync,{passive:true});
+  vv?.addEventListener('scroll',scheduleSync,{passive:true});
+  window.addEventListener('resize',scheduleSync,{passive:true});
+  window.addEventListener('pageshow',scheduleSync,{passive:true});
+  window.addEventListener('orientationchange',scheduleSync,{passive:true});
+  new MutationObserver(()=>{observeNav();scheduleSync();}).observe(body,{attributes:true,attributeFilter:['class','hidden','aria-hidden','open'],childList:true,subtree:true});
+  body.classList.remove('ca-nav-suppressed-v1150');
+  observeNav();sync();
+})();
+</script>
+<!-- v11.57: remember actual shared dock height before Arena keyboard opens.
+     This measures the existing menu, not the visual viewport's changing height. -->
+<script>
+(function centuriaArenaStableDockV1157(){
+  const nav=document.getElementById('bottomNav');
+  if(!nav || !window.ResizeObserver) return;
+  let last=0;
+  const remember=()=>{
+    if(nav.hidden || getComputedStyle(nav).display==='none') return;
+    const h=nav.getBoundingClientRect().height;
+    if(h<60 || h>180 || Math.abs(h-last)<.3) return;
+    last=h;
+    document.documentElement.style.setProperty('--ca-arena-dock-box-h',h.toFixed(2)+'px');
+  };
+  new ResizeObserver(remember).observe(nav);
+  requestAnimationFrame(remember);
+})();
+</script>
 </body>
 </html>
