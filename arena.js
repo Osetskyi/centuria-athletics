@@ -3252,6 +3252,96 @@
   };
   window.addEventListener('resize',()=>{if(route==='home')queueActiveEventFitV1102();},{passive:true});
 
+  /* v12.22 — iOS's native two-axis overflow treats slightly diagonal vertical
+     swipes as horizontal bracket movement. Lock each touch to its dominant axis
+     BEFORE any scrolling; move only that axis until the finger is lifted.
+     Delegation also covers the draw/history modals and survives Arena redraws. */
+  const bracketPanV1222={scroller:null,axis:'',animation:0};
+  const stopBracketMomentumV1222=()=>{
+    if(bracketPanV1222.animation){
+      cancelAnimationFrame(bracketPanV1222.animation);
+      bracketPanV1222.animation=0;
+    }
+  };
+  const findBracketVerticalScrollerV1222=scroller=>{
+    for(let node=scroller;node;node=node.parentElement){
+      const overflow=getComputedStyle(node).overflowY;
+      if((overflow==='auto'||overflow==='scroll')&&node.scrollHeight>node.clientHeight+2)return node;
+    }
+    return scroller;
+  };
+  document.addEventListener('touchstart',e=>{
+    stopBracketMomentumV1222();
+    bracketPanV1222.scroller=null;
+    if(e.touches.length!==1)return;
+    const scroller=e.target?.closest?.('.arena-cup-bracket-scroll-v1036');
+    if(!scroller)return;
+    const t=e.touches[0],p=bracketPanV1222;
+    p.scroller=scroller;
+    p.id=t.identifier;
+    p.axis='';
+    p.startX=t.clientX;p.startY=t.clientY;
+    p.lastX=t.clientX;p.lastY=t.clientY;p.lastTime=e.timeStamp;
+    p.x0=scroller.scrollLeft;
+    p.vertical=findBracketVerticalScrollerV1222(scroller);
+    p.y0=p.vertical.scrollTop;
+    p.velocity=0;
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    const p=bracketPanV1222;
+    if(!p.scroller||!p.scroller.isConnected||e.touches.length!==1)return;
+    const t=e.touches[0];
+    if(t.identifier!==p.id)return;
+    const dx=t.clientX-p.startX,dy=t.clientY-p.startY;
+    if(!p.axis){
+      if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
+      // Near-diagonal moves default to vertical to avoid unwanted round jumps.
+      p.axis=Math.abs(dx)>Math.abs(dy)*1.22?'x':'y';
+      p.lastX=t.clientX;p.lastY=t.clientY;p.lastTime=e.timeStamp;
+    }
+    if(e.cancelable)e.preventDefault();
+    const target=p.axis==='x'?p.scroller:p.vertical;
+    if(!target||!target.isConnected)return;
+    if(p.axis==='x')p.scroller.scrollLeft=p.x0-dx;
+    else p.vertical.scrollTop=p.y0-dy;
+    // A gesture must never modify the other axis, including due to snap.
+    if(p.axis==='x')p.vertical.scrollTop=p.y0;
+    else p.scroller.scrollLeft=p.x0;
+    const dt=e.timeStamp-p.lastTime;
+    if(dt>0){
+      const delta=p.axis==='x'?p.lastX-t.clientX:p.lastY-t.clientY;
+      p.velocity=Math.max(-2.2,Math.min(2.2,delta/dt));
+    }
+    p.lastX=t.clientX;p.lastY=t.clientY;p.lastTime=e.timeStamp;
+  },{passive:false});
+  const finishBracketPanV1222=e=>{
+    const p=bracketPanV1222;
+    if(!p.scroller)return;
+    const axis=p.axis;
+    const scroller=p.scroller;
+    const target=axis==='x'?scroller:p.vertical;
+    // A very short drag or a held finger should not cause phantom momentum.
+    let speed=e.type==='touchcancel'||e.timeStamp-p.lastTime>90?0:p.velocity;
+    p.scroller=null;p.axis='';
+    if(!axis||!target||Math.abs(speed)<0.16)return;
+    let previous=0;
+    const glide=now=>{
+      if(!target.isConnected){p.animation=0;return;}
+      const dt=previous?Math.min(32,now-previous):16;
+      previous=now;
+      const previousPosition=axis==='x'?target.scrollLeft:target.scrollTop;
+      if(axis==='x')target.scrollLeft+=speed*dt;
+      else target.scrollTop+=speed*dt;
+      const currentPosition=axis==='x'?target.scrollLeft:target.scrollTop;
+      speed*=Math.pow(0.88,dt/16);
+      if(Math.abs(currentPosition-previousPosition)<0.2||Math.abs(speed)<0.12){p.animation=0;return;}
+      p.animation=requestAnimationFrame(glide);
+    };
+    p.animation=requestAnimationFrame(glide);
+  };
+  document.addEventListener('touchend',finishBracketPanV1222,{passive:true});
+  document.addEventListener('touchcancel',finishBracketPanV1222,{passive:true});
+
   /* v12.20 — keep the horizontal Cup/League bracket exactly where the user
      scrolled it. Remote Arena refreshes redraw #arenaApp every few seconds;
      replacing innerHTML used to reset scrollLeft to zero on iPhone. */
