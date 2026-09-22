@@ -1,5 +1,5 @@
 // v10.80 light cup bracket card in Arena
-const CACHE_VERSION="centuria-pwa-v12180-move-club-button-theme";
+const CACHE_VERSION="centuria-pwa-v12190-fuzzy-club-name-match";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();

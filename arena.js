@@ -983,6 +983,54 @@
     if(!key)return null;
     return clubDatabase.find(c=>normalizeTeamName(c?.name)===key)||null;
   };
+  /* v12.19 — tolerant club-name matching for manually typed names.
+     Exact names still win. A fuzzy result is accepted only when it is both
+     close enough and clearly better than the next candidate, so short or
+     ambiguous names (for example just “United”) do not steal another crest. */
+  const clubMatchKeyV1219=value=>String(value||"")
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/&/g,' and ')
+    .replace(/[^a-z0-9а-яіїєґ]+/gi,' ')
+    .trim().replace(/\s+/g,' ');
+  const CLUB_NAME_NOISE_V1219=new Set(['fc','cf','afc','sc','ac','as','sv','vfl','vfb','fk','sk','nk','rc','cd','ud','bsc','ssc','ss','kv','rsc']);
+  const clubCoreKeyV1219=value=>{
+    const parts=clubMatchKeyV1219(value).split(' ').filter(Boolean);
+    while(parts.length>1&&CLUB_NAME_NOISE_V1219.has(parts[0]))parts.shift();
+    while(parts.length>1&&CLUB_NAME_NOISE_V1219.has(parts.at(-1)))parts.pop();
+    return parts.join(' ');
+  };
+  const clubEditDistanceV1219=(a,b)=>{
+    a=String(a||'');b=String(b||'');
+    if(a===b)return 0;if(!a.length)return b.length;if(!b.length)return a.length;
+    let prev=Array.from({length:b.length+1},(_,i)=>i);
+    for(let i=1;i<=a.length;i++){
+      const next=[i];
+      for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+      prev=next;
+    }
+    return prev[b.length];
+  };
+  const clubSimilarityV1219=(a,b)=>{
+    if(!a||!b)return 0;if(a===b)return 1;
+    return 1-clubEditDistanceV1219(a,b)/Math.max(a.length,b.length,1);
+  };
+  const clubDbFindSimilarV1219=name=>{
+    const rawKey=clubMatchKeyV1219(name);
+    if(rawKey.length<4)return null;
+    const rawCore=clubCoreKeyV1219(name);
+    const ranked=(clubDatabase||[]).map(club=>{
+      const nameKey=clubMatchKeyV1219(club?.name);
+      const nameCore=clubCoreKeyV1219(club?.name);
+      let score=Math.max(clubSimilarityV1219(rawKey,nameKey),clubSimilarityV1219(rawCore,nameCore));
+      if(rawCore.length>=5&&rawCore===nameCore)score=Math.max(score,.99);
+      else if(Math.min(rawCore.length,nameCore.length)>=6&&(rawCore.includes(nameCore)||nameCore.includes(rawCore)))score=Math.max(score,.90);
+      return {club,score};
+    }).sort((a,b)=>b.score-a.score);
+    const best=ranked[0],second=ranked[1];
+    if(!best||best.score<.80)return null;
+    if(second&&best.score-second.score<.07)return null;
+    return best.club||null;
+  };
   const saveClubDatabase=()=>{
     try{localStorage.setItem(CLUB_DB_KEY,JSON.stringify(clubDatabase||[]));}catch(_e){}
     try{window.__CENTURIA_CLUB_DATABASE__=(clubDatabase||[]).map(c=>({...c}));}catch(_e){}
@@ -1528,7 +1576,9 @@
     if(directDb?.name) return directDb.name;
     const aliased=teamAliases[normalizeTeamName(raw)]||raw||"Centuria";
     const aliasDb=clubDbFind(aliased);
-    return aliasDb?.name||aliased;
+    if(aliasDb?.name)return aliasDb.name;
+    const similarDb=clubDbFindSimilarV1219(raw)||clubDbFindSimilarV1219(aliased);
+    return similarDb?.name||aliased;
   };
   const svgToDataUri=svg=>`data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   const initialsForTeam=team=>{
@@ -4586,7 +4636,8 @@
     },
     async sendFriendlyChallenge(){
       const me=currentArenaPlayerName();
-      const myClub=String(document.getElementById("arenaFriendlyMyClubV972")?.value||clubFor(me)).trim()||clubFor(me);
+      const myClubRaw=String(document.getElementById("arenaFriendlyMyClubV972")?.value||clubFor(me)).trim()||clubFor(me);
+      const myClub=canonicalTeamName(myClubRaw);
       const opponent=String(document.getElementById("arenaFriendlyOpponentV972")?.value||"").trim();
       if(!opponent||opponent===me){try{window.showToast?.("Оберіть суперника")}catch(_e){}return;}
 
@@ -4651,8 +4702,9 @@
     async confirmIncomingFriendly(challengeId){
       const api=friendlyApiV1007();
       if(!api?.accept)return;
-      const club=String(document.getElementById("arenaIncomingFriendlyClubV1007")?.value||"").trim();
-      if(!club){try{window.showToast?.("Вибери команду")}catch(_e){}return;}
+      const clubRaw=String(document.getElementById("arenaIncomingFriendlyClubV1007")?.value||"").trim();
+      const club=canonicalTeamName(clubRaw);
+      if(!clubRaw){try{window.showToast?.("Вибери команду")}catch(_e){}return;}
       try{
         await api.accept(challengeId,club);
         upsertClubDatabase(club,undefined);
