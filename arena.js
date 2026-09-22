@@ -1,3 +1,4 @@
+/* v12.17 — EVO-based BYE for odd Cup rounds. */
 /* v12.13 — club database action buttons use the gold primary style. */
 /* v12.11 — vertical club action buttons and readable club info rows. */
 /* v12.8 — dark-theme club database secondary buttons remain dark. */
@@ -1719,11 +1720,22 @@
     return false;
   };
   const cupLabel=count=>count<=2?"ФІНАЛ":count<=4?"1/2 ФІНАЛУ":count<=8?"1/4 ФІНАЛУ":count<=16?"1/8 ФІНАЛУ":`РАУНД ${count}`;
+  // v12.17: the draw fixes pair order, but an odd-sized Cup field awards BYE
+  // to the lowest current EVO. Only exact rating ties are broken randomly.
+  // Already saved rounds are never re-drawn when this rule is installed.
   const makeCupRound=(names,roundNo)=>{
-    const matches=[],byes=[];
-    for(let i=0;i<names.length;i+=2){
-      if(i+1>=names.length){byes.push(names[i]);continue;}
-      matches.push({id:`C${roundNo}_${Math.floor(i/2)+1}`,round:roundNo,home:names[i],away:names[i+1],homeScore:null,awayScore:null,leg2HomeScore:null,leg2AwayScore:null,tiebreakWinner:null});
+    const entrants=[...names],matches=[],byes=[];
+    if(entrants.length%2){
+      const ratings=computeArenaRatings();
+      const score=name=>ratings.get(name)??ARENA_BASE_EVO;
+      const lowest=Math.min(...entrants.map(score));
+      const tied=entrants.filter(name=>score(name)===lowest);
+      const bye=tied[Math.floor(Math.random()*tied.length)];
+      byes.push(bye);
+      entrants.splice(entrants.indexOf(bye),1);
+    }
+    for(let i=0;i<entrants.length;i+=2){
+      matches.push({id:`C${roundNo}_${i/2+1}`,round:roundNo,home:entrants[i],away:entrants[i+1],homeScore:null,awayScore:null,leg2HomeScore:null,leg2AwayScore:null,tiebreakWinner:null});
     }
     return {round:roundNo,label:cupLabel(names.length),matches,byes};
   };
@@ -2325,7 +2337,7 @@
       <div class="arena-evo-hero-v967">
         <div class="arena-evo-kicker-v967">🔥 CENTURIA EVO</div>
         <h2>РЕЙТИНГ ГРАВЦІВ</h2>
-        <p>Старт 1000 <span>•</span> Elo K=32 <span>•</span> мінімум 100</p>
+        <p>Старт 1000 <span>•</span> Elo K=24 <span>•</span> мінімум 100</p>
       </div>
       <div class="arena-evo-list-v967">
         ${q.map((p,i)=>{
@@ -3863,6 +3875,12 @@
       if(confirmed.length<2){try{window.showToast?.('Для жеребкування потрібно мінімум 2 учасники')}catch(_e){};return;}
       const clubs=[...new Set((poll.allowedClubs||[]).map(x=>canonicalTeamName(String(x||'').trim())).filter(Boolean))];
       if(!clubs.length){try{window.showToast?.('Для Кубка не вибрано жодної команди')}catch(_e){};return;}
+      // v12.17: refresh shared scores before choosing the lowest-EVO BYE
+      // for a new Cup. Do not use an old device-local rating snapshot.
+      await Promise.all([refreshRemoteArenaStateV1012(false),refreshRemoteFriendliesV1007(false)]);
+      if(testCompetition || !cupSignupPoll || cupSignupPoll.id!==poll.id){
+        window.showToast?.('Турнір уже змінився. Онови сторінку');return;
+      }
       const players=shuffleCupDrawV1032(confirmed);
       const clubDeck=cupDrawClubDeckV1032(clubs,players.length);
       const participantClubs=Object.fromEntries(players.map((name,i)=>[name,clubDeck[i]||canonicalTeamName(clubFor(name))]));
