@@ -1,3 +1,6 @@
+/* v12.13 — club database action buttons use the gold primary style. */
+/* v12.11 — vertical club action buttons and readable club info rows. */
+/* v12.8 — dark-theme club database secondary buttons remain dark. */
 // v10.93 — League creator, registration, clubs and formats; Cup v10.92 retained.
 (() => {
   const P=[["Volkovson",1000,"Manchester United"],["Osetskyi_3",1000,"Real Madrid"],["Romeo_130901",1000,"Arsenal"],["Mitsuki_one_love",1000,"Barcelona"],["Loter24",1000,"Milan"],["vladiks56",1000,"Chelsea"]];
@@ -175,6 +178,8 @@
   let remoteCupVotesV1029={};
   let remoteCupVoteRowsV1029=[];
   let remoteCupVotesLoadingV1029=false;
+  let cupDrawBusyV124=false;
+  let leagueDrawBusyV124=false;
   const loadCupSignupPoll=()=>{
     try{
       const saved=JSON.parse(localStorage.getItem(CUP_SIGNUP_POLL_KEY)||"null");
@@ -837,6 +842,122 @@
     "Inter":{bg1:"#0f172a",bg2:"#1d4ed8",ring:"#d4af37",text:"INT"},
     "Centuria":{bg1:"#d4a12e",bg2:"#5b3a0a",ring:"#fff0b3",text:"CA",fg:"#201505"}
   };
+
+  /* v12.3 — editable, administrator-owned club folders (shared through Supabase). */
+  const COUNTRY_UNASSIGNED_V122="UNASSIGNED";
+  let clubGroupsV123=[];
+  let remoteClubGroupsLoadedV123=false;
+  /* v12.5 — country → league → club. A missing league is not a lost club. */
+  const LEAGUE_UNASSIGNED_V125="__NO_LEAGUE__";
+  let clubLeaguesV125=[];
+  const clubLeagueKeyV125=value=>String(value||"").trim().toUpperCase();
+  const clubLeagueV125=(value,country="")=>{
+    const code=clubLeagueKeyV125(value);
+    const league=clubLeaguesV125.find(g=>g.code===code);
+    return league&&(!country||league.country_code===country)?code:"";
+  };
+  const clubLeagueOfV125=club=>clubLeagueV125(club?.league_code,clubCountryV122(club?.country));
+  const leagueNameV125=code=>code===LEAGUE_UNASSIGNED_V125?"Без ліги":(clubLeaguesV125.find(g=>g.code===code)?.name||"Без ліги");
+  const leagueIconV125=code=>code===LEAGUE_UNASSIGNED_V125?"📂":(clubLeaguesV125.find(g=>g.code===code)?.icon||"🏆");
+  const leaguesForCountryV125=country=>clubLeaguesV125.filter(g=>g.country_code===country);
+  const leagueForTeamV125=team=>clubLeagueOfV125(clubDbFind(team))||LEAGUE_UNASSIGNED_V125;
+  const leagueCodesForCountryV125=country=>{
+    const assigned=leaguesForCountryV125(country).map(g=>g.code);
+    const orphans=clubDatabase.some(c=>clubCountryOfV122(c)===country&&!clubLeagueOfV125(c));
+    return [...assigned,...(orphans||!assigned.length?[LEAGUE_UNASSIGNED_V125]:[])];
+  };
+  const defaultLeagueV125=country=>leagueCodesForCountryV125(country)[0]||LEAGUE_UNASSIGNED_V125;
+  const clubLeagueSelectedV125={fav:"",friendly:"",incoming:"",tournament:"",database:""};
+  const leagueTabsV125=(mode,country,active)=>leagueCodesForCountryV125(country).map(code=>{
+    const count=clubDatabase.filter(c=>clubCountryOfV122(c)===country&&(clubLeagueOfV125(c)||LEAGUE_UNASSIGNED_V125)===code).length;
+    return `<button type="button" class="arena-country-tab-v122 arena-league-tab-v125${code===active?' is-active':''}" aria-pressed="${code===active}" onclick="ArenaV852.setClubLeagueV125('${mode}','${jsq(code)}')">${esc(leagueIconV125(code))} ${esc(leagueNameV125(code))}<small>${count}</small></button>`;
+  }).join("");
+  const clubsForFolderV125=(country,league)=>clubsForCountryV122(country).filter(c=>(clubLeagueOfV125(c)||LEAGUE_UNASSIGNED_V125)===(league||defaultLeagueV125(country)));
+
+  const clubGroupKeyV123=value=>String(value||"").trim().toUpperCase();
+  const clubCountryV122=value=>{
+    const key=clubGroupKeyV123(value);
+    return clubGroupsV123.some(g=>g.code===key)?key:"";
+  };
+  const clubCountryFlagV122=code=>code===COUNTRY_UNASSIGNED_V122?"📂":
+    (clubGroupsV123.find(g=>g.code===code)?.flag||"📁");
+  const clubCountryNameV122=code=>code===COUNTRY_UNASSIGNED_V122?"Без розділу":
+    (clubGroupsV123.find(g=>g.code===code)?.name||"Без розділу");
+  const clubCountryOfV122=club=>clubCountryV122(club?.country)||COUNTRY_UNASSIGNED_V122;
+  const clubCountryForTeamV122=team=>{
+    const club=clubDbFind(team);
+    return club?clubCountryOfV122(club):"";
+  };
+  const countryCodesInDatabaseV122=()=>[
+    ...clubGroupsV123.map(g=>g.code),
+    ...((clubDatabase||[]).some(c=>clubCountryOfV122(c)===COUNTRY_UNASSIGNED_V122)?[COUNTRY_UNASSIGNED_V122]:[])
+  ];
+  const countryTabsV122=(mode,current)=>countryCodesInDatabaseV122().map(code=>{
+    const count=clubDatabase.filter(c=>clubCountryOfV122(c)===code).length;
+    return `<button type="button" class="arena-country-tab-v122${code===current?' is-active':''}" aria-pressed="${code===current}" onclick="ArenaV852.setClubCountryV122('${mode}','${jsq(code)}')">${esc(clubCountryFlagV122(code))} ${esc(clubCountryNameV122(code))}<small>${count}</small></button>`;
+  }).join("");
+  const clubPickerGroupsV123={
+    fav:['arenaFavCountryV122','arenaFavTeamSelectV1002','arenaFavTeamV930','arenaFavCountryTabsV123'],
+    friendly:['arenaFriendlyCountryV122','arenaFriendlyMyClubSelectV1002','arenaFriendlyMyClubV972','arenaFriendlyCountryTabsV123'],
+    incoming:['arenaIncomingFriendlyCountryV122','arenaIncomingFriendlyClubSelectV1007','arenaIncomingFriendlyClubV1007','arenaIncomingFriendlyCountryTabsV123']
+  };
+  const clubPickerTabsV123=(mode,team)=>{
+    clubLeagueSelectedV125[mode]=clubDbFind(team)?leagueForTeamV125(team):defaultLeagueV125(clubCountryForTeamV122(team));
+    return countryTabsV122(mode,clubCountryForTeamV122(team));
+  };
+  const clubPickerLeagueTabsV125=(mode,team)=>leagueTabsV125(mode,clubCountryForTeamV122(team),clubLeagueSelectedV125[mode]);
+  const repaintClubPickerTabsV123=(mode)=>{
+    const ids=clubPickerGroupsV123[mode];if(!ids)return;
+    const container=document.getElementById(ids[3]),selected=document.getElementById(ids[0])?.value||'';
+    if(container)container.innerHTML=countryTabsV122(mode,selected);
+    const leagues=document.getElementById(`arena${mode==='fav'?'Fav':mode==='friendly'?'Friendly':'IncomingFriendly'}LeagueTabsV125`);
+    if(leagues)leagues.innerHTML=leagueTabsV125(mode,selected,clubLeagueSelectedV125[mode]);
+  };
+  const countryEditorOptionsV122=()=>clubGroupsV123.map(({code,name,flag})=>
+    `<option value="${esc(code)}">${esc(flag)} ${esc(name)}</option>`).join("");
+  const leagueEditorOptionsV125=country=>leaguesForCountryV125(country).map(g=>`<option value="${esc(g.code)}">${esc(g.icon)} ${esc(g.name)}</option>`).join("");
+  const countryPickerOptionsV122=(selectedTeam="")=>{
+    const club=clubDbFind(selectedTeam);
+    const code=club?clubCountryOfV122(club):"";
+    return `<option value="">— Спочатку оберіть розділ —</option>`+
+      countryCodesInDatabaseV122().map(key=>`<option value="${esc(key)}"${key===code?' selected':''}>${esc(clubCountryFlagV122(key))} ${esc(clubCountryNameV122(key))}</option>`).join("");
+  };
+  const clubsForCountryV122=code=>clubDatabase.filter(c=>clubCountryOfV122(c)===code)
+    .sort((x,y)=>x.name.localeCompare(y.name,'uk'));
+  const clubOptionsForTeamV122=team=>{
+    const code=clubCountryForTeamV122(team);
+    return (code?clubsForFolderV125(code,leagueForTeamV125(team)):[]).map(c=>`<option value="${esc(c.name)}"${c.name===team?' selected':''}>${esc(c.name)}</option>`).join("");
+  };
+  const syncCountryClubSelectV122=(countryId,clubId,team)=>{
+    const countryEl=document.getElementById(countryId), clubEl=document.getElementById(clubId);
+    if(!countryEl||!clubEl)return;
+    const found=clubDbFind(team),code=found?clubCountryOfV122(found):String(countryEl.value||"");
+    if(found&&countryEl.value!==code)countryEl.value=code;
+    const mode=Object.keys(clubPickerGroupsV123).find(key=>clubPickerGroupsV123[key][0]===countryId);
+    if(mode)clubLeagueSelectedV125[mode]=found?leagueForTeamV125(team):defaultLeagueV125(code);
+    clubEl.innerHTML=`<option value="">— Обрати клуб —</option>`+
+      (code?clubsForFolderV125(code,mode?clubLeagueSelectedV125[mode]:defaultLeagueV125(code)):[]).map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
+    clubEl.value=found?found.name:"";
+    if(mode)repaintClubPickerTabsV123(mode);
+  };
+  const reloadClubGroupsV123=async()=>{
+    const api=clubApiV1009();
+    if(!api?.listGroups||!api?.isReady?.())return clubGroupsV123;
+    const rows=await api.listGroups();
+    clubGroupsV123=(Array.isArray(rows)?rows:[]).map(g=>({
+      code:clubGroupKeyV123(g?.code),name:String(g?.name||"").trim(),flag:String(g?.flag||"📁").trim()||"📁"
+    })).filter(g=>g.code&&g.name);
+    remoteClubGroupsLoadedV123=true;
+    if(api.listLeagues){
+      const leagues=await api.listLeagues();
+      clubLeaguesV125=(Array.isArray(leagues)?leagues:[]).map(g=>({
+        code:clubLeagueKeyV125(g?.code),country_code:clubGroupKeyV123(g?.country_code),
+        name:String(g?.name||'').trim(),icon:String(g?.icon||'🏆').trim()||'🏆'
+      })).filter(g=>g.code&&g.name&&clubGroupsV123.some(c=>c.code===g.country_code));
+    }
+    return clubGroupsV123;
+  };
+  let clubDbActiveCountryV122="";
   const CLUB_DB_KEY="ca_arena_club_database_v945";
   const CLUB_DB_DELETED_KEY="ca_arena_club_database_deleted_v946";
   let clubDatabase=[];
@@ -876,27 +997,29 @@
     // not change what another account sees.
     const deleted=new Set(remoteClubDatabaseLoadedV1009?[]:(clubDatabaseDeleted||[]));
     const map=new Map();
-    const put=(name,logo="")=>{
+    const put=(name,logo="",country="",league="")=>{
       name=String(name||"").trim();
       if(!name)return;
       const key=normalizeTeamName(name);
       if(deleted.has(key))return;
       const prev=map.get(key);
       const cleanLogo=String(logo||"").trim();
-      if(!prev)map.set(key,{name,logo:cleanLogo});
-      else if(!prev.logo&&cleanLogo)prev.logo=cleanLogo;
+      const cleanCountry=clubCountryV122(country);
+      const cleanLeague=clubLeagueV125(league,cleanCountry);
+      if(!prev)map.set(key,{name,logo:cleanLogo,country:cleanCountry,league_code:cleanLeague});
+      else {if(!prev.logo&&cleanLogo)prev.logo=cleanLogo; if(!prev.country&&cleanCountry)prev.country=cleanCountry; if(!prev.league_code&&cleanLeague)prev.league_code=cleanLeague;}
     };
     if(remoteClubDatabaseLoadedV1009){
       // v10.15: after the shared DB has loaded, it is the ONLY source of
       // clubs that belong to "База клубів". This makes DELETE real: a club
       // removed from Supabase is no longer silently re-created from defaults,
       // player favorites or old local data.
-      (remoteClubDatabaseV1009||[]).forEach(c=>put(c?.name,c?.logo));
+      (remoteClubDatabaseV1009||[]).forEach(c=>put(c?.name,c?.logo,c?.country,c?.league_code));
     }else{
       // Offline / first-load fallback before Supabase answers.
       Object.keys(teamThemeMap).forEach(name=>put(name,""));
       P.forEach(row=>put(row?.[2],""));
-      saved.forEach(c=>put(c?.name,c?.logo));
+      saved.forEach(c=>put(c?.name,c?.logo,c?.country,c?.league_code));
       Object.values(playerArenaPrefs||{}).forEach(pref=>put(pref?.favoriteTeam,""));
     }
 
@@ -962,11 +1085,16 @@
     }
     let entry=clubDbFind(name);
     const hasLogo=logo!==undefined&&logo!==null;
+    const hasCountry=opts.country!==undefined&&opts.country!==null;
+    const hasLeague=opts.league_code!==undefined;
     if(entry){
       entry.name=name;
       if(hasLogo)entry.logo=String(logo||"").trim();
+      if(hasCountry)entry.country=clubCountryV122(opts.country);
+      if(hasLeague)entry.league_code=clubLeagueV125(opts.league_code,entry.country);
+      else if(hasCountry)entry.league_code=clubLeagueV125(entry.league_code,entry.country);
     }else{
-      entry={name,logo:hasLogo?String(logo||"").trim():""};
+      entry={name,logo:hasLogo?String(logo||"").trim():"",country:hasCountry?clubCountryV122(opts.country):"",league_code:clubLeagueV125(opts.league_code,opts.country)};
       clubDatabase.push(entry);
     }
     clubDatabase.sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:"base"}));
@@ -994,7 +1122,7 @@
     // replace it. This is where the already-uploaded custom emblems live.
     const localSnapshot=loadClubDatabase()
       .filter(c=>String(c?.logo||"").trim())
-      .map(c=>({name:c.name,logo:c.logo||""}));
+      .map(c=>({name:c.name,logo:c.logo||"",country:c.country||""}));
     try{
       await api.upsertMany(localSnapshot);
       try{localStorage.setItem(CLUB_REMOTE_MIGRATION_V1009,"1")}catch(_e){}
@@ -1009,13 +1137,21 @@
     try{
       // First ADMIN open uploads the old local emblems to Supabase once.
       if(api?.canWrite?.()) await migrateAdminClubLogosToRemoteV1009();
+      await reloadClubGroupsV123();
       const rows=await api.list();
       remoteClubDatabaseV1009=(Array.isArray(rows)?rows:[]).map(r=>({
         name:String(r?.name||"").trim(),
-        logo:String(r?.logo||"").trim()
+        logo:String(r?.logo||"").trim(),
+        country:clubCountryV122(r?.country),
+        league_code:clubLeagueV125(r?.league_code,clubCountryV122(r?.country))
       })).filter(c=>c.name);
+      const firstCountryLoadV122=!remoteClubDatabaseLoadedV1009;
       remoteClubDatabaseLoadedV1009=true;
       loadClubDatabase();
+      if(firstCountryLoadV122){
+        const countries=countryCodesInDatabaseV122();
+        clubDbActiveCountryV122=countries.find(code=>code!==COUNTRY_UNASSIGNED_V122)||countries[0]||"";
+      }
       if(redraw && document.getElementById("screen-arena")?.classList.contains("active"))draw();
     }catch(err){
       console.warn("Arena club refresh",err);
@@ -1218,6 +1354,30 @@
     return remoteCupVoteRowsV1029;
   };
 
+  // v12.5: irreversible draws and registration closure require fresh confirmed votes.
+  // Background refreshes catch errors for display and are NOT safe for drawing.
+  const refreshVotesForTournamentV124=async(poll,kind)=>{
+    const api=cupVoteApiV1029();
+    if(!poll?.id || !api?.isReady?.() || !api?.list)
+      throw new Error('Немає з’єднання з сервером голосування. Спробуй ще раз.');
+    const rows=await api.list(String(poll.id));
+    if(!Array.isArray(rows))throw new Error('Сервер не повернув список голосів. Спробуй ще раз.');
+    const active=kind==='cup'?cupSignupPoll:leagueSignupPoll;
+    if(String(active?.id||'')!==String(poll.id))
+      throw new Error('Реєстрація змінилася. Онови сторінку та повтори.');
+    const votes={};
+    for(const row of rows){
+      const name=String(row?.player_name||'').trim();
+      const vote=String(row?.vote||'').trim().toLowerCase();
+      if(name&&(vote==='yes'||vote==='no'))votes[name]=vote;
+    }
+    if(kind==='cup'){
+      remoteCupVoteRowsV1029=rows;
+      remoteCupVotesV1029=votes;
+    }else remoteLeagueVotesV1093=votes;
+    return votes;
+  };
+
   // Same authenticated vote transport as the Cup, but isolated by league poll ID.
   // The admin-only global Arena state is never written by regular players.
   const leagueVoteForV1093=(poll,name)=>{
@@ -1268,7 +1428,7 @@
       remoteArenaRealtimeBoundV1012=true;
       rt.subscribe((table)=>{
         if(table==='arena_global_state') refreshRemoteArenaStateV1012(true);
-        else if(table==='arena_clubs') refreshRemoteClubDatabaseV1009(true);
+        else if(table==='arena_clubs'||table==='arena_club_groups'||table==='arena_club_leagues') refreshRemoteClubDatabaseV1009(true);
         else if(table==='arena_player_preferences') refreshRemotePlayerPrefsV1011(true);
         else if(table==='arena_friendly_challenges') refreshRemoteFriendliesV1007(true);
         else if(table==='arena_cup_votes'){
@@ -1993,8 +2153,11 @@
     if(leagueSignupPoll){
       const poll=leagueSignupPoll,ready=poll.phase==='ready'||!cupPollStillActive(poll);
       const confirmed=leagueConfirmedV1093(poll),all=leagueAllPlayersV1093(poll);
+      const declined=all.filter(n=>leagueVoteForV1093(poll,n)==='no');
+      const declinedCount=declined.length;
+      const waitingCount=all.length-confirmed.length-declinedCount;
       const me=linkedArenaPlayerName(),vote=me?leagueVoteForV1093(poll,me):'';
-      const labels=all.map(name=>{
+      const labels=confirmed.map(name=>{
         const v=leagueVoteForV1093(poll,name);
         return `<div class="arena-cup-poll-person-v1026"><div class="arena-cup-poll-person-left-v1026">${crestBadge(poll.previewClubs?.[name]||clubFor(name),'')}<div><strong>${esc(name)}</strong><small>${v==='yes'?'ПІДТВЕРДИВ УЧАСТЬ':v==='no'?'НЕ БЕРЕ УЧАСТІ':'ОЧІКУЄ ВІДПОВІДІ'}</small></div></div><span class="arena-cup-poll-status-v1026 ${v==='yes'?'yes':v==='no'?'no':'pending'}">${v==='yes'?'✓':v==='no'?'✖':'…'}</span></div>`;
       }).join('');
@@ -2006,7 +2169,7 @@
         <button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaLeagueCoverReplaceV121')?.click()">🖼 ЗАМІНИТИ ФОТО</button><input id="arenaLeagueCoverReplaceV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'league')"><button type="button" class="arena-secondary-v852" onclick="ArenaV852.cancelLeagueRegistrationV1093()">СКАСУВАТИ РЕЄСТРАЦІЮ</button></div>`:'';
       const voteActions=me&&!ready?`<div class="arena-cup-poll-actions-v1026"><button type="button" class="arena-primary-v852" onclick="ArenaV852.voteLeagueV1093('yes')">✅ БЕРУ УЧАСТЬ</button><button type="button" class="arena-secondary-v852" onclick="ArenaV852.voteLeagueV1093('no')">✖ НЕ БЕРУ</button></div>`:'';
       const clubsOpen=`<details class="arena-league-registration-section-v1093"><summary>⚽ КОМАНДИ ЛІГИ · ${(poll.allowedClubs||[]).length}</summary><div class="arena-cup-poll-clubs-grid-v1028">${clubLabels}</div></details>`;
-      const playersOpen=`<details class="arena-league-registration-section-v1093"><summary>👥 УЧАСНИКИ · ${confirmed.length} ПІДТВЕРДИЛИ</summary><div class="arena-cup-poll-list-v1026">${labels||'Поки немає учасників'}</div></details>`;
+      const playersOpen=`<details class="arena-league-registration-section-v1093"><summary>👥 УЧАСНИКИ · ${confirmed.length} ПІДТВЕРДИЛИ</summary><div class="arena-cup-poll-list-v1026">${labels||'Поки ніхто не підтвердив участь'}</div><p class="arena-muted-v852 arena-league-votes-summary-v126">Очікують відповіді: ${waitingCount} · <button type="button" class="arena-declined-inline-v126" onclick="ArenaV852.openDeclinedVotesV126('league')" aria-label="Переглянути тих, хто відмовився від участі в лізі. Кількість: ${declinedCount}">Відмовилися: <b>${declinedCount}</b> ›</button></p></details>`;
       const card=`<div class="arena-card-v852 arena-cup-poll-card-v1026 arena-league-signup-v1093">${poll.cover?`<div class="arena-cup-poll-cover-v1026"><img src="${esc(poll.cover)}" alt="${esc(poll.title)}"></div>`:''}<div class="arena-cup-poll-top-v1026"><div><div class="arena-gold-v852">${ready?'РЕЄСТРАЦІЮ ЗАВЕРШЕНО':'ВІДКРИТО РЕЄСТРАЦІЮ'}</div><h3>${esc(poll.title)}</h3><p class="arena-muted-v852">${esc(leagueFormatLabelV1093[poll.leagueFormat]||'ОДНЕ КОЛО')} · ${confirmed.length} підтвердили участь${poll.leagueFormat==='swiss'?` · ${poll.swissRounds} турів`:''}</p></div><div class="arena-cup-poll-timer-v1026"><strong>${ready?'✓':formatCupPollTimeLeft(poll)}</strong><small>${ready?'ГОТОВО':'ЗАЛИШИЛОСЯ'}</small></div></div>${clubsOpen}${playersOpen}${!me&&!ready?'<p>Для реєстрації прив’яжи футболіста до свого акаунта.</p>':''}${voteActions}${me&&vote?`<p class="arena-muted-v852">Твоя відповідь: ${vote==='yes'?'беру участь':'не беру участь'}</p>`:''}${preview}${admin}</div>`;
       return `<div class="arena-route-head-v920 arena-league-head-v920"><h2>${esc(poll.title)}</h2><p class="arena-gold-v852">${ready?'ОЧІКУЄ ЗАПУСКУ':'РЕЄСТРАЦІЯ • '+formatCupPollTimeLeft(poll)}</p></div>${tabs(t)}${tabStage(card,t,tab,'ArenaV852.setTab')}`;
     }
@@ -2056,7 +2219,7 @@
       const myName=currentArenaViewerName();
       const myVote=myName?cupPollVoteFor(poll,myName):'';
       const canVote=!!myName;
-      const visiblePollPlayers=cupPollAllPlayers(poll);
+      const visiblePollPlayers=confirmed;
       const participantsHtml=visiblePollPlayers.map(name=>{
         const status=cupPollVoteFor(poll,name);
         const label=status==='yes'?'ПІДТВЕРДИВ':status==='no'?'ВІДМОВИВСЯ':'ОЧІКУЄ';
@@ -2064,14 +2227,14 @@
         return `<div class="arena-cup-poll-person-v1026"><div class="arena-cup-poll-person-left-v1026">${crestBadge(cupPollParticipantClubFor(poll,name),teamPhotoFor(name))}<div><strong>${esc(name)}</strong><small>${esc(cupPollParticipantClubFor(poll,name))}</small></div></div><span class="arena-cup-poll-status-v1026 ${cls}">${label}</span></div>`;
       }).join('');
       const allowedClubsHtml=(poll.allowedClubs||[]).map(club=>`<div class="arena-cup-poll-club-v1028">${crestBadge(club,'')}<span>${esc(club)}</span></div>`).join('');
-      const pollDetailsButtons=`<div class="arena-cup-poll-detail-tabs-v1031"><button type="button" class="${cupPollPanelV1031==='clubs'?'on':''}" onclick="ArenaV852.toggleCupPollPanel('clubs')">⚽ КОМАНДИ <span>${(poll.allowedClubs||[]).length}</span></button><button type="button" class="${cupPollPanelV1031==='players'?'on':''}" onclick="ArenaV852.toggleCupPollPanel('players')">👥 УЧАСНИКИ <span>${visiblePollPlayers.length}</span></button></div>`;
+      const pollDetailsButtons=`<div class="arena-cup-poll-detail-tabs-v1031"><button type="button" class="${cupPollPanelV1031==='clubs'?'on':''}" onclick="ArenaV852.toggleCupPollPanel('clubs')">⚽ КОМАНДИ <span>${(poll.allowedClubs||[]).length}</span></button><button type="button" class="${cupPollPanelV1031==='players'?'on':''}" onclick="ArenaV852.toggleCupPollPanel('players')">👥 УЧАСНИКИ <span>${confirmed.length}</span></button></div>`;
       const clubsPanel=cupPollPanelV1031==='clubs'?`<div class="arena-cup-poll-detail-panel-v1031 arena-cup-poll-clubs-v1028"><div class="arena-gold-v852">КОМАНДИ КУБКА</div>${allowedClubsHtml?`<div class="arena-cup-poll-clubs-grid-v1028">${allowedClubsHtml}</div>`:`<div class="arena-cup-poll-detail-empty-v1031">Команди для цього Кубка ще не вказані.</div>`}</div>`:'';
-      const playersPanel=cupPollPanelV1031==='players'?`<div class="arena-cup-poll-detail-panel-v1031"><div class="arena-gold-v852">УЧАСНИКИ ГОЛОСУВАННЯ</div><div class="arena-cup-poll-list-v1026">${participantsHtml||`<div class="arena-cup-poll-detail-empty-v1031">Поки ніхто не долучився.</div>`}</div></div>`:'';
+      const playersPanel=cupPollPanelV1031==='players'?`<div class="arena-cup-poll-detail-panel-v1031"><div class="arena-gold-v852">ПІДТВЕРДЖЕНІ УЧАСНИКИ</div><div class="arena-cup-poll-list-v1026">${participantsHtml||`<div class="arena-cup-poll-detail-empty-v1031">Поки ніхто не підтвердив участь.</div>`}</div></div>`:'';
       const drawReady=poll.phase==='draw_ready'||!cupPollStillActive(poll);
       const voteBox=`<div class="arena-cup-poll-actions-v1026">${canVote && !drawReady?`<button class="arena-primary-v852" type="button" onclick="ArenaV852.voteCupSignup('yes')">✅ БЕРУ УЧАСТЬ</button><button class="arena-secondary-v852" type="button" onclick="ArenaV852.voteCupSignup('no')">✖ НЕ БЕРУ</button>`:''}${!canVote&&!drawReady?`<div class="arena-cup-poll-note-v1026">Щоб голосувати, акаунт має бути прив’язаний до твого гравця.</div>`:''}${canVote&&myVote?`<div class="arena-cup-poll-note-v1026">Твій голос: <b>${myVote==='yes'?'беру участь':'не беру участь'}</b>${drawReady?'. Реєстрацію вже завершено.':'. Його можна змінити до завершення голосування.'}</div>`:''}${drawReady&&!isArenaAdmin()?`<div class="arena-cup-draw-wait-v1032"><b>🎲 ОЧІКУЄМО ЖЕРЕБКУВАННЯ</b><span>ADMIN проведе жереб. Після цього тут з’являться твоя команда та суперник.</span></div>`:''}</div>`;
       const adminActions=isArenaAdmin()?`<div class="arena-cup-poll-admin-actions-v1026">${drawReady?`<button class="arena-primary-v852 arena-cup-draw-now-v1032" type="button" onclick="ArenaV852.conductCupDraw()">🎲 ПРОВЕСТИ ЖЕРЕБКУВАННЯ</button>`:`<button class="arena-secondary-v852" type="button" onclick="ArenaV852.finalizeCupSignupPoll(true)">ЗАВЕРШИТИ РЕЄСТРАЦІЮ ДОСТРОКОВО</button>`}<button class="arena-secondary-v852 arena-cover-replace-v121" type="button" onclick="document.getElementById('arenaCupCoverReplaceV121')?.click()">🖼 ЗАМІНИТИ ФОТО</button><input id="arenaCupCoverReplaceV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'cup')"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.cancelCupSignupPoll()">СКАСУВАТИ ГОЛОСУВАННЯ</button></div>`:'';
       const stageLead=drawReady?'Реєстрацію завершено. Учасники очікують жеребкування команд і пар першого раунду.':(tab==='bracket'?'Сітка з’явиться після жеребкування.':tab==='round'?'Пари раунду з’являться після жеребкування.':'Поки триває голосування, гравці підтверджують свою участь у Кубку.');
-      const body=`<div class="arena-card-v852 arena-cup-poll-card-v1026 ${drawReady?'is-draw-ready-v1032':''}">${poll.cover?`<div class="arena-cup-poll-cover-v1026"><img src="${esc(poll.cover)}" alt="${esc(poll.title||'CENTURIA CUP')}"></div>`:''}<div class="arena-cup-poll-top-v1026"><div><div class="arena-gold-v852">${drawReady?'РЕЄСТРАЦІЮ ЗАВЕРШЕНО':'ГОЛОСУВАННЯ НА КУБОК'}</div><h3>${esc(poll.title||'CENTURIA CUP')}</h3><p class="arena-muted-v852">${stageLead}</p></div><div class="arena-cup-poll-timer-v1026"><strong>${drawReady?'🎲':formatCupPollTimeLeft(poll)}</strong><small>${drawReady?'ЧЕКАЄМО ЖЕРЕБ':'ДО ЗАВЕРШЕННЯ'}</small></div></div>${pollDetailsButtons}${clubsPanel}${playersPanel}<div class="arena-cup-poll-stats-v1026"><span><b>${confirmed.length}</b><small>ПІДТВЕРДИЛИ</small></span><span><b>${pendingVotes.length}</b><small>ОЧІКУЮТЬ</small></span><span><b>${declined.length}</b><small>ВІДМОВИЛИСЬ</small></span></div>${voteBox}${adminActions}</div>`;
+      const body=`<div class="arena-card-v852 arena-cup-poll-card-v1026 ${drawReady?'is-draw-ready-v1032':''}">${poll.cover?`<div class="arena-cup-poll-cover-v1026"><img src="${esc(poll.cover)}" alt="${esc(poll.title||'CENTURIA CUP')}"></div>`:''}<div class="arena-cup-poll-top-v1026"><div><div class="arena-gold-v852">${drawReady?'РЕЄСТРАЦІЮ ЗАВЕРШЕНО':'ГОЛОСУВАННЯ НА КУБОК'}</div><h3>${esc(poll.title||'CENTURIA CUP')}</h3><p class="arena-muted-v852">${stageLead}</p></div><div class="arena-cup-poll-timer-v1026"><strong>${drawReady?'🎲':formatCupPollTimeLeft(poll)}</strong><small>${drawReady?'ЧЕКАЄМО ЖЕРЕБ':'ДО ЗАВЕРШЕННЯ'}</small></div></div>${pollDetailsButtons}${clubsPanel}${playersPanel}<div class="arena-cup-poll-stats-v1026"><span><b>${confirmed.length}</b><small>ПІДТВЕРДИЛИ</small></span><span><b>${pendingVotes.length}</b><small>ОЧІКУЮТЬ</small></span><button type="button" class="arena-declined-trigger-v126" onclick="ArenaV852.openDeclinedVotesV126('cup')" aria-label="Переглянути тих, хто відмовився від участі в кубку. Кількість: ${declined.length}"><b>${declined.length}</b><small>ВІДМОВИЛИСЬ ›</small></button></div>${voteBox}${adminActions}</div>`;
       const meta=`${confirmed.length} ПІДТВЕРДИЛИ • ${drawReady?'ОЧІКУЄ ЖЕРЕБКУВАННЯ':`ГОЛОСУВАННЯ ${formatCupPollTimeLeft(poll)}`}`;
       return `${cupHero(poll.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`}
     const emptyCup=`<div class="arena-card-v852 arena-empty-state-v978"><div class="arena-empty-icon-v978">🏆</div><b>КУБОК ЩЕ НЕ СТВОРЕНО</b><p class="arena-muted-v852">Після створення кубка тут з’являться сітка, пари раунду, результати та історія матчів.</p>${isArenaAdmin()?`<button class="arena-primary-v852 arena-create-tournament-v996" onclick="ArenaV852.openTournamentCreator('cup')">＋ СТВОРИТИ КУБОК</button>`:""}</div>`;
@@ -3096,6 +3259,21 @@
   };
   let tournamentDraftParticipants=[];
   let tournamentDraftClubs=[];
+  let tournamentCountryV122="";
+  const countryTournamentTabsV122=()=>countryTabsV122('tournament',tournamentCountryV122);
+  const tournamentCountryPickerV122=()=>{
+    const countries=countryCodesInDatabaseV122();
+    if(!countries.includes(tournamentCountryV122))tournamentCountryV122=countries[0]||"";
+    if(!leagueCodesForCountryV125(tournamentCountryV122).includes(clubLeagueSelectedV125.tournament))clubLeagueSelectedV125.tournament=defaultLeagueV125(tournamentCountryV122);
+    return `<div id="arenaTournamentCountryTabsV122" class="arena-country-tabs-v122">${countryTournamentTabsV122()}</div>`+
+      `<span class="arena-country-picker-label-v123">ЛІГА</span><div id="arenaTournamentLeagueTabsV125" class="arena-country-tabs-v122 arena-league-tabs-v125">${leagueTabsV125('tournament',tournamentCountryV122,clubLeagueSelectedV125.tournament)}</div>`+
+      `<div id="arenaTournamentClubsV122" class="arena-cup-club-picker-v1028">${tournamentCountryRowsV122()}</div>`;
+  };
+  const tournamentCountryRowsV122=()=>{
+    const clubs=clubsForFolderV125(tournamentCountryV122,clubLeagueSelectedV125.tournament);
+    return clubs.length?clubs.map(c=>`<label><input type="checkbox" ${tournamentDraftClubs.some(n=>normalizeTeamName(n)===normalizeTeamName(c.name))?'checked':''} onchange="ArenaV852.toggleTournamentClub('${jsq(c.name)}',this.checked)"><span class="arena-cup-club-picker-crest-v1028">${crestBadge(c.name,'')}</span><span class="arena-cup-club-picker-name-v1028">${esc(c.name)}</span></label>`).join(''):
+      `<div class="arena-cup-club-picker-empty-v1028">У цьому розділі поки немає клубів.</div>`;
+  };
   let tournamentDraftKind="league";
   let tournamentDraftCover="";
   let tournamentDraftVoteHours=24;
@@ -3214,6 +3392,26 @@
       cupPollPanelV1031=cupPollPanelV1031===panel?"":panel;
       draw();
     },
+    async openDeclinedVotesV126(kind){
+      const poll=kind==='league'?leagueSignupPoll:kind==='cup'?cupSignupPoll:null;
+      if(!poll)return;
+      try{
+        // Resolve votes from the same server source used by the draw.
+        await refreshVotesForTournamentV124(poll,kind);
+        const names=kind==='league'
+          ? leagueAllPlayersV1093(poll).filter(name=>leagueVoteForV1093(poll,name)==='no')
+          : cupPollDeclinedPlayers(poll);
+        if(route===kind)draw(); // Update the counter if someone changed their vote.
+        const rows=names.map(name=>{
+          const club=kind==='league'?String(poll.previewClubs?.[name]||clubFor(name)||''):cupPollParticipantClubFor(poll,name);
+          return `<div class="arena-cup-poll-person-v1026"><div class="arena-cup-poll-person-left-v1026">${crestBadge(club,teamPhotoFor(name))}<div><strong>${esc(name)}</strong><small>${esc(club)}</small></div></div><span class="arena-cup-poll-status-v1026 no">✖</span></div>`;
+        }).join('');
+        modal(`<section class="arena-declined-modal-v126" role="dialog" aria-modal="true" aria-label="Відмовилися від участі"><div class="arena-declined-head-v126"><div><small>${kind==='league'?'ЛІГА':'КУБОК'} · ${esc(poll.title||'CENTURIA ARENA')}</small><h2>ВІДМОВИЛИСЯ · ${names.length}</h2></div><button type="button" class="arena-declined-close-v126" aria-label="Закрити список" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><div class="arena-cup-poll-list-v1026 arena-declined-list-v126">${rows||'<p class="arena-muted-v852">Поки ніхто не відмовився від участі.</p>'}</div></section>`);
+      }catch(err){
+        console.warn('Arena declined votes',err);
+        modal(`<section class="arena-declined-modal-v126" role="dialog" aria-modal="true" aria-label="Помилка завантаження голосів"><div class="arena-declined-head-v126"><h2>НЕ ВДАЛОСЯ ОНОВИТИ СПИСОК</h2><button type="button" class="arena-declined-close-v126" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><p class="arena-muted-v852">${esc(err?.message||'Перевір інтернет і спробуй ще раз.')}</p></section>`);
+      }
+    },
     toggleCupDrawResults(){
       cupDrawOpenV1032=!cupDrawOpenV1032;
       draw();
@@ -3248,6 +3446,7 @@
       tournamentDraftKind=kind==="cup"?"cup":"league";
       tournamentDraftParticipants=[];
       tournamentDraftClubs=[];
+      tournamentCountryV122="";
       tournamentDraftCover="";
       tournamentDraftVoteHours=24;
       const pool=playerPool().slice().sort((a,b)=>String(a).localeCompare(String(b),'uk'));
@@ -3255,12 +3454,12 @@
       const title=tournamentDefaultTitle(tournamentDraftKind);
       if(tournamentDraftKind==="cup"){
         if(cupSignupPoll){try{window.showToast?.("Спочатку заверши або скасуй активне голосування за Кубок")}catch(_e){};return;}
-        modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA</small><h2>СТВОРИТИ КУБОК</h2><p>Обери назву, фото й клуби Кубка. Голосування доступне всім гравцям Arena. Гравці, яких ADMIN додасть нижче, одразу вважаються підтвердженими учасниками.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><label class="arena-tournament-title-v996"><span>НАЗВА КУБКА</span><input id="arenaTournamentTitleV996" type="text" value="${esc(title)}"></label><label class="arena-tournament-title-v996"><span>ФОТО КУБКА</span><input id="arenaTournamentCoverInputV1026" type="file" accept="image/*" onchange="ArenaV852.previewTournamentCover(this)"></label><div class="arena-cup-cover-preview-v1026" id="arenaTournamentCoverPreviewV1026"><div class="arena-cup-cover-empty-v1026">Фото кубка ще не додано</div></div><fieldset class="arena-cup-legs-v1061"><legend>ФОРМАТ ПРОТИСТОЯННЯ</legend><label><input type="radio" name="arenaCupLegsV1061" value="1" checked><span><b>ОДИН МАТЧ</b><small>Один результат визначає переможця пари</small></span></label><label><input type="radio" name="arenaCupLegsV1061" value="2"><span><b>ДВА МАТЧІ</b><small>Вдома й у гостях · переможець за сумою голів</small></span></label></fieldset><label class="arena-tournament-title-v996"><span>ТРИВАЛІСТЬ ГОЛОСУВАННЯ (ГОДИН)</span><input id="arenaTournamentVoteHoursV1026" type="number" min="1" max="168" step="1" value="24"></label><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>КЛУБИ КУБКА</b><small>Обери клуби з Бази клубів, які можуть брати участь у цьому Кубку.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedClubCountV1028">Обрано клубів: 0</div></div><div class="arena-cup-club-picker-v1028">${cupClubs.map(n=>`<label><input type="checkbox" onchange="ArenaV852.toggleTournamentClub('${jsq(n)}',this.checked)"><span class="arena-cup-club-picker-crest-v1028">${crestBadge(n,'')}</span><span class="arena-cup-club-picker-name-v1028">${esc(n)}</span></label>`).join("") || `<div class="arena-cup-club-picker-empty-v1028">У Базі клубів поки немає клубів.</div>`}</div></div><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>ДОДАТИ ГРАВЦІВ ВІД ADMIN</b><small>Необов’язково. Кожен вибраний тут гравець одразу рахується як той, хто натиснув «Беру участь», і гарантовано потрапляє до списку підтверджених. Інші гравці Arena можуть приєднатися самі через голосування.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedCountV996">Додано ADMIN: 0</div></div><div class="arena-tournament-manual-v996"><input id="arenaTournamentManualPlayerV996" type="text" placeholder="Додати нік вручну"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.addTournamentParticipantManual()">＋ ДОДАТИ</button></div><div class="arena-tournament-players-v996" id="arenaTournamentPlayersV996">${pool.map(n=>`<label><input type="checkbox" data-name="${esc(n)}" onchange="ArenaV852.toggleTournamentParticipant('${jsq(n)}',this.checked)"><span>${esc(n)}</span><small>${esc(clubFor(n))}</small></label>`).join("")}</div></div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.startCupVotingNow()">ЗАПУСТИТИ ГОЛОСУВАННЯ</button></div></div>`);
+        modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA</small><h2>СТВОРИТИ КУБОК</h2><p>Обери назву, фото й клуби Кубка. Голосування доступне всім гравцям Arena. Гравці, яких ADMIN додасть нижче, одразу вважаються підтвердженими учасниками.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><label class="arena-tournament-title-v996"><span>НАЗВА КУБКА</span><input id="arenaTournamentTitleV996" type="text" value="${esc(title)}"></label><label class="arena-tournament-title-v996"><span>ФОТО КУБКА</span><input id="arenaTournamentCoverInputV1026" type="file" accept="image/*" onchange="ArenaV852.previewTournamentCover(this)"></label><div class="arena-cup-cover-preview-v1026" id="arenaTournamentCoverPreviewV1026"><div class="arena-cup-cover-empty-v1026">Фото кубка ще не додано</div></div><fieldset class="arena-cup-legs-v1061"><legend>ФОРМАТ ПРОТИСТОЯННЯ</legend><label><input type="radio" name="arenaCupLegsV1061" value="1" checked><span><b>ОДИН МАТЧ</b><small>Один результат визначає переможця пари</small></span></label><label><input type="radio" name="arenaCupLegsV1061" value="2"><span><b>ДВА МАТЧІ</b><small>Вдома й у гостях · переможець за сумою голів</small></span></label></fieldset><label class="arena-tournament-title-v996"><span>ТРИВАЛІСТЬ ГОЛОСУВАННЯ (ГОДИН)</span><input id="arenaTournamentVoteHoursV1026" type="number" min="1" max="168" step="1" value="24"></label><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>КЛУБИ КУБКА</b><small>Обери клуби з Бази клубів, які можуть брати участь у цьому Кубку.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedClubCountV1028">Обрано клубів: 0</div></div>${tournamentCountryPickerV122()}</div><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>ДОДАТИ ГРАВЦІВ ВІД ADMIN</b><small>Необов’язково. Кожен вибраний тут гравець одразу рахується як той, хто натиснув «Беру участь», і гарантовано потрапляє до списку підтверджених. Інші гравці Arena можуть приєднатися самі через голосування.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedCountV996">Додано ADMIN: 0</div></div><div class="arena-tournament-manual-v996"><input id="arenaTournamentManualPlayerV996" type="text" placeholder="Додати нік вручну"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.addTournamentParticipantManual()">＋ ДОДАТИ</button></div><div class="arena-tournament-players-v996" id="arenaTournamentPlayersV996">${pool.map(n=>`<label><input type="checkbox" data-name="${esc(n)}" onchange="ArenaV852.toggleTournamentParticipant('${jsq(n)}',this.checked)"><span>${esc(n)}</span><small>${esc(clubFor(n))}</small></label>`).join("")}</div></div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.startCupVotingNow()">ЗАПУСТИТИ ГОЛОСУВАННЯ</button></div></div>`);
         renderTournamentCoverPreviewV1026();
         return;
       }
       if(leagueSignupPoll){window.showToast?.('Спочатку заверши або скасуй реєстрацію Ліги');return;}
-      modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026 arena-league-create-v1093"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA</small><h2>СТВОРИТИ ЛІГУ</h2><p>Обери назву, обкладинку, команди та формат. ADMIN може одразу додати гравців, решта зареєструються самі.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><label class="arena-tournament-title-v996"><span>НАЗВА ЛІГИ</span><input id="arenaTournamentTitleV996" type="text" value="${esc(title)}"></label><label class="arena-tournament-title-v996"><span>ФОТО ЛІГИ</span><input id="arenaTournamentCoverInputV1026" type="file" accept="image/*" onchange="ArenaV852.previewTournamentCover(this)"></label><div class="arena-cup-cover-preview-v1026" id="arenaTournamentCoverPreviewV1026"><div class="arena-cup-cover-empty-v1026">Фото ліги ще не додано</div></div><fieldset class="arena-cup-legs-v1061 arena-league-formats-v1093"><legend>ТИП ЛІГИ</legend><label><input type="radio" name="arenaLeagueFormatV1093" value="single" checked onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ОДНЕ КОЛО</b><small>Кожна пара грає один матч</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="double" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ДВА КОЛА</b><small>Матч удома та матч у гостях</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="top4" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ЛІГА + ТОП-4 ПЛЕЙ-ОФ</b><small>Після таблиці: 1–4, 2–3, фінал</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="swiss" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ШВЕЙЦАРСЬКА СИСТЕМА</b><small>Кожен тур з суперниками, близькими за очками</small></span></label><div id="arenaLeagueSwissOptionsV1093" hidden><label class="arena-tournament-title-v996"><span>КІЛЬКІСТЬ ТУРІВ (1–24)</span><input type="number" id="arenaLeagueSwissRoundsV1093" min="1" max="24" value="5"></label></div></fieldset><label class="arena-tournament-title-v996"><span>ТРИВАЛІСТЬ РЕЄСТРАЦІЇ (ГОДИН)</span><input id="arenaTournamentVoteHoursV1026" type="number" min="1" max="168" value="48"></label><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>КОМАНДИ ЛІГИ</b><small>Обери клуби, з яких ADMIN розподілить по одному для кожного учасника.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedClubCountV1028">Обрано клубів: 0</div></div><div class="arena-cup-club-picker-v1028">${cupClubs.map(n=>`<label><input type="checkbox" onchange="ArenaV852.toggleTournamentClub('${jsq(n)}',this.checked)"><span class="arena-cup-club-picker-crest-v1028">${crestBadge(n,'')}</span><span class="arena-cup-club-picker-name-v1028">${esc(n)}</span></label>`).join('')||'<div class="arena-cup-club-picker-empty-v1028">У Базі клубів ще немає команд.</div>'}</div></div><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>ДОДАТИ ГРАВЦІВ ВІД ADMIN</b><small>Вибрані гравці одразу підтверджені. Інші можуть самостійно зареєструватися.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedCountV996">Додано ADMIN: 0</div></div><div class="arena-tournament-manual-v996"><input id="arenaTournamentManualPlayerV996" type="text" placeholder="Додати нік вручну"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.addTournamentParticipantManual()">＋ ДОДАТИ</button></div><div class="arena-tournament-players-v996" id="arenaTournamentPlayersV996">${pool.map(n=>`<label><input type="checkbox" data-name="${esc(n)}" onchange="ArenaV852.toggleTournamentParticipant('${jsq(n)}',this.checked)"><span>${esc(n)}</span><small>${esc(clubFor(n))}</small></label>`).join('')}</div></div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.startLeagueRegistrationV1093()">ВІДКРИТИ РЕЄСТРАЦІЮ</button></div></div>`);
+      modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026 arena-league-create-v1093"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA</small><h2>СТВОРИТИ ЛІГУ</h2><p>Обери назву, обкладинку, команди та формат. ADMIN може одразу додати гравців, решта зареєструються самі.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><label class="arena-tournament-title-v996"><span>НАЗВА ЛІГИ</span><input id="arenaTournamentTitleV996" type="text" value="${esc(title)}"></label><label class="arena-tournament-title-v996"><span>ФОТО ЛІГИ</span><input id="arenaTournamentCoverInputV1026" type="file" accept="image/*" onchange="ArenaV852.previewTournamentCover(this)"></label><div class="arena-cup-cover-preview-v1026" id="arenaTournamentCoverPreviewV1026"><div class="arena-cup-cover-empty-v1026">Фото ліги ще не додано</div></div><fieldset class="arena-cup-legs-v1061 arena-league-formats-v1093"><legend>ТИП ЛІГИ</legend><label><input type="radio" name="arenaLeagueFormatV1093" value="single" checked onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ОДНЕ КОЛО</b><small>Кожна пара грає один матч</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="double" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ДВА КОЛА</b><small>Матч удома та матч у гостях</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="top4" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ЛІГА + ТОП-4 ПЛЕЙ-ОФ</b><small>Після таблиці: 1–4, 2–3, фінал</small></span></label><label><input type="radio" name="arenaLeagueFormatV1093" value="swiss" onchange="ArenaV852.updateLeagueFormatV1093()"><span><b>ШВЕЙЦАРСЬКА СИСТЕМА</b><small>Кожен тур з суперниками, близькими за очками</small></span></label><div id="arenaLeagueSwissOptionsV1093" hidden><label class="arena-tournament-title-v996"><span>КІЛЬКІСТЬ ТУРІВ (1–24)</span><input type="number" id="arenaLeagueSwissRoundsV1093" min="1" max="24" value="5"></label></div></fieldset><label class="arena-tournament-title-v996"><span>ТРИВАЛІСТЬ РЕЄСТРАЦІЇ (ГОДИН)</span><input id="arenaTournamentVoteHoursV1026" type="number" min="1" max="168" value="48"></label><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>КОМАНДИ ЛІГИ</b><small>Обери клуби, з яких ADMIN розподілить по одному для кожного учасника.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedClubCountV1028">Обрано клубів: 0</div></div>${tournamentCountryPickerV122()}</div><div class="arena-cup-create-section-v1028"><div class="arena-cup-create-section-head-v1028"><div><b>ДОДАТИ ГРАВЦІВ ВІД ADMIN</b><small>Вибрані гравці одразу підтверджені. Інші можуть самостійно зареєструватися.</small></div><div class="arena-tournament-selected-v996" id="arenaTournamentSelectedCountV996">Додано ADMIN: 0</div></div><div class="arena-tournament-manual-v996"><input id="arenaTournamentManualPlayerV996" type="text" placeholder="Додати нік вручну"><button class="arena-secondary-v852" type="button" onclick="ArenaV852.addTournamentParticipantManual()">＋ ДОДАТИ</button></div><div class="arena-tournament-players-v996" id="arenaTournamentPlayersV996">${pool.map(n=>`<label><input type="checkbox" data-name="${esc(n)}" onchange="ArenaV852.toggleTournamentParticipant('${jsq(n)}',this.checked)"><span>${esc(n)}</span><small>${esc(clubFor(n))}</small></label>`).join('')}</div></div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.startLeagueRegistrationV1093()">ВІДКРИТИ РЕЄСТРАЦІЮ</button></div></div>`);
       renderTournamentCoverPreviewV1026();
     },
     updateLeagueFormatV1093(){
@@ -3307,7 +3506,8 @@
     },
     async closeLeagueRegistrationV1093(){
       if(!isArenaAdmin()||!leagueSignupPoll)return;
-      await refreshRemoteLeagueVotesV1093(false);
+      try{await refreshVotesForTournamentV124(leagueSignupPoll,'league');}
+      catch(err){console.warn('League signup verification',err);window.showToast?.(err?.message||'Не вдалося перевірити голоси');return;}
       const confirmed=leagueConfirmedV1093(leagueSignupPoll);
       if(confirmed.length<2){window.showToast?.('Для старту ліги потрібно хоча б 2 підтверджені гравці');return;}
       if(leagueSignupPoll.leagueFormat==='top4'&&confirmed.length<4){window.showToast?.('Для плей-оф ТОП-4 потрібно хоча б 4 учасники');return;}
@@ -3330,7 +3530,9 @@
       if(redraw)draw();
     },
     async launchLeagueV1093(){
-      if(!isArenaAdmin()||!leagueSignupPoll||testCompetition)return;
+      if(!isArenaAdmin()||!leagueSignupPoll||testCompetition||leagueDrawBusyV124)return;
+      leagueDrawBusyV124=true;
+      try{
       const api=arenaStateApiV1012();
       if(!api?.isReady?.()||!api?.canWrite?.()||!api?.get||!api?.save){
         window.showToast?.('Потрібне підключення до Arena, щоб зберегти жеребкування для всіх');return;
@@ -3346,8 +3548,9 @@
         if(latest)applyRemoteArenaStateV1012(latest,true);
         return;
       }
-      await refreshRemoteLeagueVotesV1093(false);
       const poll=leagueSignupPoll;
+      try{await refreshVotesForTournamentV124(poll,'league');}
+      catch(err){console.warn('League draw verification',err);window.showToast?.(err?.message||'Не вдалося перевірити голоси');return;}
       if(!poll || (poll.phase!=='ready'&&cupPollStillActive(poll))){window.showToast?.('Спочатку заверши реєстрацію');return;}
       const confirmed=leagueConfirmedV1093(poll);
       if(confirmed.length<2){window.showToast?.('Для старту потрібно мінімум 2 учасники');return;}
@@ -3380,6 +3583,8 @@
       route='league';tab='mine';draw();
       startLeagueDrawAnimationV1095();
       window.showToast?.('Жеребкування Ліги проведено 🎲');
+      }catch(err){console.warn('League draw',err);window.showToast?.('Не вдалося провести жеребкування. Спробуй ще раз');}
+      finally{leagueDrawBusyV124=false;}
     },
     cancelLeagueRegistrationV1093(){
       if(!isArenaAdmin()||!leagueSignupPoll)return;
@@ -3412,6 +3617,75 @@
       comp.rounds[comp.rounds.length-1]=next;
       saveTestCompetition();syncActiveEventFromCompetition();tab='round';draw();
       window.showToast?.('Пари перераховано за очками попередніх турів');
+    },
+    setClubCountryV122(mode,code){
+      if(mode==='tournament'){
+        tournamentCountryV122=code;
+        clubLeagueSelectedV125.tournament=defaultLeagueV125(code);
+        const tabs=document.getElementById('arenaTournamentCountryTabsV122');
+        const leagues=document.getElementById('arenaTournamentLeagueTabsV125');
+        const list=document.getElementById('arenaTournamentClubsV122');
+        if(tabs)tabs.innerHTML=countryTournamentTabsV122();
+        if(leagues)leagues.innerHTML=leagueTabsV125('tournament',code,clubLeagueSelectedV125.tournament);
+        if(list)list.innerHTML=tournamentCountryRowsV122();
+      }else if(mode==='database'){
+        clubDbActiveCountryV122=code;
+        clubLeagueSelectedV125.database=defaultLeagueV125(code);
+        this.renderClubDatabase();
+      }else if(clubPickerGroupsV123[mode]){
+        const [countryId,selectId,inputId]=clubPickerGroupsV123[mode];
+        const country=document.getElementById(countryId);
+        if(country)country.value=code;
+        this.changeClubCountryV122(countryId,selectId,inputId);
+        repaintClubPickerTabsV123(mode);
+      }
+    },
+    setClubLeagueV125(mode,code){
+      if(!leagueCodesForCountryV125(mode==='tournament'?tournamentCountryV122:mode==='database'?clubDbActiveCountryV122:document.getElementById(clubPickerGroupsV123[mode]?.[0])?.value||'').includes(code))return;
+      clubLeagueSelectedV125[mode]=code;
+      if(mode==='tournament'){
+        const tabs=document.getElementById('arenaTournamentLeagueTabsV125'),list=document.getElementById('arenaTournamentClubsV122');
+        if(tabs)tabs.innerHTML=leagueTabsV125(mode,tournamentCountryV122,code);
+        if(list)list.innerHTML=tournamentCountryRowsV122();
+      }else if(mode==='database')this.renderClubDatabase();
+      else if(clubPickerGroupsV123[mode]){
+        const [countryId,selectId,inputId]=clubPickerGroupsV123[mode];
+        this.changeClubCountryV122(countryId,selectId,inputId,true);
+        repaintClubPickerTabsV123(mode);
+      }
+    },
+    changeClubCountryV122(countryId,selectId,inputId,keepLeague=false){
+      const country=document.getElementById(countryId)?.value||'';
+      const mode=Object.keys(clubPickerGroupsV123).find(key=>clubPickerGroupsV123[key][0]===countryId);
+      if(mode&&(!keepLeague||!leagueCodesForCountryV125(country).includes(clubLeagueSelectedV125[mode])))clubLeagueSelectedV125[mode]=defaultLeagueV125(country);
+      const visible=clubsForFolderV125(country,mode?clubLeagueSelectedV125[mode]:defaultLeagueV125(country));
+      const select=document.getElementById(selectId);
+      if(select){
+        select.innerHTML='<option value="">— Обрати клуб —</option>'+visible
+          .map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+        select.value='';
+      }
+      const input=document.getElementById(inputId);
+      if(input&&input.value&&!visible.some(c=>normalizeTeamName(c.name)===normalizeTeamName(input.value)))input.value='';
+      if(mode)repaintClubPickerTabsV123(mode);
+      // Clearing a team when switching folders must not revert the folder
+      // through the old preview functions' 'Centuria' fallback.
+      if(input?.value?.trim()){
+        if(inputId==='arenaFriendlyMyClubV972')this.previewFriendlyClub(input.value);
+        if(inputId==='arenaIncomingFriendlyClubV1007')this.previewIncomingFriendlyClub(input.value);
+        if(inputId==='arenaFavTeamV930')this.previewArenaTeamName(input.value);
+      }else{
+        const map={
+          arenaFriendlyMyClubV972:['arenaFriendlyMineTextV1003','arenaFriendlyMineBadgeV1003'],
+          arenaIncomingFriendlyClubV1007:['arenaIncomingFriendlyTextV1007','arenaIncomingFriendlyBadgeV1007'],
+          arenaFavTeamV930:['arenaFavTeamLiveTextV1003','arenaFavTeamLiveBadgeV1003']
+        };
+        const targets=map[inputId]||[];
+        const text=targets[0]&&document.getElementById(targets[0]);
+        const badge=targets[1]&&document.getElementById(targets[1]);
+        if(text)text.textContent='Оберіть клуб';
+        if(badge)badge.innerHTML='';
+      }
     },
     toggleTournamentClub(name,checked){
       name=canonicalTeamName(String(name||'').trim());if(!name)return;
@@ -3564,7 +3838,9 @@
     },
     async finalizeCupSignupPoll(force){
       if(!isArenaAdmin()||!cupSignupPoll)return;
-      await refreshRemoteCupVotesV1029(false);
+      const poll=cupSignupPoll;
+      try{await refreshVotesForTournamentV124(poll,'cup');}
+      catch(err){console.warn('Cup signup verification',err);window.showToast?.(err?.message||'Не вдалося перевірити голоси');return;}
       if(cupPollStillActive(cupSignupPoll) && !force){try{window.showToast?.('Голосування ще триває')}catch(_e){};return;}
       const confirmed=cupPollConfirmedPlayers(cupSignupPoll);
       if(confirmed.length<2){try{window.showToast?.('Підтвердили участь менше 2 гравців')}catch(_e){};return;}
@@ -3576,9 +3852,11 @@
       try{window.showToast?.('Реєстрацію завершено. Можна проводити жеребкування')}catch(_e){}
     },
     async conductCupDraw(){
-      if(!isArenaAdmin()||!cupSignupPoll)return;
-      await refreshRemoteCupVotesV1029(false);
+      if(!isArenaAdmin()||!cupSignupPoll||cupDrawBusyV124)return;
+      cupDrawBusyV124=true;
+      try{
       const poll=cupSignupPoll;
+      await refreshVotesForTournamentV124(poll,'cup');
       const drawReady=poll.phase==='draw_ready'||!cupPollStillActive(poll);
       if(!drawReady){try{window.showToast?.('Спочатку заверши реєстрацію')}catch(_e){};return;}
       const confirmed=cupPollConfirmedPlayers(poll);
@@ -3612,6 +3890,10 @@
       route='cup';tab='mine';draw();
       startCupDrawAnimationV1033();
       try{window.showToast?.('Жеребкування проведено 🎲')}catch(_e){}
+      }catch(err){
+        console.warn('Cup draw verification',err);
+        window.showToast?.(err?.message||'Не вдалося перевірити голоси перед жеребкуванням');
+      }finally{cupDrawBusyV124=false;}
     },
     createTournamentNow(){
       if(!isArenaAdmin())return;
@@ -3644,12 +3926,37 @@
       loadClubDatabase();
       refreshRemoteClubDatabaseV1009(false).then(()=>this.renderClubDatabase());
       modal(`<div class="arena-clubdb-modal-v945">
-        <div class="arena-clubdb-head-v945"><div><small>ADMIN · ARENA</small><h2>БАЗА КЛУБІВ</h2><p>Одна назва + одна емблема. Ця база використовується у всіх полях Arena, де вибирається клуб.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div>
+        <div class="arena-clubdb-head-v945"><div><small>ADMIN · ARENA</small><h2>БАЗА КЛУБІВ</h2><p>Створи країну з прапором, додай всередині папки ліг і розподіли клуби. Цей каталог працює в профілях, товариських матчах і турнірах.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div>
         <div class="arena-clubdb-scroll-v945">
+          <section class="arena-clubdb-editor-v945 arena-club-group-editor-v123" id="arenaClubGroupEditorV123">
+            <button type="button" class="arena-clubdb-fold-trigger-v127" aria-expanded="false" aria-controls="arenaClubGroupContentV127" onclick="ArenaV852.toggleClubDbEditorV127('group')"><span>📁 КРАЇНИ / ПАПКИ</span><span class="arena-clubdb-fold-chevron-v127" aria-hidden="true">▾</span></button>
+            <div id="arenaClubGroupContentV127" class="arena-clubdb-fold-content-v127" hidden>
+            <p class="arena-club-group-hint-v123">Створи власну кнопку: назву й прапор. Наприклад 🇩🇪 Німеччина. Потім створи в ньому папки ліг і додай клуби.</p>
+            <input id="arenaClubGroupOldCodeV123" type="hidden" value="">
+            <label><span>Назва розділу</span><input id="arenaClubGroupNameV123" maxlength="60" placeholder="Німеччина"></label>
+            <label><span>Прапор / значок</span><input id="arenaClubGroupFlagV123" maxlength="16" placeholder="🇩🇪" autocomplete="off"></label>
+            <div class="arena-clubdb-editor-actions-v945"><button type="button" class="arena-primary-v852" onclick="ArenaV852.saveClubGroupV123()">ЗБЕРЕГТИ РОЗДІЛ</button><button type="button" class="arena-secondary-v852" onclick="ArenaV852.resetClubGroupV123()">ОЧИСТИТИ</button></div>
+            <div class="arena-club-group-list-v123" id="arenaClubGroupsListV123"></div>
+            </div>
+          </section>
+          <section class="arena-clubdb-editor-v945 arena-club-group-editor-v123" id="arenaClubLeagueEditorV125">
+            <button type="button" class="arena-clubdb-fold-trigger-v127" aria-expanded="false" aria-controls="arenaClubLeagueContentV127" onclick="ArenaV852.toggleClubDbEditorV127('league')"><span>🏆 ЛІГИ / ПІДПАПКИ</span><span class="arena-clubdb-fold-chevron-v127" aria-hidden="true">▾</span></button>
+            <div id="arenaClubLeagueContentV127" class="arena-clubdb-fold-content-v127" hidden>
+            <p class="arena-club-group-hint-v123">Обери країну та створи в ній папку ліги. Наприклад: 🇩🇪 Німеччина → 🏆 Бундесліга.</p>
+            <input id="arenaClubLeagueOldCodeV125" type="hidden" value="">
+            <label><span>Країна / розділ</span><select id="arenaClubLeagueCountryV125" required><option value="">— Обери країну —</option>${countryEditorOptionsV122()}</select></label>
+            <label><span>Назва ліги</span><input id="arenaClubLeagueNameV125" maxlength="60" placeholder="Бундесліга"></label>
+            <label><span>Значок ліги</span><input id="arenaClubLeagueIconV125" maxlength="16" value="🏆" placeholder="🏆"></label>
+            <div class="arena-clubdb-editor-actions-v945"><button type="button" class="arena-primary-v852" onclick="ArenaV852.saveClubLeagueV125()">ЗБЕРЕГТИ ЛІГУ</button><button type="button" class="arena-secondary-v852" onclick="ArenaV852.resetClubLeagueV125()">ОЧИСТИТИ</button></div>
+            <div class="arena-club-group-list-v123" id="arenaClubLeaguesListV125"></div>
+            </div>
+          </section>
           <section class="arena-clubdb-editor-v945" id="arenaClubDbEditorV945">
             <div class="arena-clubdb-section-title-v945">ДОДАТИ / ЗМІНИТИ КЛУБ</div>
             <input id="arenaClubDbOldNameV945" type="hidden" value="">
             <label><span>Назва клубу</span><input id="arenaClubDbNameV945" type="text" list="arenaClubDbNamesV945" placeholder="Наприклад, Manchester United"></label>
+            <label><span>Країна клубу</span><select id="arenaClubDbCountryV122" required onchange="ArenaV852.changeClubDatabaseCountryV125()"><option value="">— Обери країну —</option>${countryEditorOptionsV122()}</select></label>
+            <label><span>Ліга клубу</span><select id="arenaClubDbLeagueV125"><option value="">— Без ліги (розподілю пізніше) —</option></select></label>
             <label><span>Емблема</span><input id="arenaClubDbLogoV945" type="file" accept="image/*" onchange="ArenaV852.previewClubDatabaseLogo(this)"></label>
             <div id="arenaClubDbPreviewV945" class="arena-clubdb-preview-v945"><div class="arena-clubdb-preview-empty-v945">Введи назву або додай емблему</div></div>
             <div class="arena-clubdb-editor-actions-v945"><button type="button" class="arena-primary-v852" onclick="ArenaV852.saveClubDatabaseEntry()">ЗБЕРЕГТИ КЛУБ</button><button type="button" class="arena-secondary-v852" onclick="ArenaV852.resetClubDatabaseEditor()">ОЧИСТИТИ</button></div>
@@ -3657,7 +3964,7 @@
           </section>
           <section class="arena-clubdb-list-section-v945">
             <div class="arena-clubdb-list-head-v945"><div><div class="arena-clubdb-section-title-v945">ЗБЕРЕЖЕНІ КЛУБИ</div><small id="arenaClubDbCountV945">${clubDatabase.length} клубів</small></div><input id="arenaClubDbSearchV945" type="search" placeholder="Пошук клубу" oninput="ArenaV852.filterClubDatabase(this.value)"></div>
-            <div id="arenaClubDbListV945" class="arena-clubdb-list-v945"></div>
+            <div id="arenaClubDbCountryTabsV122" class="arena-country-tabs-v122"></div><div id="arenaClubDbLeagueTabsV125" class="arena-country-tabs-v122 arena-league-tabs-v125"></div><div id="arenaClubDbListV945" class="arena-clubdb-list-v945"></div>
           </section>
         </div>
         <div class="arena-clubdb-footer-v945"><button type="button" class="arena-secondary-v852" onclick="this.closest('.arena-modal-v852').remove()">ЗАКРИТИ</button></div>
@@ -3666,23 +3973,233 @@
       const nameInput=document.getElementById("arenaClubDbNameV945");
       nameInput?.addEventListener("input",()=>this.refreshClubDatabasePreview());
     },
+    toggleClubDbEditorV127(kind,force){
+      if(!isArenaAdmin())return;
+      const isGroup=kind==='group';
+      if(!isGroup&&kind!=='league')return;
+      const section=document.getElementById(isGroup?'arenaClubGroupEditorV123':'arenaClubLeagueEditorV125');
+      const content=document.getElementById(isGroup?'arenaClubGroupContentV127':'arenaClubLeagueContentV127');
+      const trigger=section?.querySelector('.arena-clubdb-fold-trigger-v127');
+      if(!content||!trigger)return;
+      const open=typeof force==='boolean'?force:content.hidden;
+      content.hidden=!open;
+      trigger.setAttribute('aria-expanded',String(open));
+      section.classList.toggle('is-open-v127',open);
+    },
+    resetClubGroupV123(){
+      for(const id of ['arenaClubGroupOldCodeV123','arenaClubGroupNameV123','arenaClubGroupFlagV123']){
+        const el=document.getElementById(id);if(el)el.value='';
+      }
+    },
+    editClubGroupV123(code){
+      if(!isArenaAdmin())return;
+      const group=clubGroupsV123.find(g=>g.code===code);if(!group)return;
+      this.toggleClubDbEditorV127('group',true);
+      document.getElementById('arenaClubGroupOldCodeV123').value=group.code;
+      document.getElementById('arenaClubGroupNameV123').value=group.name;
+      document.getElementById('arenaClubGroupFlagV123').value=group.flag;
+      const item=document.getElementById('arenaClubGroupEditorV123'),scroll=item?.closest('.arena-clubdb-scroll-v945');
+      if(item&&scroll)scroll.scrollTop+=item.getBoundingClientRect().top-scroll.getBoundingClientRect().top-12;
+    },
+    async saveClubGroupV123(){
+      if(!isArenaAdmin())return;
+      const original=document.getElementById('arenaClubGroupOldCodeV123')?.value||'';
+      const name=String(document.getElementById('arenaClubGroupNameV123')?.value||'').trim();
+      const flag=String(document.getElementById('arenaClubGroupFlagV123')?.value||'').trim();
+      if(!name||!flag){window.showToast?.('Вкажи назву та прапор розділу');return;}
+      if([...flag].length>12){window.showToast?.('Значок надто довгий');return;}
+      if(clubGroupsV123.some(g=>g.name.toLowerCase()===name.toLowerCase()&&g.code!==original)){
+        window.showToast?.('Розділ із такою назвою вже є');return;
+      }
+      const code=original||('G'+(globalThis.crypto?.randomUUID?.().replace(/-/g,'')||String(Date.now())+Math.random().toString(36).slice(2)).slice(0,30)).toUpperCase();
+      const btn=document.querySelector('#arenaClubGroupEditorV123 .arena-primary-v852');
+      if(btn)btn.disabled=true;
+      try{
+        const api=clubApiV1009();if(!api?.upsertGroup)throw new Error('Не вдалося підключитися до бази');
+        await api.upsertGroup({code,name,flag});
+        await refreshRemoteClubDatabaseV1009(false);
+        this.resetClubGroupV123();clubDbActiveCountryV122=code;
+        this.renderClubDatabase();this.toggleClubDbEditorV127('group',false);
+        window.showToast?.('Розділ збережено для всіх користувачів');
+      }catch(err){console.warn('Arena group save',err);window.showToast?.('Не вдалося зберегти розділ у базі');}
+      finally{if(btn)btn.disabled=false;}
+    },
+    deleteClubGroupV123(code){
+      if(!isArenaAdmin())return;
+      const group=clubGroupsV123.find(g=>g.code===code);if(!group)return;
+      const number=clubDatabase.filter(c=>clubCountryOfV122(c)===code).length;
+      modal(`<div class="arena-info-modal-v919"><h2>ВИДАЛИТИ РОЗДІЛ?</h2><p>${esc(group.flag)} ${esc(group.name)} · ${number} клубів. Папки ліг цієї країни будуть видалені, але всі клуби й емблеми залишаться у «Без розділу».</p><div class="arena-info-actions-v926"><button type="button" class="arena-primary-v852 danger" onclick="ArenaV852.confirmDeleteClubGroupV123('${jsq(code)}',this)">ВИДАЛИТИ РОЗДІЛ</button><button type="button" class="arena-secondary-v852" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button></div></div>`);
+    },
+    async confirmDeleteClubGroupV123(code,button){
+      if(!isArenaAdmin())return;
+      if(button)button.disabled=true;
+      try{
+        const api=clubApiV1009();if(!api?.removeGroup)throw new Error('Не вдалося підключитися до бази');
+        await api.removeGroup(code);
+        await refreshRemoteClubDatabaseV1009(false);
+        button?.closest('.arena-modal-v852')?.remove();
+        clubDbActiveCountryV122=COUNTRY_UNASSIGNED_V122;
+        this.renderClubDatabase();window.showToast?.('Розділ видалено, клуби збережені');
+      }catch(err){console.warn('Arena group delete',err);window.showToast?.('Не вдалося видалити розділ');}
+      finally{if(button)button.disabled=false;}
+    },
+    resetClubLeagueV125(){
+      for(const id of ['arenaClubLeagueOldCodeV125','arenaClubLeagueNameV125']){const el=document.getElementById(id);if(el)el.value='';}
+      const icon=document.getElementById('arenaClubLeagueIconV125');if(icon)icon.value='🏆';
+      const country=document.getElementById('arenaClubLeagueCountryV125');if(country)country.value=clubDbActiveCountryV122||'';
+    },
+    editClubLeagueV125(code){
+      if(!isArenaAdmin())return;
+      const league=clubLeaguesV125.find(g=>g.code===code);if(!league)return;
+      this.toggleClubDbEditorV127('league',true);
+      document.getElementById('arenaClubLeagueOldCodeV125').value=league.code;
+      document.getElementById('arenaClubLeagueCountryV125').value=league.country_code;
+      document.getElementById('arenaClubLeagueNameV125').value=league.name;
+      document.getElementById('arenaClubLeagueIconV125').value=league.icon;
+      const item=document.getElementById('arenaClubLeagueEditorV125'),scroll=item?.closest('.arena-clubdb-scroll-v945');
+      if(item&&scroll)scroll.scrollTop+=item.getBoundingClientRect().top-scroll.getBoundingClientRect().top-12;
+    },
+    async saveClubLeagueV125(){
+      if(!isArenaAdmin())return;
+      const original=document.getElementById('arenaClubLeagueOldCodeV125')?.value||'';
+      const country=document.getElementById('arenaClubLeagueCountryV125')?.value||'';
+      const name=String(document.getElementById('arenaClubLeagueNameV125')?.value||'').trim();
+      const icon=String(document.getElementById('arenaClubLeagueIconV125')?.value||'').trim()||'🏆';
+      if(!clubCountryV122(country)||!name){window.showToast?.('Вкажи країну та назву ліги');return;}
+      if([...icon].length>12){window.showToast?.('Значок надто довгий');return;}
+      if(clubLeaguesV125.some(g=>g.country_code===country&&g.name.toLowerCase()===name.toLowerCase()&&g.code!==original)){
+        window.showToast?.('У цій країні вже є ліга з такою назвою');return;
+      }
+      const code=original||('L'+(globalThis.crypto?.randomUUID?.().replace(/-/g,'')||String(Date.now())+Math.random().toString(36).slice(2)).slice(0,30)).toUpperCase();
+      const button=document.querySelector('#arenaClubLeagueEditorV125 .arena-primary-v852');if(button)button.disabled=true;
+      try{
+        const api=clubApiV1009();if(!api?.upsertLeague)throw new Error('Немає з’єднання з базою');
+        await api.upsertLeague({code,country_code:country,name,icon});
+        await refreshRemoteClubDatabaseV1009(false);
+        this.resetClubLeagueV125();clubDbActiveCountryV122=country;clubLeagueSelectedV125.database=code;
+        this.renderClubDatabase();this.toggleClubDbEditorV127('league',false);
+        window.showToast?.('Лігу збережено для всіх користувачів');
+      }catch(err){console.warn('Arena league save',err);window.showToast?.('Не вдалося зберегти лігу: '+(err?.message||''));}
+      finally{if(button)button.disabled=false;}
+    },
+    deleteClubLeagueV125(code){
+      if(!isArenaAdmin())return;
+      const league=clubLeaguesV125.find(g=>g.code===code);if(!league)return;
+      const count=clubDatabase.filter(c=>clubLeagueOfV125(c)===code).length;
+      modal(`<div class="arena-info-modal-v919"><h2>ВИДАЛИТИ ПАПКУ ЛІГИ?</h2><p>${esc(league.icon)} ${esc(league.name)} · ${count} клубів. Клуби й емблеми залишаться в тій самій країні, у папці «Без ліги».</p><div class="arena-info-actions-v926"><button type="button" class="arena-primary-v852 danger" onclick="ArenaV852.confirmDeleteClubLeagueV125('${jsq(code)}',this)">ВИДАЛИТИ ЛІГУ</button><button type="button" class="arena-secondary-v852" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button></div></div>`);
+    },
+    async confirmDeleteClubLeagueV125(code,button){
+      if(!isArenaAdmin())return;
+      if(button)button.disabled=true;
+      try{
+        const api=clubApiV1009();if(!api?.removeLeague)throw new Error('Немає з’єднання з базою');
+        await api.removeLeague(code);await refreshRemoteClubDatabaseV1009(false);
+        button?.closest('.arena-modal-v852')?.remove();clubLeagueSelectedV125.database=LEAGUE_UNASSIGNED_V125;
+        this.renderClubDatabase();window.showToast?.('Лігу видалено, клуби збережені');
+      }catch(err){console.warn('Arena league delete',err);window.showToast?.('Не вдалося видалити лігу');}
+      finally{if(button)button.disabled=false;}
+    },
+    changeClubDatabaseCountryV125(keep=false){
+      const country=document.getElementById('arenaClubDbCountryV122')?.value||'';
+      const select=document.getElementById('arenaClubDbLeagueV125');if(!select)return;
+      const chosen=keep?select.value:'';
+      select.innerHTML='<option value="">— Без ліги (розподілю пізніше) —</option>'+leagueEditorOptionsV125(country);
+      select.value=clubLeagueV125(chosen,country);
+    },
     renderClubDatabase(filter=""){
       loadClubDatabase();
       const list=document.getElementById("arenaClubDbListV945");
       if(!list)return;
       const q=normalizeTeamName(filter||document.getElementById("arenaClubDbSearchV945")?.value||"");
-      const rows=clubDatabase.filter(c=>!q||normalizeTeamName(c.name).includes(q));
+      const countries=countryCodesInDatabaseV122();
+      if(!countries.includes(clubDbActiveCountryV122))clubDbActiveCountryV122=countries[0]||"";
+      const groupsEl=document.getElementById('arenaClubGroupsListV123');
+      if(groupsEl)groupsEl.innerHTML=clubGroupsV123.length?clubGroupsV123.map(g=>{
+        const count=clubDatabase.filter(c=>clubCountryOfV122(c)===g.code).length;
+        return `<div class="arena-club-group-row-v123"><span>${esc(g.flag)} <b>${esc(g.name)}</b><small>${count} клубів</small></span><button type="button" onclick="ArenaV852.editClubGroupV123('${jsq(g.code)}')">ЗМІНИТИ</button><button type="button" class="danger" onclick="ArenaV852.deleteClubGroupV123('${jsq(g.code)}')">✕</button></div>`;
+      }).join(''):'<small>Ще немає розділів. Створи перший вище.</small>';
+      const categorySelect=document.getElementById('arenaClubDbCountryV122');
+      if(categorySelect){const chosen=categorySelect.value;categorySelect.innerHTML='<option value="">— Обери країну —</option>'+countryEditorOptionsV122();categorySelect.value=chosen;}
+      const leagueCountry=document.getElementById('arenaClubLeagueCountryV125');
+      if(leagueCountry){const chosen=leagueCountry.value;leagueCountry.innerHTML='<option value="">— Обери країну —</option>'+countryEditorOptionsV122();leagueCountry.value=chosen||clubDbActiveCountryV122;}
+      const leagueList=document.getElementById('arenaClubLeaguesListV125');
+      if(leagueList)leagueList.innerHTML=clubLeaguesV125.length?clubLeaguesV125.map(g=>{
+        const count=clubDatabase.filter(c=>clubLeagueOfV125(c)===g.code).length;
+        return `<div class="arena-club-group-row-v123"><span>${esc(g.icon)} <b>${esc(clubCountryNameV122(g.country_code))} → ${esc(g.name)}</b><small>${count} клубів</small></span><button type="button" onclick="ArenaV852.editClubLeagueV125('${jsq(g.code)}')">ЗМІНИТИ</button><button type="button" class="danger" onclick="ArenaV852.deleteClubLeagueV125('${jsq(g.code)}')">✕</button></div>`;
+      }).join(''):'<small>Папок ліг ще немає. Створи першу вище.</small>';
+      this.changeClubDatabaseCountryV125(true);
+      const tabs=document.getElementById('arenaClubDbCountryTabsV122');
+      if(tabs)tabs.innerHTML=countryTabsV122('database',clubDbActiveCountryV122);
+      if(!leagueCodesForCountryV125(clubDbActiveCountryV122).includes(clubLeagueSelectedV125.database))clubLeagueSelectedV125.database=defaultLeagueV125(clubDbActiveCountryV122);
+      const leagueTabs=document.getElementById('arenaClubDbLeagueTabsV125');
+      if(leagueTabs)leagueTabs.innerHTML=leagueTabsV125('database',clubDbActiveCountryV122,clubLeagueSelectedV125.database);
+      const rows=clubsForFolderV125(clubDbActiveCountryV122,clubLeagueSelectedV125.database).filter(c=>!q||normalizeTeamName(c.name).includes(q));
       const count=document.getElementById("arenaClubDbCountV945");
       if(count)count.textContent=`${rows.length} з ${clubDatabase.length} клубів`;
       list.innerHTML=rows.length?rows.map(c=>`<article class="arena-clubdb-row-v945">
         <div class="arena-clubdb-logo-v945">${crestBadge(c.name,c.logo)}</div>
-        <div class="arena-clubdb-copy-v945"><strong>${esc(c.name)}</strong><small>${c.logo?"Власна емблема":"Автоматична емблема"}</small></div>
-        <div class="arena-clubdb-row-actions-v945"><button type="button" onclick="ArenaV852.editClubDatabaseEntry('${jsq(c.name)}')">ЗМІНИТИ</button><button type="button" class="danger" onclick="ArenaV852.deleteClubDatabaseEntry('${jsq(c.name)}')">ВИДАЛИТИ</button></div>
+        <div class="arena-clubdb-copy-v945"><strong>${esc(c.name)}</strong><small><span class="arena-clubdb-meta-line-v1211">${clubCountryFlagV122(clubCountryOfV122(c))} ${esc(clubCountryNameV122(clubCountryOfV122(c)))}</span><span class="arena-clubdb-meta-line-v1211">→ ${esc(leagueNameV125(clubLeagueOfV125(c)||LEAGUE_UNASSIGNED_V125))}</span><span class="arena-clubdb-meta-line-v1211">${c.logo?"Власна емблема":"Автоматична емблема"}</span></small></div>
+        <div class="arena-clubdb-row-actions-v945"><button type="button" class="arena-clubdb-move-button-v127" onclick="ArenaV852.openMoveClubV127('${jsq(c.name)}')">📁 ПЕРЕМІСТИТИ</button><button type="button" onclick="ArenaV852.editClubDatabaseEntry('${jsq(c.name)}')">ЗМІНИТИ</button><button type="button" class="danger" onclick="ArenaV852.deleteClubDatabaseEntry('${jsq(c.name)}')">ВИДАЛИТИ</button></div>
       </article>`).join(""):`<div class="arena-clubdb-empty-v945">Клубів не знайдено</div>`;
       const data=document.getElementById("arenaClubDbNamesV945");
       if(data)data.innerHTML=clubDbNames().map(n=>`<option value="${esc(n)}"></option>`).join("");
     },
     filterClubDatabase(value){this.renderClubDatabase(value)},
+    openMoveClubV127(name){
+      if(!isArenaAdmin())return;
+      loadClubDatabase();
+      const club=clubDbFind(name);
+      if(!club)return;
+      if(!clubGroupsV123.length){window.showToast?.('Спочатку створи папку країни');return;}
+      modal(`<div class="arena-clubdb-move-modal-v127" role="dialog" aria-modal="true" aria-label="Перемістити клуб">
+        <div class="arena-clubdb-move-head-v127"><div><small>БАЗА КЛУБІВ</small><h2>ПЕРЕМІСТИТИ КЛУБ</h2><p>${esc(club.name)}</p></div><button type="button" class="arena-player-close-v934" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div>
+        <label><span>КРАЇНА / ПАПКА</span><select id="arenaClubMoveCountryV127" onchange="ArenaV852.changeMoveClubCountryV127()">${countryEditorOptionsV122()}</select></label>
+        <label><span>ЛІГА / ПІДПАПКА</span><select id="arenaClubMoveLeagueV127"></select></label>
+        <p class="arena-clubdb-move-hint-v127">Назва та емблема клубу не зміняться.</p>
+        <div class="arena-clubdb-move-actions-v127"><button type="button" class="arena-secondary-v852" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button type="button" class="arena-primary-v852" onclick="ArenaV852.saveMoveClubV127('${jsq(club.name)}',this)">ПЕРЕМІСТИТИ</button></div>
+      </div>`);
+      const country=document.getElementById('arenaClubMoveCountryV127');
+      if(country)country.value=clubCountryOfV122(club)===COUNTRY_UNASSIGNED_V122?clubGroupsV123[0].code:clubCountryOfV122(club);
+      this.changeMoveClubCountryV127(clubLeagueOfV125(club));
+    },
+    changeMoveClubCountryV127(preferred=''){
+      const country=document.getElementById('arenaClubMoveCountryV127')?.value||'';
+      const league=document.getElementById('arenaClubMoveLeagueV127');
+      if(!league)return;
+      const current=preferred||'';
+      league.innerHTML='<option value="">— Без ліги —</option>'+leagueEditorOptionsV125(country);
+      league.value=clubLeagueV125(current,country)||'';
+    },
+    async saveMoveClubV127(name,button){
+      if(!isArenaAdmin()||button?.disabled)return;
+      const country=clubCountryV122(document.getElementById('arenaClubMoveCountryV127')?.value);
+      const requestedLeague=document.getElementById('arenaClubMoveLeagueV127')?.value||'';
+      const league_code=clubLeagueV125(requestedLeague,country);
+      if(!country){window.showToast?.('Обери країну');return;}
+      if(requestedLeague&&!league_code){window.showToast?.('Обери лігу цієї країни');return;}
+      loadClubDatabase();
+      const club=clubDbFind(name);
+      if(!club){window.showToast?.('Клуб не знайдено');return;}
+      if(clubCountryV122(club.country)===country&&clubLeagueOfV125(club)===league_code){
+        button?.closest('.arena-modal-v852')?.remove();return;
+      }
+      if(button)button.disabled=true;
+      try{
+        const api=clubApiV1009();
+        if(!api?.isReady?.()||!api?.upsert||!api?.canWrite?.())throw new Error('Немає доступу до спільної бази');
+        // Preserve the exact existing logo and club name. Only the folder changes.
+        await api.upsert({name:club.name,logo:club.logo||'',country,league_code});
+        await refreshRemoteClubDatabaseV1009(false);
+        button?.closest('.arena-modal-v852')?.remove();
+        clubDbActiveCountryV122=country;
+        clubLeagueSelectedV125.database=league_code||LEAGUE_UNASSIGNED_V125;
+        this.renderClubDatabase();
+        window.showToast?.('Клуб переміщено. Назву й емблему збережено');
+      }catch(err){
+        console.warn('Arena club move',err);
+        window.showToast?.('Не вдалося перемістити клуб. Перевір з’єднання та повтори');
+      }finally{if(button)button.disabled=false;}
+    },
     refreshClubDatabasePreview(){
       const name=String(document.getElementById("arenaClubDbNameV945")?.value||"").trim();
       const preview=document.getElementById("arenaClubDbPreviewV945");
@@ -3713,6 +4230,8 @@
       const file=document.getElementById("arenaClubDbLogoV945");
       const preview=document.getElementById("arenaClubDbPreviewV945");
       if(name)name.value="";if(old)old.value="";if(file)file.value="";
+      const country=document.getElementById("arenaClubDbCountryV122");if(country)country.value="";
+      this.changeClubDatabaseCountryV125();
       if(preview){preview.dataset.logo="";preview.dataset.logoSource="";preview.innerHTML='<div class="arena-clubdb-preview-empty-v945">Введи назву або додай емблему</div>';}
     },
     editClubDatabaseEntry(name){
@@ -3724,6 +4243,9 @@
       const file=document.getElementById("arenaClubDbLogoV945");
       const preview=document.getElementById("arenaClubDbPreviewV945");
       if(input)input.value=club.name;if(old)old.value=club.name;if(file)file.value="";
+      const country=document.getElementById("arenaClubDbCountryV122");if(country)country.value=clubCountryV122(club.country);
+      this.changeClubDatabaseCountryV125();
+      const league=document.getElementById('arenaClubDbLeagueV125');if(league)league.value=clubLeagueOfV125(club);
       if(preview){preview.dataset.logo=club.logo||"";preview.dataset.logoSource=club.logo||"";}
       this.refreshClubDatabasePreview();
       try{const target=document.getElementById('arenaClubDbEditorV945'); const scroller=target?.closest('.arena-clubdb-scroll-v945'); if(target&&scroller){const a=target.getBoundingClientRect(),b=scroller.getBoundingClientRect();scroller.scrollTop+=a.top-b.top-12}}catch(_e){}
@@ -3802,14 +4324,17 @@
       if(!isArenaAdmin())return;
       const name=String(document.getElementById("arenaClubDbNameV945")?.value||"").trim();
       const oldName=String(document.getElementById("arenaClubDbOldNameV945")?.value||"").trim();
+      const country=clubCountryV122(document.getElementById("arenaClubDbCountryV122")?.value);
+      const league_code=clubLeagueV125(document.getElementById('arenaClubDbLeagueV125')?.value,country);
       if(!name){try{window.showToast?.("Вкажи назву клубу")}catch(_e){};return;}
+      if(!country){try{window.showToast?.("Спочатку створи й обери розділ клубу")}catch(_e){};return;}
       const preview=document.getElementById("arenaClubDbPreviewV945");
       const existing=clubDbFind(oldName||name);
       const logo=String(preview?.dataset?.logo||existing?.logo||"").trim();
-      upsertClubDatabase(name,logo,{renameFrom:oldName});
+      upsertClubDatabase(name,logo,{renameFrom:oldName,country,league_code});
       try{
         const api=clubApiV1009();
-        if(api?.upsert)await api.upsert({name,logo,renameFrom:oldName});
+        if(api?.upsert)await api.upsert({name,logo,renameFrom:oldName,country,league_code});
         await refreshRemoteClubDatabaseV1009(false);
       }catch(err){
         console.warn("Arena club save remote",err);
@@ -3817,9 +4342,11 @@
         return;
       }
       this.resetClubDatabaseEditor();
+      clubDbActiveCountryV122=country;
+      clubLeagueSelectedV125.database=league_code||LEAGUE_UNASSIGNED_V125;
       this.renderClubDatabase();
       draw();
-      try{window.showToast?.("Клуб і емблему синхронізовано для всіх акаунтів")}catch(_e){}
+      try{window.showToast?.("Клуб і його розділ синхронізовано для всіх акаунтів")}catch(_e){}
     },
     deleteClubDatabaseEntry(name){
       if(!isArenaAdmin())return;
@@ -3883,10 +4410,11 @@
             <div class="arena-player-team-section-head-v941"><div class="arena-player-section-title-v932">УЛЮБЛЕНА КОМАНДА</div>${canEditTeam?`<button class="arena-player-team-edit-btn-v941" type="button" onclick="ArenaV852.toggleArenaTeamEditor(true,'${jsq(name)}')">ЗМІНИТИ</button>`:""}</div>
             <div class="arena-player-team-view-v941" id="arenaPlayerTeamViewV941"><div id="arenaPlayerFavBadgeV934">${crestBadge(p.favoriteTeam,"")}</div><div><strong id="arenaPlayerFavTextV934">${esc(p.favoriteTeam)}</strong><small>${isOwnProfile?"Ти можеш сам змінити назву клубу.":isArenaAdmin()?"ADMIN може змінити назву клубу.":"Улюблена команда гравця"}</small></div></div>
             ${canEditTeam?`<div class="arena-player-team-editor-v941" id="arenaPlayerTeamEditorV941" hidden>
-              <label class="arena-player-label-v930 arena-player-label-v932 arena-player-label-v934"><span>Назва улюбленого клубу</span><input id="arenaFavTeamV930" list="arenaFavTeamsV930" type="text" value="${esc(p.favoriteTeam)}" placeholder="Введи або вибери клуб із бази" oninput="ArenaV852.previewArenaTeamName(this.value)"></label>
-              <label class="arena-player-label-v930 arena-player-label-v932 arena-player-label-v934"><span>АБО ОБЕРИ КЛУБ ІЗ БАЗИ</span><select id="arenaFavTeamSelectV1002" onchange="ArenaV852.pickArenaTeamName(this.value)"><option value="">— Обрати клуб із бази —</option>${[p.favoriteTeam,...teamOptions].filter((v,i,a)=>v&&a.indexOf(v)===i).map(team=>`<option value="${esc(team)}"${team===p.favoriteTeam?' selected':''}>${esc(team)}</option>`).join("")}</select></label>
+              
+              <div class="arena-country-picker-wrap-v123"><span class="arena-country-picker-label-v123">РОЗДІЛ КЛУБУ</span><select hidden id="arenaFavCountryV122" onchange="ArenaV852.changeClubCountryV122('arenaFavCountryV122','arenaFavTeamSelectV1002','arenaFavTeamV930')">${countryPickerOptionsV122(p.favoriteTeam)}</select><div class="arena-country-tabs-v122 arena-country-picker-tabs-v123" id="arenaFavCountryTabsV123">${clubPickerTabsV123('fav',p.favoriteTeam)}</div><span class="arena-country-picker-label-v123">ЛІГА</span><div class="arena-country-tabs-v122 arena-league-tabs-v125" id="arenaFavLeagueTabsV125">${clubPickerLeagueTabsV125('fav',p.favoriteTeam)}</div></div>
+              <label class="arena-player-label-v930 arena-player-label-v932 arena-player-label-v934"><span>КЛУБ ІЗ ОБРАНОГО РОЗДІЛУ</span><select id="arenaFavTeamSelectV1002" onchange="ArenaV852.pickArenaTeamName(this.value)"><option value="">— Обрати клуб із бази —</option>${clubOptionsForTeamV122(p.favoriteTeam)}</select></label><label class="arena-player-label-v930 arena-player-label-v932 arena-player-label-v934"><span>АБО ВПИШИ КЛУБ ВРУЧНУ</span><input id="arenaFavTeamV930" list="arenaFavTeamsV930" type="text" value="${esc(p.favoriteTeam)}" placeholder="Введи або вибери клуб із бази" oninput="ArenaV852.previewArenaTeamName(this.value)"></label>
               <div class="arena-club-live-preview-v1003" id="arenaFavTeamLivePreviewV1003"><div class="arena-club-live-preview-badge-v1003" id="arenaFavTeamLiveBadgeV1003">${crestBadge(p.favoriteTeam,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>ПОПЕРЕДНІЙ ПЕРЕГЛЯД ЕМБЛЕМИ</small><strong id="arenaFavTeamLiveTextV1003">${esc(p.favoriteTeam)}</strong></div></div>
-              <div class="arena-player-team-admin-note-v987"><b>ЕМБЛЕМА — ТІЛЬКИ ЧЕРЕЗ БАЗУ КЛУБІВ</b><small>Тут можна або вписати назву клубу вручну, або вибрати вже доданий клуб із бази. Емблема та назва нижче оновлюються одразу, ще до збереження. Після збереження новий клуб зʼявиться в базі. Емблему до нього може додати тільки ADMIN.</small></div>
+              <div class="arena-player-team-admin-note-v987"><h3 class="arena-player-team-admin-title-v1215">ЕМБЛЕМА — ТІЛЬКИ ЧЕРЕЗ БАЗУ КЛУБІВ</h3><p class="arena-player-team-admin-copy-v1215">Тут можна або вписати назву клубу вручну, або вибрати вже доданий клуб із бази. Емблема та назва нижче оновлюються одразу, ще до збереження. Після збереження новий клуб зʼявиться в базі. Емблему до нього може додати тільки ADMIN.</p></div>
               <datalist id="arenaFavTeamsV930">${options}</datalist>
               <div class="arena-player-team-editor-actions-v941"><button class="arena-primary-v852 arena-player-team-save-v1146" type="button" onclick="ArenaV852.saveArenaPlayer('${jsq(name)}')">ЗБЕРЕГТИ</button><button class="arena-secondary-v852 arena-player-team-cancel-v1147" type="button" onclick="ArenaV852.toggleArenaTeamEditor(false,'${jsq(name)}')">СКАСУВАТИ</button></div>
             </div>`:""}
@@ -3917,6 +4445,8 @@
       if(badgeEl) badgeEl.innerHTML=crestBadge(favoriteTeam,"");
       if(liveText) liveText.textContent=favoriteTeam;
       if(liveBadge) liveBadge.innerHTML=crestBadge(favoriteTeam,"");
+      if(selectEl&&document.getElementById('arenaFavCountryV122'))
+        syncCountryClubSelectV122('arenaFavCountryV122','arenaFavTeamSelectV1002',favoriteTeam);
       if(selectEl){
         const exists=[...selectEl.options].some(opt=>opt.value===favoriteTeam);
         selectEl.value=exists?favoriteTeam:"";
@@ -4012,12 +4542,13 @@
       const clubListOptions=clubs.map(n=>`<option value="${esc(n)}"></option>`).join("");
       const myInitialClub=clubFor(me);
 
-      modal(`<div class="arena-friendly-modal-v971"><button class="arena-modal-close-v971" type="button" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button><div class="arena-friendly-head-v971"><small>ARENA · ТОВАРИСЬКИЙ МАТЧ</small><h2>НОВИЙ ВИКЛИК</h2><p>Ти обираєш тільки свою команду і суперника. Свою команду суперник вибере сам уже на своєму акаунті, коли отримає виклик.</p></div><div class="arena-friendly-form-v971"><label class="arena-friendly-field-v971"><span>МІЙ КЛУБ</span><input id="arenaFriendlyMyClubV972" list="arenaFriendlyClubNamesV972" value="${esc(myInitialClub)}" placeholder="Введи або вибери клуб із бази" oninput="ArenaV852.previewFriendlyClub(this.value)"></label><label class="arena-friendly-field-v971"><span>АБО ОБЕРИ МІЙ КЛУБ ІЗ БАЗИ</span><select id="arenaFriendlyMyClubSelectV1002" onchange="ArenaV852.pickFriendlyClub(this.value)"><option value="">— Обрати клуб із бази —</option>${clubs.map(n=>`<option value="${esc(n)}"${n===myInitialClub?' selected':''}>${esc(n)}</option>`).join("")}</select></label><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003" id="arenaFriendlyMineBadgeV1003">${crestBadge(myInitialClub,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>МОЯ КОМАНДА</small><strong id="arenaFriendlyMineTextV1003">${esc(myInitialClub)}</strong></div></div><label class="arena-friendly-field-v971"><span>СУПЕРНИК</span><select id="arenaFriendlyOpponentV972">${options}</select></label><div class="arena-friendly-opponent-note-v1008">Команду суперника обирає <b>сам суперник</b> після отримання виклику.</div><datalist id="arenaFriendlyClubNamesV972">${clubListOptions}</datalist></div><div class="arena-friendly-note-v971"><span class="arena-friendly-status-dot-v971"></span><div><b>Виклик прийде на інший акаунт</b><small>У суперника у вкладці «Товарки» з’явиться вхідний виклик. Він вибере свою команду і підтвердить матч.</small></div></div><div class="arena-friendly-actions-v971"><button class="arena-secondary-v852 arena-friendly-cancel-v982" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852 arena-friendly-submit-v982" type="button" onclick="ArenaV852.sendFriendlyChallenge()">НАДІСЛАТИ ВИКЛИК</button></div></div>`);
-      setTimeout(()=>this.previewFriendlyClub(myInitialClub),0);
+      modal(`<div class="arena-friendly-modal-v971"><button class="arena-modal-close-v971" type="button" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button><div class="arena-friendly-head-v971"><small>ARENA · ТОВАРИСЬКИЙ МАТЧ</small><h2>НОВИЙ ВИКЛИК</h2><p>Ти обираєш тільки свою команду і суперника. Свою команду суперник вибере сам уже на своєму акаунті, коли отримає виклик.</p></div><div class="arena-friendly-form-v971"><div class="arena-country-picker-wrap-v123"><span class="arena-country-picker-label-v123">РОЗДІЛ КЛУБУ</span><select hidden id="arenaFriendlyCountryV122" onchange="ArenaV852.changeClubCountryV122('arenaFriendlyCountryV122','arenaFriendlyMyClubSelectV1002','arenaFriendlyMyClubV972')">${countryPickerOptionsV122(myInitialClub)}</select><div class="arena-country-tabs-v122 arena-country-picker-tabs-v123" id="arenaFriendlyCountryTabsV123">${clubPickerTabsV123('friendly',myInitialClub)}</div><span class="arena-country-picker-label-v123">ЛІГА</span><div class="arena-country-tabs-v122 arena-league-tabs-v125" id="arenaFriendlyLeagueTabsV125">${clubPickerLeagueTabsV125('friendly',myInitialClub)}</div></div><label class="arena-friendly-field-v971"><span>КЛУБ ІЗ ОБРАНОГО РОЗДІЛУ</span><select id="arenaFriendlyMyClubSelectV1002" onchange="ArenaV852.pickFriendlyClub(this.value)"><option value="">— Обрати клуб із бази —</option>${clubOptionsForTeamV122(myInitialClub)}</select></label><label class="arena-friendly-field-v971"><span>АБО ВПИШИ КЛУБ ВРУЧНУ</span><input id="arenaFriendlyMyClubV972" list="arenaFriendlyClubNamesV972" value="${esc(myInitialClub)}" placeholder="Введи або вибери клуб із бази" oninput="ArenaV852.previewFriendlyClub(this.value)"></label><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003" id="arenaFriendlyMineBadgeV1003">${crestBadge(myInitialClub,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>МОЯ КОМАНДА</small><strong id="arenaFriendlyMineTextV1003">${esc(myInitialClub)}</strong></div></div><label class="arena-friendly-field-v971"><span>СУПЕРНИК</span><select id="arenaFriendlyOpponentV972">${options}</select></label><div class="arena-friendly-opponent-note-v1008">Команду суперника обирає <b>сам суперник</b> після отримання виклику.</div><datalist id="arenaFriendlyClubNamesV972">${clubListOptions}</datalist></div><div class="arena-friendly-note-v971"><span class="arena-friendly-status-dot-v971"></span><div><b>Виклик прийде на інший акаунт</b><small>У суперника у вкладці «Товарки» з’явиться вхідний виклик. Він вибере свою команду і підтвердить матч.</small></div></div><div class="arena-friendly-actions-v971"><button class="arena-secondary-v852 arena-friendly-cancel-v982" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852 arena-friendly-submit-v982" type="button" onclick="ArenaV852.sendFriendlyChallenge()">НАДІСЛАТИ ВИКЛИК</button></div></div>`);
+      this.previewFriendlyClub(myInitialClub);
     },
     previewFriendlyClub(value){
       const team=String(value||'').trim() || 'Centuria';
       const select=document.getElementById('arenaFriendlyMyClubSelectV1002');
+      syncCountryClubSelectV122('arenaFriendlyCountryV122','arenaFriendlyMyClubSelectV1002',team);
       const badge=document.getElementById('arenaFriendlyMineBadgeV1003');
       const textEl=document.getElementById('arenaFriendlyMineTextV1003');
       if(badge) badge.innerHTML=crestBadge(team,'');
@@ -4075,7 +4606,7 @@
       const initial=clubFor(row.recipient_player);
       const list=clubs.map(n=>`<option value="${esc(n)}"></option>`).join("");
 
-      modal(`<div class="arena-friendly-modal-v971 arena-friendly-accept-modal-v1007"><button class="arena-modal-close-v971" type="button" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button><div class="arena-friendly-head-v971"><small>⚔️ ВХІДНИЙ ВИКЛИК</small><h2>${esc(row.sender_player)} ВИКЛИКАЄ ТЕБЕ</h2><p>Суперник грає за <b>${esc(row.sender_club)}</b>. Можеш підтвердити матч або відмовитися від нього.</p></div><button class="arena-friendly-decline-top-v1013" type="button" onclick="ArenaV852.askDeclineIncomingFriendly('${jsq(row.id)}','${jsq(row.sender_player)}')">✕ ВІДМОВИТИСЯ ВІД МАТЧУ</button><div class="arena-friendly-form-v971"><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003">${crestBadge(row.sender_club,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>КОМАНДА СУПЕРНИКА</small><strong>${esc(row.sender_club)}</strong></div></div><label class="arena-friendly-field-v971"><span>МОЯ КОМАНДА</span><input id="arenaIncomingFriendlyClubV1007" list="arenaIncomingFriendlyClubListV1007" value="${esc(initial)}" placeholder="Введи або вибери клуб" oninput="ArenaV852.previewIncomingFriendlyClub(this.value)"></label><label class="arena-friendly-field-v971"><span>АБО ОБЕРИ ІЗ БАЗИ</span><select id="arenaIncomingFriendlyClubSelectV1007" onchange="ArenaV852.pickIncomingFriendlyClub(this.value)"><option value="">— Обрати клуб із бази —</option>${clubs.map(n=>`<option value="${esc(n)}"${n===initial?' selected':''}>${esc(n)}</option>`).join("")}</select></label><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003" id="arenaIncomingFriendlyBadgeV1007">${crestBadge(initial,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>МОЯ КОМАНДА</small><strong id="arenaIncomingFriendlyTextV1007">${esc(initial)}</strong></div></div><datalist id="arenaIncomingFriendlyClubListV1007">${list}</datalist></div><div class="arena-friendly-actions-v971 arena-friendly-actions-v1013"><button class="arena-secondary-v852 arena-friendly-decline-bottom-v1013" type="button" onclick="ArenaV852.askDeclineIncomingFriendly('${jsq(row.id)}','${jsq(row.sender_player)}')">ВІДМОВИТИСЯ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.confirmIncomingFriendly('${jsq(row.id)}')">ПІДТВЕРДИТИ МАТЧ</button></div></div>`);
+      modal(`<div class="arena-friendly-modal-v971 arena-friendly-accept-modal-v1007"><button class="arena-modal-close-v971" type="button" aria-label="Закрити" onclick="this.closest('.arena-modal-v852').remove()">✕</button><div class="arena-friendly-head-v971"><small>⚔️ ВХІДНИЙ ВИКЛИК</small><h2>${esc(row.sender_player)} ВИКЛИКАЄ ТЕБЕ</h2><p>Суперник грає за <b>${esc(row.sender_club)}</b>. Можеш підтвердити матч або відмовитися від нього.</p></div><button class="arena-friendly-decline-top-v1013" type="button" onclick="ArenaV852.askDeclineIncomingFriendly('${jsq(row.id)}','${jsq(row.sender_player)}')">✕ ВІДМОВИТИСЯ ВІД МАТЧУ</button><div class="arena-friendly-form-v971"><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003">${crestBadge(row.sender_club,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>КОМАНДА СУПЕРНИКА</small><strong>${esc(row.sender_club)}</strong></div></div><div class="arena-country-picker-wrap-v123"><span class="arena-country-picker-label-v123">РОЗДІЛ КЛУБУ</span><select hidden id="arenaIncomingFriendlyCountryV122" onchange="ArenaV852.changeClubCountryV122('arenaIncomingFriendlyCountryV122','arenaIncomingFriendlyClubSelectV1007','arenaIncomingFriendlyClubV1007')">${countryPickerOptionsV122(initial)}</select><div class="arena-country-tabs-v122 arena-country-picker-tabs-v123" id="arenaIncomingFriendlyCountryTabsV123">${clubPickerTabsV123('incoming',initial)}</div><span class="arena-country-picker-label-v123">ЛІГА</span><div class="arena-country-tabs-v122 arena-league-tabs-v125" id="arenaIncomingFriendlyLeagueTabsV125">${clubPickerLeagueTabsV125('incoming',initial)}</div></div><label class="arena-friendly-field-v971"><span>КЛУБ ІЗ ОБРАНОГО РОЗДІЛУ</span><select id="arenaIncomingFriendlyClubSelectV1007" onchange="ArenaV852.pickIncomingFriendlyClub(this.value)"><option value="">— Обрати клуб із бази —</option>${clubOptionsForTeamV122(initial)}</select></label><label class="arena-friendly-field-v971"><span>АБО ВПИШИ КЛУБ ВРУЧНУ</span><input id="arenaIncomingFriendlyClubV1007" list="arenaIncomingFriendlyClubListV1007" value="${esc(initial)}" placeholder="Введи або вибери клуб" oninput="ArenaV852.previewIncomingFriendlyClub(this.value)"></label><div class="arena-club-live-preview-v1003"><div class="arena-club-live-preview-badge-v1003" id="arenaIncomingFriendlyBadgeV1007">${crestBadge(initial,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>МОЯ КОМАНДА</small><strong id="arenaIncomingFriendlyTextV1007">${esc(initial)}</strong></div></div><datalist id="arenaIncomingFriendlyClubListV1007">${list}</datalist></div><div class="arena-friendly-actions-v971 arena-friendly-actions-v1013"><button class="arena-secondary-v852 arena-friendly-decline-bottom-v1013" type="button" onclick="ArenaV852.askDeclineIncomingFriendly('${jsq(row.id)}','${jsq(row.sender_player)}')">ВІДМОВИТИСЯ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.confirmIncomingFriendly('${jsq(row.id)}')">ПІДТВЕРДИТИ МАТЧ</button></div></div>`);
     },
 
     previewIncomingFriendlyClub(value){
@@ -4083,6 +4614,7 @@
       const badge=document.getElementById("arenaIncomingFriendlyBadgeV1007");
       const textEl=document.getElementById("arenaIncomingFriendlyTextV1007");
       const select=document.getElementById("arenaIncomingFriendlyClubSelectV1007");
+      syncCountryClubSelectV122("arenaIncomingFriendlyCountryV122","arenaIncomingFriendlyClubSelectV1007",team);
       if(badge)badge.innerHTML=crestBadge(team,"");
       if(textEl)textEl.textContent=team;
       if(select){
