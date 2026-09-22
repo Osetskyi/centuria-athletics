@@ -3252,16 +3252,53 @@
   };
   window.addEventListener('resize',()=>{if(route==='home')queueActiveEventFitV1102();},{passive:true});
 
+  /* v12.20 — keep the horizontal Cup/League bracket exactly where the user
+     scrolled it. Remote Arena refreshes redraw #arenaApp every few seconds;
+     replacing innerHTML used to reset scrollLeft to zero on iPhone. */
+  const arenaBracketScrollMemoryV1220=new Map();
+  const arenaBracketViewKeyV1220=()=>{
+    const competition=String(testCompetition?.id||activeEvent?.title||'none');
+    return `${route}|${tab}|${hist}|${competition}`;
+  };
+  const rememberArenaBracketScrollV1220=()=>{
+    const viewKey=String(A.dataset.bracketViewKeyV1220||'');
+    if(!viewKey)return;
+    A.querySelectorAll('.arena-cup-bracket-scroll-v1036').forEach((scroller,index)=>{
+      arenaBracketScrollMemoryV1220.set(`${viewKey}|${index}`,{
+        left:Number(scroller.scrollLeft)||0,
+        top:Number(scroller.scrollTop)||0
+      });
+    });
+  };
+  const restoreArenaBracketScrollV1220=viewKey=>{
+    // Bracket layout/connectors finish over two animation frames. Restore one
+    // frame later so iOS cannot snap the newly-created scroller back to 0.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      A.querySelectorAll('.arena-cup-bracket-scroll-v1036').forEach((scroller,index)=>{
+        const saved=arenaBracketScrollMemoryV1220.get(`${viewKey}|${index}`);
+        if(!saved)return;
+        const maxLeft=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
+        const maxTop=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
+        scroller.scrollLeft=Math.max(0,Math.min(maxLeft,Number(saved.left)||0));
+        scroller.scrollTop=Math.max(0,Math.min(maxTop,Number(saved.top)||0));
+      });
+    })));
+  };
+
   function draw(){
+    rememberArenaBracketScrollV1220();
     if(syncLeaguePlayoffStateV1114(testCompetition)) saveTestCompetition();
     const f={home,league,cup,friendly,evo,players,history:historyView}[route]||home;
+    const bracketViewKeyV1220=arenaBracketViewKeyV1220();
     A.dataset.route=route;
+    A.dataset.bracketViewKeyV1220=bracketViewKeyV1220;
     A.innerHTML=f();
     syncBackButton();
     bindSwipeTabs();
     renderCupDrawAnimationModalV1033();
     renderLeagueDrawAnimationModalV1095();
     queueCupBracketConnectorsV1038(A);
+    restoreArenaBracketScrollV1220(bracketViewKeyV1220);
     if(route==="home")queueActiveEventFitV1102();
     if(route==="league"&&testCompetition?.draw?.kind==='league'&&!leagueDrawAnimationOpenV1095){
       setTimeout(()=>maybeAutoStartLeagueDrawV1095(),80);
