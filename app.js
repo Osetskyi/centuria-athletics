@@ -170,7 +170,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.1",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.16",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -8671,12 +8671,71 @@ window.CenturiaArenaClubApi={
   async list(){
     if(!sb || !authUser) return [];
     const {data,error}=await sb.from('arena_clubs')
-      .select('normalized_name,name,logo,updated_at')
+      .select('normalized_name,name,logo,country,league_code,updated_at')
       .order('name',{ascending:true});
     if(error) throw error;
     return Array.isArray(data)?data:[];
   },
-  async upsert({name,logo='',renameFrom=''}={}){
+  async listGroups(){
+    if(!sb||!authUser)return [];
+    const {data,error}=await sb.from('arena_club_groups')
+      .select('code,name,flag,sort_order').order('sort_order',{ascending:true}).order('name',{ascending:true});
+    if(error)throw error;
+    return Array.isArray(data)?data:[];
+  },
+  async listLeagues(){
+    if(!sb||!authUser)return [];
+    const {data,error}=await sb.from('arena_club_leagues').select('code,country_code,name,icon,sort_order')
+      .order('sort_order',{ascending:true}).order('name',{ascending:true});
+    if(error)throw error;
+    return Array.isArray(data)?data:[];
+  },
+  async upsertLeague({code,country_code,name,icon='🏆'}){
+    if(!sb||!authUser||!this.canWrite())throw new Error('Тільки ADMIN');
+    const key=String(code||'').trim().toUpperCase();
+    const country=String(country_code||'').trim().toUpperCase();
+    if(!/^[A-Z0-9_-]{2,70}$/.test(key)||!country||!String(name||'').trim())throw new Error('Невірна папка ліги');
+    const {data:old,error:readError}=await sb.from('arena_club_leagues').select('country_code').eq('code',key).maybeSingle();
+    if(readError)throw readError;
+    const {error}=await sb.from('arena_club_leagues').upsert({code:key,country_code:country,name:String(name).trim(),
+      icon:String(icon||'🏆').trim()||'🏆',updated_at:new Date().toISOString(),updated_by:authUser.id},{onConflict:'code'});
+    if(error)throw error;
+    if(old&&old.country_code!==country){
+      // Clubs follow a league moved to another country.
+      const {error:moveError}=await sb.from('arena_clubs').update({country,updated_at:new Date().toISOString(),updated_by:authUser.id}).eq('league_code',key);
+      if(moveError)throw moveError;
+    }
+  },
+  async removeLeague(code){
+    if(!sb||!authUser||!this.canWrite())throw new Error('Тільки ADMIN');
+    const key=String(code||'').trim().toUpperCase();
+    if(!key)throw new Error('Ліга не вибрана');
+    // Foreign key ON DELETE SET NULL keeps every club and its emblem.
+    const {error}=await sb.from('arena_club_leagues').delete().eq('code',key);
+    if(error)throw error;
+  },
+  async upsertGroup({code,name,flag}){
+    if(!sb||!authUser||!this.canWrite())throw new Error('Тільки ADMIN');
+    const cleanCode=String(code||'').trim().toUpperCase();
+    if(!/^[A-Z0-9_-]{2,70}$/.test(cleanCode))throw new Error('Неправильний код розділу');
+    const cleanName=String(name||'').trim(),cleanFlag=String(flag||'').trim();
+    if(!cleanName||!cleanFlag)throw new Error('Назва та прапор обов’язкові');
+    const {error}=await sb.from('arena_club_groups').upsert({
+      code:cleanCode,name:cleanName,flag:cleanFlag,updated_by:authUser.id,updated_at:new Date().toISOString()
+    },{onConflict:'code'});
+    if(error)throw error;
+  },
+  async removeGroup(code){
+    if(!sb||!authUser||!this.canWrite())throw new Error('Тільки ADMIN');
+    const key=String(code||'').trim().toUpperCase();
+    if(!key)throw new Error('Розділ не вибрано');
+    // Reassign clubs before removing the folder; never delete club records.
+    const {error:moveError}=await sb.from('arena_clubs').update({country:'',league_code:null,updated_at:new Date().toISOString(),updated_by:authUser.id}).eq('country',key);
+    if(moveError)throw moveError;
+    const {error}=await sb.from('arena_club_groups').delete().eq('code',key);
+    if(error)throw error;
+  },
+  async upsert({name,logo='',country='',league_code=null,renameFrom=''}={}){
     if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
     if(String(authRole||'viewer').toLowerCase()!=='admin') throw new Error('Тільки ADMIN може змінювати базу клубів');
     const cleanName=String(name||'').trim();
@@ -8693,10 +8752,12 @@ window.CenturiaArenaClubApi={
         normalized_name:newKey,
         name:cleanName,
         logo:String(logo||''),
+        country:String(country||'').trim().toUpperCase(),
+        league_code:league_code||null,
         updated_at:new Date().toISOString(),
         updated_by:authUser.id
       },{onConflict:'normalized_name'})
-      .select('normalized_name,name,logo,updated_at')
+      .select('normalized_name,name,logo,country,league_code,updated_at')
       .single();
     if(error) throw error;
     return data;
@@ -8709,6 +8770,8 @@ window.CenturiaArenaClubApi={
         normalized_name:normalizeArenaClubNameV1009(c?.name),
         name:String(c?.name||'').trim(),
         logo:String(c?.logo||''),
+        country:String(c?.country||'').trim().toUpperCase(),
+        league_code:c?.league_code||null,
         updated_at:new Date().toISOString(),
         updated_by:authUser.id
       }))
@@ -8719,7 +8782,7 @@ window.CenturiaArenaClubApi={
     // Explicit ADMIN edits still go through upsert() above and can update logos.
     const {data,error}=await sb.from('arena_clubs')
       .upsert(rows,{onConflict:'normalized_name',ignoreDuplicates:true})
-      .select('normalized_name,name,logo,updated_at');
+      .select('normalized_name,name,logo,country,league_code,updated_at');
     if(error) throw error;
     return Array.isArray(data)?data:[];
   },
@@ -9010,6 +9073,8 @@ window.CenturiaArenaRealtimeApi={
       [
         'arena_global_state',
         'arena_clubs',
+        'arena_club_groups',
+        'arena_club_leagues',
         'arena_player_preferences',
         'arena_friendly_challenges',
         'arena_cup_votes'
@@ -11815,9 +11880,9 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.1 — keep the Settings footer in sync with the deployed build. */
+/* v12.16 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.1");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.16");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);

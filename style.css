@@ -35077,3 +35077,490 @@ html.light-theme .toast.player-request-success-v1159{
 #screen-arena input[type=file][hidden]{display:none!important;}
 #screen-arena .arena-live-cover-edit-v121{margin:0 0 12px!important;display:flex!important;justify-content:center!important;}
 #screen-arena .arena-live-cup-cover-v121{margin:0 0 12px!important;width:100%!important;}
+
+/* v12.2 — shared country catalog, mobile and both themes. */
+.arena-modal-v852 .arena-country-tabs-v122{
+  display:flex!important;flex-wrap:nowrap!important;gap:8px!important;
+  overflow-x:auto!important;overscroll-behavior-x:contain!important;
+  padding:7px 2px 12px!important;scrollbar-width:none!important;
+  -webkit-overflow-scrolling:touch!important;
+}
+.arena-modal-v852 .arena-country-tabs-v122::-webkit-scrollbar{display:none!important}
+.arena-modal-v852 .arena-country-tab-v122{
+  flex:0 0 auto!important;display:inline-flex!important;align-items:center!important;gap:7px!important;
+  padding:10px 12px!important;min-height:45px!important;border-radius:14px!important;
+  border:1px solid rgba(214,176,90,.29)!important;
+  background:rgba(20,22,29,.85)!important;color:#f0dcad!important;
+  font-size:12px!important;font-weight:800!important;cursor:pointer!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+.arena-modal-v852 .arena-country-tab-v122 small{
+  font-size:10px!important;font-weight:850!important;color:inherit!important;
+  padding:2px 6px!important;border-radius:9px!important;
+  background:rgba(255,255,255,.09)!important;
+}
+.arena-modal-v852 .arena-country-tab-v122.is-active{
+  background:linear-gradient(180deg,#f2d582,#b99140)!important;
+  color:#2c2111!important;border-color:#eed084!important;
+}
+.arena-modal-v852 .arena-country-tab-v122.is-active small{background:rgba(60,43,13,.16)!important}
+.arena-modal-v852 .arena-clubdb-list-section-v945 .arena-country-tabs-v122,
+.arena-modal-v852 .arena-cup-create-section-v1028 .arena-country-tabs-v122{max-width:100%!important;min-width:0!important}
+.arena-modal-v852 .arena-clubdb-modal-v945 select#arenaClubDbCountryV122{
+  width:100%!important;min-height:45px!important;max-width:100%!important;
+  border-radius:12px!important;padding:9px 12px!important;
+  border:1px solid rgba(210,175,91,.38)!important;
+  color:#f4e5c0!important;background:#24242d!important;font-size:14px!important;
+}
+.arena-modal-v852 #arenaFriendlyCountryV122,
+.arena-modal-v852 #arenaIncomingFriendlyCountryV122,
+.arena-modal-v852 #arenaFavCountryV122{
+  width:100%!important;min-height:43px!important;border-radius:12px!important;
+  color:#f4e5c0!important;background:#24242d!important;
+  border:1px solid rgba(210,175,91,.34)!important;font-size:14px!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 .arena-country-tab-v122,
+html.light-theme .arena-modal-v852 .arena-country-tab-v122,
+body.light-theme .arena-modal-v852 .arena-country-tab-v122{
+  background:rgba(254,250,240,.96)!important;color:#765523!important;
+  border-color:rgba(145,102,32,.23)!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 .arena-country-tab-v122.is-active,
+html.light-theme .arena-modal-v852 .arena-country-tab-v122.is-active,
+body.light-theme .arena-modal-v852 .arena-country-tab-v122.is-active{
+  background:linear-gradient(180deg,#f2d582,#c59e50)!important;color:#3f2d0c!important;
+  border-color:#bc9343!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 #arenaClubDbCountryV122,
+html[data-site-theme="light"] .arena-modal-v852 #arenaFriendlyCountryV122,
+html[data-site-theme="light"] .arena-modal-v852 #arenaIncomingFriendlyCountryV122,
+html[data-site-theme="light"] .arena-modal-v852 #arenaFavCountryV122,
+html.light-theme .arena-modal-v852 #arenaClubDbCountryV122,
+html.light-theme .arena-modal-v852 #arenaFriendlyCountryV122,
+html.light-theme .arena-modal-v852 #arenaIncomingFriendlyCountryV122,
+html.light-theme .arena-modal-v852 #arenaFavCountryV122,
+body.light-theme .arena-modal-v852 #arenaClubDbCountryV122,
+body.light-theme .arena-modal-v852 #arenaFriendlyCountryV122,
+body.light-theme .arena-modal-v852 #arenaIncomingFriendlyCountryV122,
+body.light-theme .arena-modal-v852 #arenaFavCountryV122{
+  background:#fff9ee!important;color:#624719!important;border-color:rgba(151,103,26,.30)!important;
+}
+
+/* v12.3 — ADMIN manages category buttons; shared across all club pickers. */
+.arena-modal-v852 .arena-club-group-editor-v123{display:flex!important;flex-direction:column!important;gap:10px!important}
+.arena-modal-v852 .arena-club-group-hint-v123{font-size:12px!important;line-height:1.5!important;margin:0!important;opacity:.8!important}
+.arena-modal-v852 .arena-club-group-list-v123{display:flex!important;flex-direction:column!important;gap:7px!important;margin-top:5px!important}
+.arena-modal-v852 .arena-club-group-row-v123{display:flex!important;align-items:center!important;gap:7px!important;padding:9px!important;border-radius:12px!important;border:1px solid rgba(202,164,83,.28)!important;background:rgba(28,27,31,.53)!important}
+.arena-modal-v852 .arena-club-group-row-v123 span{flex:1!important;min-width:0!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:5px!important;font-size:14px!important}
+.arena-modal-v852 .arena-club-group-row-v123 small{opacity:.7!important;font-size:11px!important}
+.arena-modal-v852 .arena-club-group-row-v123 button{flex:none!important;padding:8px!important;border-radius:9px!important;background:rgba(208,166,75,.15)!important;border:1px solid rgba(208,166,75,.3)!important;color:inherit!important;font-size:11px!important;cursor:pointer!important}
+.arena-modal-v852 .arena-club-group-row-v123 button.danger{color:#ffb6b6!important;border-color:rgba(236,90,90,.35)!important}
+html[data-site-theme="light"] .arena-modal-v852 .arena-club-group-row-v123,html.light-theme .arena-modal-v852 .arena-club-group-row-v123,body.light-theme .arena-modal-v852 .arena-club-group-row-v123{background:rgba(255,247,225,.8)!important;border-color:rgba(161,119,49,.28)!important}
+
+.arena-modal-v852 .arena-country-picker-wrap-v123{display:block!important;min-width:0!important;width:100%!important}
+.arena-modal-v852 .arena-country-picker-label-v123{display:block!important;font-size:11px!important;font-weight:850!important;letter-spacing:.035em!important;margin-bottom:5px!important;color:inherit!important}
+.arena-modal-v852 .arena-country-picker-tabs-v123{max-width:100%!important}
+.arena-modal-v852 select[hidden][id$="CountryV122"]{display:none!important}
+
+/* v12.5: countries → league folders → teams. Mobile and both themes. */
+.arena-modal-v852 .arena-league-tabs-v125{padding-top:1px!important;margin-top:-4px!important;margin-bottom:5px!important}
+.arena-modal-v852 .arena-league-tab-v125{min-height:38px!important;padding:8px 11px!important;font-size:12px!important;border-style:dashed!important}
+.arena-modal-v852 #arenaClubDbLeagueV125,
+.arena-modal-v852 #arenaClubLeagueCountryV125,
+.arena-modal-v852 #arenaClubDbCountryV122{width:100%!important;min-height:44px!important;max-width:100%!important;box-sizing:border-box!important;border-radius:12px!important;padding:9px 12px!important;border:1px solid rgba(210,175,91,.38)!important;color:#f4e5c0!important;background:#24242d!important;font-size:14px!important}
+.arena-modal-v852 #arenaClubLeagueEditorV125 input{width:100%!important;min-height:43px!important;border-radius:11px!important;box-sizing:border-box!important;padding:9px!important;background:#24242d!important;color:#f4e5c0!important;border:1px solid rgba(210,175,91,.38)!important}
+html[data-site-theme="light"] .arena-modal-v852 #arenaClubDbLeagueV125,
+html[data-site-theme="light"] .arena-modal-v852 #arenaClubLeagueCountryV125,
+html[data-site-theme="light"] .arena-modal-v852 #arenaClubLeagueEditorV125 input,
+html.light-theme .arena-modal-v852 #arenaClubDbLeagueV125,
+html.light-theme .arena-modal-v852 #arenaClubLeagueCountryV125,
+html.light-theme .arena-modal-v852 #arenaClubLeagueEditorV125 input,
+body.light-theme .arena-modal-v852 #arenaClubDbLeagueV125,
+body.light-theme .arena-modal-v852 #arenaClubLeagueCountryV125,
+body.light-theme .arena-modal-v852 #arenaClubLeagueEditorV125 input{background:#fff9ee!important;color:#624719!important;border-color:rgba(151,103,26,.3)!important}
+
+
+/* v12.6 — inspect tournament declines without exposing pending voters as participants. */
+#screen-arena .arena-cup-poll-stats-v1026>.arena-declined-trigger-v126{
+  display:block!important;width:100%!important;min-width:0!important;margin:0!important;
+  padding:12px 8px!important;text-align:center!important;font:inherit!important;
+  border:1px solid rgba(214,179,95,.34)!important;border-radius:16px!important;
+  background:rgba(255,255,255,.055)!important;cursor:pointer!important;
+  -webkit-appearance:none!important;appearance:none!important;
+}
+#screen-arena .arena-cup-poll-stats-v1026>.arena-declined-trigger-v126:focus-visible,
+#screen-arena .arena-declined-inline-v126:focus-visible{outline:2px solid #e4bc6f!important;outline-offset:3px!important;}
+#screen-arena .arena-declined-inline-v126{
+  display:inline-flex!important;align-items:center!important;gap:4px!important;
+  border:1px solid rgba(214,179,95,.32)!important;border-radius:999px!important;
+  padding:6px 11px!important;background:rgba(214,179,95,.09)!important;
+  color:#ecd39c!important;font:inherit!important;font-size:12px!important;cursor:pointer!important;
+}
+#screen-arena .arena-league-votes-summary-v126{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important;}
+.arena-modal-v852:has(.arena-declined-modal-v126){padding:12px!important;place-items:center!important;}
+.arena-modal-v852>div:has(.arena-declined-modal-v126){
+  width:min(460px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;
+  box-sizing:border-box!important;padding:20px 16px!important;overflow:auto!important;
+  background:linear-gradient(155deg,#252333,#100e16)!important;
+}
+.arena-declined-modal-v126{width:100%;max-height:calc(100dvh - 64px);overflow:auto;color:#f8efd8;}
+.arena-declined-head-v126{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:16px;}
+.arena-declined-head-v126 small{display:block;color:#d7b971;font-size:11px;font-weight:750;overflow-wrap:anywhere;}
+.arena-declined-head-v126 h2{margin:5px 0 0;font-size:clamp(18px,5vw,23px);line-height:1.2;color:#fff0cf;}
+.arena-declined-close-v126{flex:0 0 42px;width:42px;height:42px;min-height:42px;border-radius:50%;border:1px solid rgba(214,179,95,.35);background:rgba(255,255,255,.07);color:#fff0cf;font-size:20px;cursor:pointer;}
+.arena-declined-list-v126{max-height:65dvh;overflow:auto;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ #screen-arena .arena-cup-poll-stats-v1026>.arena-declined-trigger-v126{
+  background:#fffaf0!important;border-color:#d2b382!important;color:#493214!important;
+}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ #screen-arena .arena-declined-inline-v126{background:#f8ecd4!important;color:#614415!important;border-color:#d6b878!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-modal-v852>div:has(.arena-declined-modal-v126){background:linear-gradient(155deg,#fffaf0,#eee1ca)!important;border-color:#d0ac70!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-modal-v126{color:#352511!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-head-v126 h2{color:#452e12!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-head-v126 small{color:#805b2c!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-close-v126{background:#fff8e9!important;color:#553b1a!important;border-color:#d8ba8d!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-list-v126 .arena-cup-poll-person-v1026{background:rgba(255,255,255,.75)!important;border-color:#d9c7ab!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-list-v126 .arena-cup-poll-person-left-v1026 strong{color:#3b2712!important;}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+ .arena-declined-list-v126 .arena-cup-poll-person-left-v1026 small{color:#71583a!important;}
+
+/* v12.8 — collapsible country/league editors, quick club relocation, and dark-theme club database buttons. */
+.arena-modal-v852 .arena-clubdb-fold-trigger-v127{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;
+  width:100%!important;min-height:44px!important;padding:10px 12px!important;margin:0!important;
+  text-align:left!important;border:1px solid rgba(214,179,95,.28)!important;border-radius:12px!important;
+  background:rgba(214,179,95,.10)!important;color:#f2d590!important;
+  font-size:12px!important;font-weight:900!important;letter-spacing:.03em!important;cursor:pointer!important;
+}
+.arena-modal-v852 .arena-clubdb-fold-chevron-v127{font-size:17px!important;transition:transform .18s ease!important}
+.arena-modal-v852 .is-open-v127 .arena-clubdb-fold-chevron-v127{transform:rotate(180deg)!important}
+.arena-modal-v852 .arena-clubdb-fold-content-v127[hidden]{display:none!important}
+.arena-modal-v852 .arena-clubdb-fold-content-v127:not([hidden]){display:flex!important;flex-direction:column!important;gap:8px!important;padding-top:3px!important}
+.arena-modal-v852 .arena-clubdb-fold-trigger-v127:focus-visible,
+.arena-modal-v852 .arena-clubdb-move-button-v127:focus-visible{outline:2px solid #dfbd6d!important;outline-offset:2px!important}
+.arena-modal-v852 .arena-clubdb-row-actions-v945{flex-wrap:wrap!important;justify-content:flex-end!important}
+.arena-modal-v852 .arena-clubdb-row-actions-v945 .arena-clubdb-move-button-v127{border-color:rgba(214,179,95,.45)!important;background:rgba(214,179,95,.17)!important}
+.arena-modal-v852:has(.arena-clubdb-move-modal-v127){padding:12px!important;place-items:center!important}
+.arena-modal-v852>div:has(.arena-clubdb-move-modal-v127){width:min(440px,calc(100vw - 24px))!important;max-height:calc(100dvh - 24px)!important;overflow-y:auto!important;padding:18px 16px!important;background:linear-gradient(155deg,#292432,#111019)!important}
+.arena-clubdb-move-modal-v127{width:100%;color:#f8eed8}
+.arena-clubdb-move-head-v127{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.arena-clubdb-move-head-v127 small{font-size:10px;color:#e2c27b}
+.arena-clubdb-move-head-v127 h2{margin:4px 0;font-size:20px;line-height:1.2;color:#f2d590}
+.arena-clubdb-move-head-v127 p{margin:4px 0;color:inherit;overflow-wrap:anywhere}
+.arena-clubdb-move-modal-v127 label{display:flex;flex-direction:column;gap:7px;margin-top:12px;font-size:11px;font-weight:850}
+.arena-clubdb-move-modal-v127 select{width:100%;min-height:46px;padding:8px 12px;border-radius:12px;border:1px solid rgba(214,179,95,.4);background:#201c24;color:#fff5e0;font-size:14px}
+.arena-clubdb-move-hint-v127{font-size:11px;opacity:.72;margin:14px 0}
+.arena-clubdb-move-actions-v127{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.arena-clubdb-move-actions-v127 button{width:100%;min-width:0;min-height:44px;margin:0!important}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-modal-v852 .arena-clubdb-fold-trigger-v127{background:#f7eacc!important;color:#644517!important;border-color:#d2b382!important}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-modal-v852>div:has(.arena-clubdb-move-modal-v127){background:linear-gradient(155deg,#fffaf0,#eee1ca)!important;border-color:#d0ac70!important}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-clubdb-move-modal-v127{color:#382611!important}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-clubdb-move-head-v127 h2{color:#65421b!important}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-clubdb-move-modal-v127 select{background:#fff9ee!important;color:#583d20!important;border-color:#d7bc91!important}
+@media(max-width:390px){.arena-clubdb-move-actions-v127{grid-template-columns:1fr}}
+
+
+/* v12.9 — Club database: dark CLEAR buttons in all three editors and CLOSE.
+   Explicit current theme on <html>, scoped to this modal. Light theme is untouched. */
+:is(html[data-site-theme="dark"],html.dark-theme) .arena-modal-v852 .arena-clubdb-modal-v945
+  :is(#arenaClubGroupEditorV123,#arenaClubLeagueEditorV125,#arenaClubDbEditorV945)
+  .arena-clubdb-editor-actions-v945 > button.arena-secondary-v852,
+:is(html[data-site-theme="dark"],html.dark-theme) .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-footer-v945 > button.arena-secondary-v852 {
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  background:#1b1d25!important;
+  background-image:linear-gradient(180deg,#27252a,#17171d)!important;
+  border:1px solid rgba(218,182,107,.48)!important;
+  color:#f6e6be!important;
+  -webkit-text-fill-color:#f6e6be!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 18px rgba(0,0,0,.24)!important;
+}
+:is(html[data-site-theme="dark"],html.dark-theme) .arena-modal-v852 .arena-clubdb-modal-v945
+  :is(#arenaClubGroupEditorV123,#arenaClubLeagueEditorV125,#arenaClubDbEditorV945)
+  .arena-clubdb-editor-actions-v945 > button.arena-secondary-v852:is(:hover,:active,.ca-arena-tap-v1141),
+:is(html[data-site-theme="dark"],html.dark-theme) .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-footer-v945 > button.arena-secondary-v852:is(:hover,:active,.ca-arena-tap-v1141) {
+  background:#24212a!important;
+  background-image:linear-gradient(180deg,#302c30,#1b1921)!important;
+  border-color:rgba(229,190,95,.66)!important;
+}
+
+
+/* v12.13 — Move-club dialog: dark CANCEL button (not part of clubdb editor). */
+html:not([data-site-theme="light"]):not(.light-theme)
+body:not([data-site-theme="light"]):not(.light-theme)
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-secondary-v852 {
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  background:#1b1d25!important;
+  background-image:linear-gradient(180deg,#27252a,#17171d)!important;
+  border:1px solid rgba(218,182,107,.48)!important;
+  color:#f6e6be!important;
+  -webkit-text-fill-color:#f6e6be!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 8px 18px rgba(0,0,0,.24)!important;
+}
+html:not([data-site-theme="light"]):not(.light-theme)
+body:not([data-site-theme="light"]):not(.light-theme)
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-secondary-v852:is(:hover,:active,.ca-btn-pressing-v943,.ca-arena-tap-v1141){
+  background:#24212a!important;
+  background-image:linear-gradient(180deg,#302c30,#1b1921)!important;
+  border-color:rgba(229,190,95,.66)!important;
+}
+
+
+/* v12.13 — club database rows: vertical actions and readable info */
+.arena-clubdb-row-v945{
+  grid-template-columns:56px minmax(0,1fr) 128px!important;
+  align-items:start!important;
+}
+.arena-clubdb-copy-v945{
+  align-self:start!important;
+  padding-top:2px!important;
+}
+.arena-clubdb-copy-v945 strong{
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  line-height:1.15!important;
+  word-break:break-word!important;
+}
+.arena-clubdb-copy-v945 small{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:3px!important;
+  margin-top:6px!important;
+  line-height:1.22!important;
+  white-space:normal!important;
+}
+.arena-clubdb-meta-line-v1211{
+  display:block!important;
+}
+.arena-clubdb-row-actions-v945{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  width:128px!important;
+}
+.arena-clubdb-row-actions-v945 button{
+  width:100%!important;
+  min-height:34px!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+}
+@media(max-width:430px){
+  .arena-clubdb-row-v945{
+    grid-template-columns:50px minmax(0,1fr) 118px!important;
+  }
+  .arena-clubdb-row-actions-v945{
+    grid-column:auto!important;
+    width:118px!important;
+  }
+  .arena-clubdb-copy-v945 strong{
+    font-size:13px!important;
+  }
+  .arena-clubdb-copy-v945 small{
+    font-size:8.8px!important;
+  }
+  .arena-clubdb-row-actions-v945 button{
+    padding:7px 6px!important;
+    font-size:8.8px!important;
+  }
+}
+
+
+/* v12.13 — club database secondary buttons use the same gold rounded style as save buttons */
+.arena-clubdb-editor-actions-v945 .arena-secondary-v852,
+.arena-clubdb-footer-v945 .arena-secondary-v852,
+.arena-clubdb-move-actions-v127 .arena-secondary-v852{
+  background:linear-gradient(180deg,#efd07f,#c89d46)!important;
+  border:1px solid rgba(166,116,30,.34)!important;
+  color:#2c1a09!important;
+  box-shadow:0 8px 18px rgba(94,64,20,.14), inset 0 1px 0 rgba(255,247,211,.72)!important;
+  border-radius:18px!important;
+}
+.arena-clubdb-editor-actions-v945 .arena-secondary-v852:hover,
+.arena-clubdb-footer-v945 .arena-secondary-v852:hover,
+.arena-clubdb-move-actions-v127 .arena-secondary-v852:hover{
+  background:linear-gradient(180deg,#f4d98f,#d2a54f)!important;
+  border-color:rgba(166,116,30,.40)!important;
+  color:#241608!important;
+}
+.arena-clubdb-editor-actions-v945 .arena-secondary-v852:active,
+.arena-clubdb-footer-v945 .arena-secondary-v852:active,
+.arena-clubdb-move-actions-v127 .arena-secondary-v852:active,
+.arena-clubdb-editor-actions-v945 .arena-secondary-v852.ca-btn-pressing-v943,
+.arena-clubdb-footer-v945 .arena-secondary-v852.ca-btn-pressing-v943,
+.arena-clubdb-move-actions-v127 .arena-secondary-v852.ca-btn-pressing-v943{
+  background:linear-gradient(180deg,#e6c56d,#be943f)!important;
+  color:#241608!important;
+}
+
+
+/* v12.13 — club database: pill-shaped actions in the light theme only. */
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-editor-actions-v945 > button:is(.arena-secondary-v852,.arena-primary-v852),
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-footer-v945 > button.arena-secondary-v852,
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-move-modal-v127
+  .arena-clubdb-move-actions-v127 > button:is(.arena-secondary-v852,.arena-primary-v852){
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  border-radius:999px!important;
+  background-clip:padding-box!important;
+}
+/* CLEAR / CLOSE / CANCEL echo the warm golden Save button, with a lighter tint. */
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-editor-actions-v945 > button.arena-secondary-v852,
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-footer-v945 > button.arena-secondary-v852,
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-move-modal-v127
+  .arena-clubdb-move-actions-v127 > button.arena-secondary-v852{
+  background:#f6dfaa!important;
+  background-image:linear-gradient(180deg,#fff1ca,#ecca80)!important;
+  border:1px solid rgba(163,112,35,.38)!important;
+  color:#39260e!important;
+  -webkit-text-fill-color:#39260e!important;
+  box-shadow:0 6px 16px rgba(94,64,20,.12),inset 0 1px 0 rgba(255,255,255,.82)!important;
+}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-editor-actions-v945 > button.arena-secondary-v852:is(:hover,:active,.ca-btn-pressing-v943),
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-modal-v945
+  .arena-clubdb-footer-v945 > button.arena-secondary-v852:is(:hover,:active,.ca-btn-pressing-v943),
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-clubdb-move-modal-v127
+  .arena-clubdb-move-actions-v127 > button.arena-secondary-v852:is(:hover,:active,.ca-btn-pressing-v943){
+  background:#efd49a!important;
+  background-image:linear-gradient(180deg,#f7e3b4,#dbb56e)!important;
+  color:#39260e!important;
+  -webkit-text-fill-color:#39260e!important;
+}
+
+
+/* v12.14 — readable club name placeholders in light friendly-match dialogs.
+   Arena modals are appended to BODY, so selectors must not require #screen-arena. */
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+  .arena-modal-v852 .arena-friendly-modal-v971 .arena-friendly-field-v971
+  input:is(#arenaFriendlyMyClubV972,#arenaIncomingFriendlyClubV1007)::placeholder{
+  color:#675039!important;
+  opacity:1!important;
+  -webkit-text-fill-color:#675039!important;
+}
+
+
+/* v12.15 — favorite club preview spacing and readable emblem explanation. */
+.arena-modal-v852 #arenaPlayerTeamEditorV941 #arenaFavTeamLivePreviewV1003{
+  margin-block:16px 0!important;
+}
+.arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-note-v987{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:9px!important;
+  margin:16px 0 0!important;
+  padding:13px 14px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(214,179,95,.20)!important;
+  background:linear-gradient(180deg,rgba(214,179,95,.11),rgba(214,179,95,.05))!important;
+}
+.arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-title-v1215{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  color:#dfbd70!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.065em!important;
+  line-height:1.4!important;
+  overflow-wrap:anywhere!important;
+}
+.arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-copy-v1215{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  color:rgba(246,239,222,.78)!important;
+  font-size:12px!important;
+  font-weight:400!important;
+  letter-spacing:normal!important;
+  line-height:1.5!important;
+  overflow-wrap:anywhere!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-note-v987,
+html.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-note-v987,
+body[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-note-v987,
+body.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-note-v987{
+  border-color:rgba(150,105,24,.18)!important;
+  background:linear-gradient(180deg,rgba(224,195,126,.16),rgba(249,240,220,.62))!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-title-v1215,
+html.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-title-v1215,
+body[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-title-v1215,
+body.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-title-v1215{
+  color:#8b6116!important;
+}
+html[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-copy-v1215,
+html.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-copy-v1215,
+body[data-site-theme="light"] .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-copy-v1215,
+body.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team-admin-copy-v1215{
+  color:#65533a!important;
+}
+
+/* v12.16 — Move club confirmation: readable gold-on-dark / dark-on-light button. */
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-primary-v852{
+  -webkit-appearance:none!important;
+  appearance:none!important;
+  border-radius:999px!important;
+  background:#252019!important;
+  background-image:linear-gradient(180deg,#322a1d,#211c17)!important;
+  border:1px solid rgba(217,175,98,.65)!important;
+  color:#f6dfac!important;
+  -webkit-text-fill-color:#f6dfac!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 6px 15px rgba(0,0,0,.20)!important;
+}
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-primary-v852:is(:hover,:active,.ca-btn-pressing-v943,.ca-arena-tap-v1141){
+  background:#302719!important;
+  background-image:linear-gradient(180deg,#40341f,#292117)!important;
+  border-color:rgba(236,195,114,.82)!important;
+  color:#fff0c5!important;
+  -webkit-text-fill-color:#fff0c5!important;
+}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-primary-v852{
+  background:#efcf87!important;
+  background-image:linear-gradient(180deg,#f7e2ac,#e5bb6b)!important;
+  border:1px solid rgba(166,116,30,.38)!important;
+  color:#432d12!important;
+  -webkit-text-fill-color:#432d12!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.79),0 6px 15px rgba(94,64,20,.13)!important;
+}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+.arena-modal-v852 .arena-clubdb-move-modal-v127
+.arena-clubdb-move-actions-v127 > button.arena-primary-v852:is(:hover,:active,.ca-btn-pressing-v943,.ca-arena-tap-v1141){
+  background:#eac378!important;
+  background-image:linear-gradient(180deg,#efd496,#d5aa58)!important;
+  color:#432d12!important;
+  -webkit-text-fill-color:#432d12!important;
+}
