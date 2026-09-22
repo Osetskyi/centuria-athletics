@@ -3270,35 +3270,47 @@
       });
     });
   };
+  // v12.21: restore during the same JS task as DOM replacement, BEFORE the
+  // first paint. The previous triple requestAnimationFrame visibly displayed
+  // the first column for several frames before restoring the saved position.
   const restoreArenaBracketScrollV1220=viewKey=>{
-    // Bracket layout/connectors finish over two animation frames. Restore one
-    // frame later so iOS cannot snap the newly-created scroller back to 0.
-    requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      A.querySelectorAll('.arena-cup-bracket-scroll-v1036').forEach((scroller,index)=>{
-        const saved=arenaBracketScrollMemoryV1220.get(`${viewKey}|${index}`);
-        if(!saved)return;
-        const maxLeft=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
-        const maxTop=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
-        scroller.scrollLeft=Math.max(0,Math.min(maxLeft,Number(saved.left)||0));
-        scroller.scrollTop=Math.max(0,Math.min(maxTop,Number(saved.top)||0));
-      });
-    })));
+    A.querySelectorAll('.arena-cup-bracket-scroll-v1036').forEach((scroller,index)=>{
+      const saved=arenaBracketScrollMemoryV1220.get(`${viewKey}|${index}`);
+      if(!saved)return;
+      // Force the new board's layout now: scrollWidth is already known even
+      // though SVG connectors are still scheduled for a later frame.
+      const maxLeft=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
+      const maxTop=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
+      scroller.scrollLeft=Math.max(0,Math.min(maxLeft,Number(saved.left)||0));
+      scroller.scrollTop=Math.max(0,Math.min(maxTop,Number(saved.top)||0));
+    });
   };
+  // Realtime polling can call draw() every five seconds even when nothing
+  // changed. Keep existing nodes in that case: scrolling stays uninterrupted.
+  let arenaLastMarkupV1221=null;
+  let arenaLastViewKeyV1221='';
 
   function draw(){
     rememberArenaBracketScrollV1220();
     if(syncLeaguePlayoffStateV1114(testCompetition)) saveTestCompetition();
     const f={home,league,cup,friendly,evo,players,history:historyView}[route]||home;
     const bracketViewKeyV1220=arenaBracketViewKeyV1220();
+    const markupV1221=f();
+    const needsRebuildV1221=markupV1221!==arenaLastMarkupV1221 || bracketViewKeyV1220!==arenaLastViewKeyV1221;
     A.dataset.route=route;
     A.dataset.bracketViewKeyV1220=bracketViewKeyV1220;
-    A.innerHTML=f();
+    if(needsRebuildV1221){
+      A.innerHTML=markupV1221;
+      // A newly-created scroller must never appear at x=0 for even one frame.
+      restoreArenaBracketScrollV1220(bracketViewKeyV1220);
+      arenaLastMarkupV1221=markupV1221;
+      arenaLastViewKeyV1221=bracketViewKeyV1220;
+    }
     syncBackButton();
     bindSwipeTabs();
     renderCupDrawAnimationModalV1033();
     renderLeagueDrawAnimationModalV1095();
-    queueCupBracketConnectorsV1038(A);
-    restoreArenaBracketScrollV1220(bracketViewKeyV1220);
+    if(needsRebuildV1221)queueCupBracketConnectorsV1038(A);
     if(route==="home")queueActiveEventFitV1102();
     if(route==="league"&&testCompetition?.draw?.kind==='league'&&!leagueDrawAnimationOpenV1095){
       setTimeout(()=>maybeAutoStartLeagueDrawV1095(),80);
