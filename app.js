@@ -170,7 +170,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.22",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.23",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -9012,7 +9012,7 @@ window.CenturiaArenaStateApi={
   },
   async matchAction({action,competitionId,matchId,leg=1,homeScore=null,awayScore=null,tiebreakWinner=null}={}){
     if(!sb||!authUser)throw new Error('Увійди в акаунт');
-    const {data,error}=await sb.rpc('centuria_arena_match_action_v1217',{
+    const {data,error}=await sb.rpc('centuria_arena_match_action_v1223',{
       p_action:String(action||''),p_competition_id:String(competitionId||''),
       p_match_id:String(matchId||''),p_leg:Number(leg)||1,
       p_home_score:homeScore==null?null:Number(homeScore),
@@ -11880,9 +11880,9 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.22 — keep the Settings footer in sync with the deployed build. */
+/* v12.23 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.22");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.23");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);

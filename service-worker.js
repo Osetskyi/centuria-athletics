@@ -1,5 +1,5 @@
-// v10.80 light cup bracket card in Arena
-const CACHE_VERSION="centuria-pwa-v12220-bracket-axis-lock";
+// v12.23 Cup BYE once-per-player rule
+const CACHE_VERSION="centuria-pwa-v12230-cup-bye-once";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();

@@ -1,4 +1,4 @@
-/* v12.17 — EVO-based BYE for odd Cup rounds. */
+/* v12.23 — Cup BYE: lowest eligible EVO, max one BYE per player per tournament. */
 /* v12.13 — club database action buttons use the gold primary style. */
 /* v12.11 — vertical club action buttons and readable club info rows. */
 /* v12.8 — dark-theme club database secondary buttons remain dark. */
@@ -1770,19 +1770,22 @@
     return false;
   };
   const cupLabel=count=>count<=2?"ФІНАЛ":count<=4?"1/2 ФІНАЛУ":count<=8?"1/4 ФІНАЛУ":count<=16?"1/8 ФІНАЛУ":`РАУНД ${count}`;
-  // v12.17: the draw fixes pair order, but an odd-sized Cup field awards BYE
-  // to the lowest current EVO. Only exact rating ties are broken randomly.
-  // Already saved rounds are never re-drawn when this rule is installed.
-  const makeCupRound=(names,roundNo)=>{
+  // v12.23: an odd-sized Cup field awards BYE to the lowest current EVO
+  // only among players who have NOT already received a BYE in this tournament.
+  // Exact rating ties are broken randomly. Existing saved rounds are never re-drawn.
+  const makeCupRound=(names,roundNo,previousRounds=[])=>{
     const entrants=[...names],matches=[],byes=[];
     if(entrants.length%2){
+      const usedBye=name=>(previousRounds||[]).some(r=>(r?.byes||[]).some(old=>sameArenaPlayer(old,name)));
+      const eligible=entrants.filter(name=>!usedBye(name));
+      if(!eligible.length)throw new Error('Неможливо призначити BYE: усі учасники цього раунду вже мали пропуск у цьому Кубку');
       const ratings=computeArenaRatings();
       const score=name=>ratings.get(name)??ARENA_BASE_EVO;
-      const lowest=Math.min(...entrants.map(score));
-      const tied=entrants.filter(name=>score(name)===lowest);
+      const lowest=Math.min(...eligible.map(score));
+      const tied=eligible.filter(name=>score(name)===lowest);
       const bye=tied[Math.floor(Math.random()*tied.length)];
       byes.push(bye);
-      entrants.splice(entrants.indexOf(bye),1);
+      entrants.splice(entrants.findIndex(name=>sameArenaPlayer(name,bye)),1);
     }
     for(let i=0;i<entrants.length;i+=2){
       matches.push({id:`C${roundNo}_${i/2+1}`,round:roundNo,home:entrants[i],away:entrants[i+1],homeScore:null,awayScore:null,leg2HomeScore:null,leg2AwayScore:null,tiebreakWinner:null});
@@ -1943,7 +1946,7 @@
     for(const m of cur.matches||[]){ winners.push(cupMatchWinner(m,testCompetition)); }
     if(winners.length<=1){ testCompetition.champion=winners[0]||null; return; }
     if(rounds.length>cur.round)return;
-    rounds.push(makeCupRound(winners,cur.round+1));
+    rounds.push(makeCupRound(winners,cur.round+1,rounds));
   };
   const buildCompetition=(kind,names,title="",options={})=>{
     const participants=[...new Set(names.map(x=>String(x).trim()).filter(Boolean))];
