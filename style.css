@@ -13231,7 +13231,7 @@ body:has(#screen-players.active)::before{
   height:100vh!important;
   min-height:100svh!important;
   pointer-events:none!important;
-  z-index:-1!important;
+  z-index:1!important;
   background-repeat:no-repeat!important;
   background-position:center top!important;
   background-size:cover!important;
@@ -35572,4 +35572,339 @@ body.light-theme .arena-modal-v852 #arenaPlayerTeamEditorV941 .arena-player-team
 .arena-modal-v852 .arena-cup-bracket-scroll-v1036{
   touch-action:pinch-zoom!important;
   scroll-snap-type:none!important;
+}
+
+
+/* ==========================================================
+   v12.23 — winner celebration for completed Cup / League
+   ========================================================== */
+#screen-arena .arena-winner-celebration-v1223{
+  position:relative!important;
+  isolation:isolate!important;
+  overflow:hidden!important;
+  margin:14px 0 16px!important;
+  padding:22px 18px!important;
+  border:1px solid rgba(255,214,104,.72)!important;
+  border-radius:26px!important;
+  background:
+    radial-gradient(circle at 18% 12%,rgba(255,240,166,.30),transparent 28%),
+    radial-gradient(circle at 85% 85%,rgba(188,119,13,.28),transparent 34%),
+    linear-gradient(135deg,#7b4b06 0%,#c58a18 30%,#f0c75e 50%,#9b640d 72%,#4d2b02 100%)!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.36),inset 0 -1px 0 rgba(78,42,0,.55)!important;
+}
+#screen-arena .arena-winner-celebration-v1223::before{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:1!important;
+  background:linear-gradient(115deg,transparent 22%,rgba(255,255,255,.20) 40%,transparent 57%)!important;
+  transform:translateX(-125%)!important;
+  animation:arenaWinnerSweepV1223 4.6s ease-in-out infinite!important;
+  pointer-events:none!important;
+}
+#screen-arena .arena-winner-inner-v1223{
+  position:relative!important;
+  z-index:3!important;
+  display:grid!important;
+  grid-template-columns:150px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:20px!important;
+}
+#screen-arena .arena-winner-card-v1223{
+  display:grid!important;
+  place-items:center!important;
+  min-width:0!important;
+}
+#screen-arena .arena-winner-card-v1223 .arena-pcard-v852,
+#screen-arena .arena-winner-card-v1223 .arena-pcard-real-v930{
+  width:138px!important;
+  height:184px!important;
+  min-height:184px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:18px!important;
+  background:transparent!important;
+  box-shadow:0 15px 28px rgba(70,37,0,.34)!important;
+}
+#screen-arena .arena-winner-card-v1223 .arena-pcard-real-v930 img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  filter:drop-shadow(0 7px 8px rgba(55,27,0,.34))!important;
+}
+#screen-arena .arena-winner-card-v1223 .arena-pcard-fallback-v930{
+  align-items:center!important;
+  padding:14px!important;
+  border:1px solid rgba(255,243,188,.60)!important;
+  border-radius:18px!important;
+  background:linear-gradient(155deg,rgba(78,42,2,.78),rgba(20,13,5,.88))!important;
+  color:#fff7dd!important;
+  font-size:13px!important;
+}
+#screen-arena .arena-winner-copy-v1223{
+  min-width:0!important;
+  color:#2c1800!important;
+  text-shadow:0 1px 0 rgba(255,243,191,.25)!important;
+}
+#screen-arena .arena-winner-copy-v1223>small{
+  display:block!important;
+  margin:0 0 4px!important;
+  color:#4a2901!important;
+  font-size:10px!important;
+  font-weight:950!important;
+  letter-spacing:.13em!important;
+}
+#screen-arena .arena-winner-title-v1223{
+  margin-bottom:4px!important;
+  color:#fff7dc!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  letter-spacing:.10em!important;
+  text-shadow:0 2px 7px rgba(64,32,0,.45)!important;
+}
+#screen-arena .arena-winner-copy-v1223 h3{
+  margin:0 0 10px!important;
+  color:#fff!important;
+  font-size:30px!important;
+  line-height:1.02!important;
+  font-weight:1000!important;
+  overflow-wrap:anywhere!important;
+  text-shadow:0 3px 12px rgba(68,34,0,.48)!important;
+}
+#screen-arena .arena-winner-copy-v1223>p{
+  margin:9px 0 0!important;
+  color:#503006!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.04em!important;
+  text-transform:uppercase!important;
+}
+#screen-arena .arena-winner-club-v1223{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+}
+#screen-arena .arena-winner-club-v1223 .arena-crest-v852{
+  width:50px!important;
+  height:50px!important;
+  min-width:50px!important;
+  min-height:50px!important;
+  background:rgba(255,250,226,.90)!important;
+  border:1px solid rgba(83,44,0,.24)!important;
+  box-shadow:0 7px 16px rgba(73,39,0,.22)!important;
+}
+#screen-arena .arena-winner-club-v1223 .arena-crest-v852 img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  border:0!important;
+  border-radius:50%!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+#screen-arena .arena-winner-club-v1223 span{
+  display:grid!important;
+  min-width:0!important;
+  gap:2px!important;
+}
+#screen-arena .arena-winner-club-v1223 span small{
+  color:#5b3607!important;
+  font-size:8px!important;
+  font-weight:950!important;
+  letter-spacing:.10em!important;
+}
+#screen-arena .arena-winner-club-v1223 span strong{
+  color:#2d1900!important;
+  font-size:15px!important;
+  line-height:1.1!important;
+  overflow-wrap:anywhere!important;
+}
+#screen-arena .arena-winner-close-v1223{
+  margin-top:13px!important;
+  min-height:42px!important;
+  padding:10px 16px!important;
+  border-color:rgba(54,30,0,.42)!important;
+  background:linear-gradient(180deg,#2f1b04,#160d02)!important;
+  color:#fff2c9!important;
+  box-shadow:0 8px 18px rgba(47,25,0,.24)!important;
+}
+#screen-arena .arena-winner-confetti-v1223,
+#screen-arena .arena-winner-shine-v1223{
+  position:absolute!important;
+  inset:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+}
+#screen-arena .arena-winner-confetti-v1223{z-index:2!important;}
+#screen-arena .arena-winner-confetti-v1223 i{
+  position:absolute!important;
+  top:-20px!important;
+  left:var(--x)!important;
+  width:7px!important;
+  height:13px!important;
+  border-radius:2px!important;
+  background:#fff1a5!important;
+  opacity:.98!important;
+  transform:translate3d(0,-24px,0) rotate(0deg)!important;
+  animation:arenaWinnerConfettiFallV1223 var(--duration) linear infinite!important;
+  animation-delay:var(--delay)!important;
+  will-change:transform!important;
+}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(3n){background:#fff!important;width:5px!important;height:9px!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(3n+1){background:#e2a929!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(4n){border-radius:50%!important;width:8px!important;height:8px!important;}
+#screen-arena .arena-winner-shine-v1223{
+  z-index:0!important;
+  background:radial-gradient(circle at 50% 36%,rgba(255,255,255,.24),transparent 34%)!important;
+}
+@keyframes arenaWinnerConfettiFallV1223{
+  0%{transform:translate3d(0,-30px,0) rotate(0deg);opacity:0;}
+  8%{opacity:.95;}
+  100%{transform:translate3d(var(--drift),390px,0) rotate(var(--spin));opacity:.18;}
+}
+@keyframes arenaWinnerSweepV1223{
+  0%,58%{transform:translateX(-125%);}
+  78%,100%{transform:translateX(125%);}
+}
+@media(max-width:430px){
+  #screen-arena .arena-winner-celebration-v1223{padding:18px 13px!important;border-radius:22px!important;}
+  #screen-arena .arena-winner-inner-v1223{grid-template-columns:108px minmax(0,1fr)!important;gap:13px!important;}
+  #screen-arena .arena-winner-card-v1223 .arena-pcard-v852,
+  #screen-arena .arena-winner-card-v1223 .arena-pcard-real-v930{width:104px!important;height:142px!important;min-height:142px!important;border-radius:15px!important;}
+  #screen-arena .arena-winner-copy-v1223 h3{font-size:23px!important;margin-bottom:8px!important;}
+  #screen-arena .arena-winner-title-v1223{font-size:10px!important;letter-spacing:.07em!important;}
+  #screen-arena .arena-winner-copy-v1223>small{font-size:8px!important;letter-spacing:.09em!important;}
+  #screen-arena .arena-winner-club-v1223{gap:8px!important;}
+  #screen-arena .arena-winner-club-v1223 .arena-crest-v852{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;}
+  #screen-arena .arena-winner-club-v1223 span strong{font-size:13px!important;}
+  #screen-arena .arena-winner-club-v1223 span small{font-size:7px!important;}
+  #screen-arena .arena-winner-copy-v1223>p{font-size:9px!important;margin-top:7px!important;}
+  #screen-arena .arena-winner-close-v1223{width:100%!important;margin-top:10px!important;}
+}
+
+/* v12.24 — winner celebration restored on top of current Cup BYE build. */
+
+/* ==========================================================
+   v12.25 — force-visible winner celebration on iOS / PWA
+   ========================================================== */
+#screen-arena .arena-winner-celebration-v1223{
+  -webkit-transform:translateZ(0)!important;
+  transform:translateZ(0)!important;
+}
+#screen-arena .arena-winner-celebration-v1223::before{
+  inset:-8% -45%!important;
+  z-index:4!important;
+  opacity:.88!important;
+  background:linear-gradient(112deg,transparent 35%,rgba(255,255,255,0) 39%,rgba(255,252,217,.78) 48%,rgba(255,255,255,.96) 50%,rgba(255,239,158,.66) 53%,rgba(255,255,255,0) 61%,transparent 66%)!important;
+  transform:translate3d(-72%,0,0) skewX(-10deg)!important;
+  -webkit-transform:translate3d(-72%,0,0) skewX(-10deg)!important;
+  animation:arenaWinnerSweepV1225 3.1s ease-in-out infinite!important;
+  -webkit-animation:arenaWinnerSweepV1225 3.1s ease-in-out infinite!important;
+  mix-blend-mode:screen!important;
+}
+#screen-arena .arena-winner-confetti-v1223{
+  z-index:5!important;
+  overflow:visible!important;
+}
+#screen-arena .arena-winner-confetti-v1223 i{
+  top:-26px!important;
+  width:8px!important;
+  height:15px!important;
+  opacity:1!important;
+  box-shadow:0 0 5px rgba(255,232,133,.55)!important;
+  animation:arenaWinnerConfettiFallV1225 var(--duration) linear infinite!important;
+  -webkit-animation:arenaWinnerConfettiFallV1225 var(--duration) linear infinite!important;
+  animation-delay:var(--delay)!important;
+  -webkit-animation-delay:var(--delay)!important;
+}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(5n){background:#fff!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(5n+1){background:#f5cf52!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(5n+2){background:#f08b35!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(5n+3){background:#fff4b0!important;}
+#screen-arena .arena-winner-confetti-v1223 i:nth-child(5n+4){background:#d9a118!important;}
+#screen-arena .arena-winner-inner-v1223{z-index:6!important;}
+@keyframes arenaWinnerSweepV1225{
+  0%,38%{transform:translate3d(-72%,0,0) skewX(-10deg);opacity:0;}
+  45%{opacity:.95;}
+  70%{transform:translate3d(72%,0,0) skewX(-10deg);opacity:.95;}
+  78%,100%{transform:translate3d(72%,0,0) skewX(-10deg);opacity:0;}
+}
+@-webkit-keyframes arenaWinnerSweepV1225{
+  0%,38%{-webkit-transform:translate3d(-72%,0,0) skewX(-10deg);opacity:0;}
+  45%{opacity:.95;}
+  70%{-webkit-transform:translate3d(72%,0,0) skewX(-10deg);opacity:.95;}
+  78%,100%{-webkit-transform:translate3d(72%,0,0) skewX(-10deg);opacity:0;}
+}
+@keyframes arenaWinnerConfettiFallV1225{
+  0%{transform:translate3d(0,-38px,0) rotate(0deg) scale(.92);opacity:0;}
+  5%{opacity:1;}
+  86%{opacity:1;}
+  100%{transform:translate3d(var(--drift),440px,0) rotate(var(--spin)) scale(1.08);opacity:0;}
+}
+@-webkit-keyframes arenaWinnerConfettiFallV1225{
+  0%{-webkit-transform:translate3d(0,-38px,0) rotate(0deg) scale(.92);opacity:0;}
+  5%{opacity:1;}
+  86%{opacity:1;}
+  100%{-webkit-transform:translate3d(var(--drift),440px,0) rotate(var(--spin)) scale(1.08);opacity:0;}
+}
+
+
+/* v12.27 — canvas winner FX + static fallback highlight */
+#screen-arena .arena-winner-fx-canvas-v1226{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  z-index:40!important;
+  pointer-events:none!important;
+  border-radius:inherit!important;
+}
+#screen-arena .arena-winner-celebration-v1223{
+  box-shadow:0 18px 42px rgba(0,0,0,.34),0 0 26px rgba(255,198,53,.28),inset 0 1px 0 rgba(255,255,255,.42),inset 0 -1px 0 rgba(78,42,0,.55)!important;
+}
+
+/* v12.28 — inline SVG winner effects, embedded in the winner card markup */
+#screen-arena .arena-winner-inline-svg-v1228{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;z-index:50!important;pointer-events:none!important;overflow:hidden!important;border-radius:inherit!important;display:block!important;}
+#screen-arena .arena-winner-inner-v1223{z-index:60!important;}
+
+
+/* v12.29 — no confetti in winner block + light-theme close button */
+#screen-arena .arena-winner-confetti-v1223{display:block!important;z-index:55!important;overflow:visible!important;}
+html[data-site-theme="light"] #screen-arena .arena-winner-close-v1223,
+html.light-theme #screen-arena .arena-winner-close-v1223,
+body[data-site-theme="light"] #screen-arena .arena-winner-close-v1223,
+body.light-theme #screen-arena .arena-winner-close-v1223{
+  border:1px solid rgba(120,93,28,.28)!important;
+  background:linear-gradient(180deg,#fff8dc 0%,#f2e1a8 100%)!important;
+  color:#5a3a00!important;
+  box-shadow:0 8px 18px rgba(120,94,18,.16)!important;
+}
+html[data-site-theme="light"] #screen-arena .arena-winner-close-v1223:hover,
+html.light-theme #screen-arena .arena-winner-close-v1223:hover,
+body[data-site-theme="light"] #screen-arena .arena-winner-close-v1223:hover,
+body.light-theme #screen-arena .arena-winner-close-v1223:hover{
+  filter:brightness(1.02)!important;
+}
+
+/* v12.30 — continuous confetti in winner block */
+#screen-arena .arena-winner-confetti-v1223 i{
+  opacity:1!important;
+  animation:arenaWinnerConfettiLoopV1230 var(--duration) linear infinite!important;
+  -webkit-animation:arenaWinnerConfettiLoopV1230 var(--duration) linear infinite!important;
+  animation-fill-mode:both!important;
+  -webkit-animation-fill-mode:both!important;
+}
+@keyframes arenaWinnerConfettiLoopV1230{
+  0%{transform:translate3d(0,-42px,0) rotate(0deg) scale(.94);opacity:0;}
+  4%{opacity:1;}
+  78%{opacity:1;}
+  100%{transform:translate3d(var(--drift),455px,0) rotate(var(--spin)) scale(1.04);opacity:.18;}
+}
+@-webkit-keyframes arenaWinnerConfettiLoopV1230{
+  0%{-webkit-transform:translate3d(0,-42px,0) rotate(0deg) scale(.94);opacity:0;}
+  4%{opacity:1;}
+  78%{opacity:1;}
+  100%{-webkit-transform:translate3d(var(--drift),455px,0) rotate(var(--spin)) scale(1.04);opacity:.18;}
 }

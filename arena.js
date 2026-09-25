@@ -1,4 +1,6 @@
-/* v12.23 — Cup BYE: lowest eligible EVO, max one BYE per player per tournament. */
+/* v12.30 — winner confetti restored and made continuous; light-theme close button kept. */
+/* v12.23-winner — champion celebration card for completed Cup/League. */
+/* v12.17 — EVO-based BYE for odd Cup rounds. */
 /* v12.13 — club database action buttons use the gold primary style. */
 /* v12.11 — vertical club action buttons and readable club info rows. */
 /* v12.8 — dark-theme club database secondary buttons remain dark. */
@@ -1770,7 +1772,7 @@
     return false;
   };
   const cupLabel=count=>count<=2?"ФІНАЛ":count<=4?"1/2 ФІНАЛУ":count<=8?"1/4 ФІНАЛУ":count<=16?"1/8 ФІНАЛУ":`РАУНД ${count}`;
-  // v12.23: an odd-sized Cup field awards BYE to the lowest current EVO
+  // v12.24: an odd-sized Cup field awards BYE to the lowest current EVO
   // only among players who have NOT already received a BYE in this tournament.
   // Exact rating ties are broken randomly. Existing saved rounds are never re-drawn.
   const makeCupRound=(names,roundNo,previousRounds=[])=>{
@@ -1963,6 +1965,49 @@
     return {id:`cup_${Date.now()}`,kind,title:competitionTitle,participants,participantClubs,createdAt:Date.now(),rounds:[makeCupRound(participants,1)],champion:null};
   };
   const competitionClubFor=name=>String(testCompetition?.participantClubs?.[name]||clubFor(name)||"Centuria").trim()||"Centuria";
+  const competitionWinnerNameV1223=comp=>{
+    if(!comp||!isCompetitionCompleted(comp))return '';
+    if(comp.kind==='cup')return String(comp.champion||'').trim();
+    if(comp.leagueFormat==='top4')return String(comp.champion||'').trim();
+    return String(leagueStandings()[0]?.name||comp.champion||'').trim();
+  };
+  const winnerConfettiV1223=()=>{
+    const drifts=[-34,26,-18,38,-28,22,-42,31,-14,45,-24,18,-36,29,-12,40,-31,25,-20,34,-39,21,-16,43,-27,32,-11,37,-33,24,-19,41,-29,28,-13,35];
+    return drifts.map((drift,i)=>`<i style="--x:${2.5+i*2.7}%;--delay:${-(i%12)*0.16}s;--duration:${2.35+(i%6)*0.14}s;--drift:${drift}px;--spin:${520+(i%7)*105}deg"></i>`).join('');
+  };
+  const winnerInlineSvgFxV1228=()=>{
+    const colors=['#fff','#fff3b0','#ffd54f','#f4a52c','#ff8f3a','#ffe27a'];
+    const pieces=Array.from({length:46},(_,i)=>{
+      const x=6+(i*31)%388;
+      const drift=((i*29)%61)-30;
+      const dur=(2.15+(i%8)*0.16).toFixed(2);
+      const delay=((i%14)*0.11).toFixed(2);
+      const w=5+(i%4)*2;
+      const h=8+(i%5)*2;
+      const c=colors[i%colors.length];
+      const rx=i%5===0?Math.min(w,h)/2:1.5;
+      return `<rect x="${x}" y="-30" width="${w}" height="${h}" rx="${rx}" fill="${c}" opacity="0">`+
+        `<animate attributeName="y" values="-30;278" dur="${dur}s" begin="${delay}s;0s" repeatCount="indefinite"/>`+
+        `<animate attributeName="x" values="${x};${x+drift};${x+Math.round(drift*.35)}" dur="${dur}s" begin="${delay}s;0s" repeatCount="indefinite"/>`+
+        `<animate attributeName="opacity" values="0;1;1;1;.92;0" keyTimes="0;.04;.45;.78;.92;1" dur="${dur}s" begin="${delay}s;0s" repeatCount="indefinite"/>`+
+      `</rect>`;
+    }).join('');
+    return `<svg class="arena-winner-inline-svg-v1228" viewBox="0 0 400 240" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;z-index:50;pointer-events:none;overflow:hidden;border-radius:inherit;display:block">`+
+      `<defs><linearGradient id="arenaWinnerShineGradientV1228" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".42" stop-color="#ffe99e" stop-opacity=".18"/><stop offset=".5" stop-color="#fff" stop-opacity=".92"/><stop offset=".58" stop-color="#ffe69a" stop-opacity=".24"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`+
+      `<g transform="rotate(-13 200 120)"><rect x="-220" y="-90" width="115" height="430" fill="url(#arenaWinnerShineGradientV1228)" opacity=".95"><animate attributeName="x" values="-220;-220;500;500" keyTimes="0;.18;.58;1" dur="3.15s" repeatCount="indefinite"/></rect></g>`+
+      pieces+`</svg>`;
+  };
+  const competitionWinnerCelebrationV1223=comp=>{
+    const winner=competitionWinnerNameV1223(comp);
+    if(!winner)return '';
+    const player=arenaPlayerByName(winner);
+    const club=canonicalTeamName(comp?.participantClubs?.[winner]||competitionClubFor(winner));
+    const kind=comp.kind==='cup'?'cup':'league';
+    const label=kind==='cup'?'ПЕРЕМОЖЕЦЬ КУБКА':'ЧЕМПІОН ЛІГИ';
+    const kicker=kind==='cup'?'🏆 КУБОК ЗАВЕРШЕНО':'🥇 ЛІГУ ЗАВЕРШЕНО';
+    const closeLabel=kind==='cup'?'ЗАКРИТИ КУБОК':'ЗАКРИТИ ЛІГУ';
+    return `<section class="arena-winner-celebration-v1223 ${kind}" aria-label="${esc(label)}: ${esc(winner)}">${winnerInlineSvgFxV1228()}<div class="arena-winner-confetti-v1223" aria-hidden="true">${winnerConfettiV1223()}</div><div class="arena-winner-shine-v1223" aria-hidden="true"></div><div class="arena-winner-inner-v1223"><div class="arena-winner-card-v1223">${playerCardThumb(player)}</div><div class="arena-winner-copy-v1223"><small>${esc(kicker)}</small><div class="arena-winner-title-v1223">${esc(label)}</div><h3>${esc(winner)}</h3><div class="arena-winner-club-v1223">${crestBadge(club,'')}<span><small>КОМАНДА ПЕРЕМОЖЦЯ</small><strong>${esc(club)}</strong></span></div><p>${esc(comp.title||'CENTURIA ARENA')}</p>${isArenaAdmin()?`<button class="arena-primary-v852 arena-winner-close-v1223" type="button" onclick="ArenaV852.finishCurrentTournament()">${esc(closeLabel)}</button>`:''}</div></div></section>`;
+  };
   const advanceLeagueRoundV1093=()=>{
     const comp=testCompetition;
     if(comp?.kind!=='league'||!leagueCanAdvanceV1093(comp))return false;
@@ -2213,7 +2258,7 @@
       const cover=testCompetition.cover?`<div class="arena-league-cover-v1093"><img src="${esc(testCompetition.cover)}" alt="${esc(testCompetition.title)}"></div>`:'';
       const drawButton=testCompetition.draw?.kind==='league' ? `<div class="arena-league-draw-trigger-v1095"><button type="button" class="arena-cup-draw-toggle-v1032" onclick="ArenaV852.openLeagueDrawAnimationV1095()"><span>🎲 ПЕРЕГЛЯНУТИ ЖЕРЕБКУВАННЯ</span><small>ЗАФІКСОВАНІ ГРАВЦІ ТА КЛУБИ · БЕЗ ПЕРЕТАСУВАННЯ</small></button></div>` : '';
       const replaceCover=isArenaAdmin()?`<div class="arena-live-cover-edit-v121"><button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaLeagueLiveCoverV121')?.click()">🖼 ЗАМІНИТИ ФОТО ЛІГИ</button><input id="arenaLeagueLiveCoverV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'league','live')"></div>`:'';
-      return `${cover}${replaceCover}<div class="arena-route-head-v920 arena-league-head-v920"><h2>${esc(testCompetition.title||"CENTURIA LEAGUE")}</h2><p class="arena-gold-v852">${testCompetition.participants.length} УЧАСНИКІВ • ${esc(formatLabel)} • ТУР ${round?.round||testCompetition.rounds.length}/${testCompetition.leagueFormat==='swiss'?testCompetition.swissRounds:testCompetition.rounds.length}</p></div>${drawButton}${tabs(t)}${tabStage(body+(tab==='round'?swissRepairButton:'')+advanceButton,t,tab,'ArenaV852.setTab')}`;
+      return `${cover}${replaceCover}<div class="arena-route-head-v920 arena-league-head-v920"><h2>${esc(testCompetition.title||"CENTURIA LEAGUE")}</h2><p class="arena-gold-v852">${testCompetition.participants.length} УЧАСНИКІВ • ${esc(formatLabel)} • ${isCompetitionCompleted(testCompetition)?'ЗАВЕРШЕНО':`ТУР ${round?.round||testCompetition.rounds.length}/${testCompetition.leagueFormat==='swiss'?testCompetition.swissRounds:testCompetition.rounds.length}`}</p></div>${competitionWinnerCelebrationV1223(testCompetition)}${drawButton}${tabs(t)}${tabStage(body+(tab==='round'?swissRepairButton:'')+advanceButton,t,tab,'ArenaV852.setTab')}`;
     }
     if(leagueSignupPoll){
       const poll=leagueSignupPoll,ready=poll.phase==='ready'||!cupPollStillActive(poll);
@@ -2257,7 +2302,7 @@
       const pending=(viewerMatch&&!cupMatchFinished(viewerMatch,testCompetition))?viewerMatch:(isArenaAdmin()?(r?.matches||[]).find(m=>!cupMatchFinished(m,testCompetition)):null);
       let body=tab==="mine"
         ? (testCompetition.champion
-            ? `<div class="arena-card-v852 arena-cup-win-v969"><div class="arena-cup-win-icon-v969">🏆</div><div class="arena-gold-v852">ПЕРЕМОЖЕЦЬ КУБКА</div><h3>${esc(testCompetition.champion)}</h3><p>${esc(competitionClubFor(testCompetition.champion))}</p>${isArenaAdmin()?`<button class="arena-primary-v852 arena-finish-tournament-v996" onclick="ArenaV852.finishCurrentTournament()">ЗАКРИТИ КУБОК</button>`:""}</div>`
+            ? `<div class="arena-card-v852 arena-cup-win-v969"><div class="arena-cup-win-icon-v969">🏆</div><div class="arena-gold-v852">КУБОК ЗАВЕРШЕНО</div><p>Переможця визначено. Святковий блок залишатиметься зверху, доки ADMIN не закриє турнір.</p></div>`
             : viewerBye
               ? `<div class="arena-card-v852 arena-cup-bye-v1032"><div class="arena-cup-draw-icon-v1032">🎟️</div><div class="arena-gold-v852">ТВІЙ ЖЕРЕБ</div><h3>${esc(viewerBye)}</h3><p>Команда: <b>${esc(competitionClubFor(viewerBye))}</b></p><strong>BYE — ПРОХІД У НАСТУПНИЙ РАУНД</strong></div>`
               : pending
@@ -2274,7 +2319,8 @@
       const meta=testCompetition.champion?`${testCompetition.participants.length} УЧАСНИКІВ • ЗАВЕРШЕНО`:`${testCompetition.participants.length} УЧАСНИКІВ • ${r?.label||"АКТИВНИЙ КУБОК"}`;
       const liveCover=testCompetition.cover?`<div class="arena-cup-poll-cover-v1026 arena-live-cup-cover-v121"><img src="${esc(testCompetition.cover)}" alt="${esc(testCompetition.title||'CENTURIA CUP')}"></div>`:'';
       const replaceCover=isArenaAdmin()?`<div class="arena-live-cover-edit-v121"><button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaCupLiveCoverV121')?.click()">🖼 ЗАМІНИТИ ФОТО КУБКА</button><input id="arenaCupLiveCoverV121" type="file" accept="image/*" hidden onchange="ArenaV852.replaceTournamentCover(this,'cup','live')"></div>`:'';
-      return `${cupHero(testCompetition.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${liveCover}${replaceCover}${drawBlock}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`;
+      const winnerCelebration=competitionWinnerCelebrationV1223(testCompetition);
+      return `${cupHero(testCompetition.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${winnerCelebration||(liveCover+replaceCover)}${drawBlock}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`;
     }
     if(cupSignupPoll){
       const poll=cupSignupPoll;
@@ -3383,6 +3429,138 @@
   let arenaLastMarkupV1221=null;
   let arenaLastViewKeyV1221='';
 
+
+
+  /* ========================================================
+     v12.27 — winner celebration rendered by JavaScript canvas.
+     This does not depend on CSS @keyframes, reduced-motion media
+     queries, or Safari/PWA animation handling.
+     ======================================================== */
+  const startWinnerCelebrationV1226=()=>{
+    const box=A.querySelector('.arena-winner-celebration-v1223');
+    if(!box || box.dataset.winnerFxV1226==='1')return;
+    box.dataset.winnerFxV1226='1';
+
+    const canvas=document.createElement('canvas');
+    canvas.className='arena-winner-fx-canvas-v1226';
+    canvas.setAttribute('aria-hidden','true');
+    canvas.style.setProperty('position','absolute','important');
+    canvas.style.setProperty('inset','0','important');
+    canvas.style.setProperty('width','100%','important');
+    canvas.style.setProperty('height','100%','important');
+    canvas.style.setProperty('z-index','40','important');
+    canvas.style.setProperty('pointer-events','none','important');
+    canvas.style.setProperty('border-radius','inherit','important');
+    box.appendChild(canvas);
+
+    const ctx=canvas.getContext('2d');
+    if(!ctx)return;
+    let w=1,h=1,dpr=1;
+    const fit=()=>{
+      const r=box.getBoundingClientRect();
+      w=Math.max(1,r.width); h=Math.max(1,r.height);
+      dpr=Math.min(2,window.devicePixelRatio||1);
+      canvas.width=Math.max(1,Math.round(w*dpr));
+      canvas.height=Math.max(1,Math.round(h*dpr));
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+    };
+    fit();
+
+    const palette=['#fff7ca','#ffffff','#ffd95e','#f3ae25','#f28b32','#ffe889'];
+    const particles=Array.from({length:64},(_,i)=>({
+      x:(i*37%101)/100*w,
+      y:-20-(i%12)*18,
+      vx:((i*17%19)-9)*0.055,
+      vy:1.25+(i%7)*0.16,
+      rot:(i*29)%360,
+      vr:2.1+(i%9)*0.38,
+      ww:5+(i%4)*1.5,
+      hh:9+(i%5)*1.8,
+      c:palette[i%palette.length],
+      delay:(i%16)*45
+    }));
+
+    const started=performance.now();
+    const duration=9000;
+    let last=started;
+    const frame=now=>{
+      if(!box.isConnected)return;
+      const dt=Math.min(34,Math.max(8,now-last)); last=now;
+      ctx.clearRect(0,0,w,h);
+
+      // Bright diagonal gold/white sweep every ~2.7 s.
+      const cycle=((now-started)%2700)/2700;
+      const sx=(-0.55+cycle*2.1)*w;
+      const bandW=Math.max(75,w*.22);
+      ctx.save();
+      ctx.translate(sx,h/2);
+      ctx.rotate(-0.22);
+      const grad=ctx.createLinearGradient(-bandW,0,bandW,0);
+      grad.addColorStop(0,'rgba(255,255,255,0)');
+      grad.addColorStop(.30,'rgba(255,231,133,.12)');
+      grad.addColorStop(.5,'rgba(255,255,255,.70)');
+      grad.addColorStop(.70,'rgba(255,224,112,.18)');
+      grad.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=grad;
+      ctx.fillRect(-bandW*1.8,-h,bandW*3.6,h*2);
+      ctx.restore();
+
+      const elapsed=now-started;
+      for(const p of particles){
+        if(elapsed<p.delay)continue;
+        p.y+=p.vy*(dt/16.67);
+        p.x+=p.vx*(dt/16.67)*10;
+        p.rot+=p.vr*(dt/16.67);
+        if(p.y>h+24){
+          p.y=-24-Math.random()*80;
+          p.x=Math.random()*w;
+        }
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.rot*Math.PI/180);
+        ctx.fillStyle=p.c;
+        ctx.shadowColor='rgba(255,214,89,.55)';
+        ctx.shadowBlur=3;
+        if((Math.round(p.ww+p.hh))%4===0){
+          ctx.beginPath(); ctx.arc(0,0,p.ww*.58,0,Math.PI*2); ctx.fill();
+        }else{
+          ctx.fillRect(-p.ww/2,-p.hh/2,p.ww,p.hh);
+        }
+        ctx.restore();
+      }
+
+      if(elapsed<duration){
+        requestAnimationFrame(frame);
+      }else{
+        // Keep the shine alive after the initial confetti burst.
+        const shineFrame=t=>{
+          if(!box.isConnected)return;
+          ctx.clearRect(0,0,w,h);
+          const c=((t-started)%3000)/3000;
+          const x=(-.65+c*2.3)*w;
+          const bw=Math.max(80,w*.24);
+          ctx.save(); ctx.translate(x,h/2); ctx.rotate(-.22);
+          const g=ctx.createLinearGradient(-bw,0,bw,0);
+          g.addColorStop(0,'rgba(255,255,255,0)');
+          g.addColorStop(.42,'rgba(255,238,161,.18)');
+          g.addColorStop(.50,'rgba(255,255,255,.62)');
+          g.addColorStop(.58,'rgba(255,239,166,.24)');
+          g.addColorStop(1,'rgba(255,255,255,0)');
+          ctx.fillStyle=g;
+          ctx.fillRect(-bw*1.8,-h,bw*3.6,h*2); ctx.restore();
+          requestAnimationFrame(shineFrame);
+        };
+        requestAnimationFrame(shineFrame);
+      }
+    };
+    requestAnimationFrame(frame);
+
+    try{
+      const ro=new ResizeObserver(()=>fit());
+      ro.observe(box);
+    }catch(_e){ window.addEventListener('resize',fit,{passive:true}); }
+  };
+
   function draw(){
     rememberArenaBracketScrollV1220();
     if(syncLeaguePlayoffStateV1114(testCompetition)) saveTestCompetition();
@@ -3403,6 +3581,7 @@
     bindSwipeTabs();
     renderCupDrawAnimationModalV1033();
     renderLeagueDrawAnimationModalV1095();
+    // v12.30: winner card has continuous built-in confetti and shine; no extra trigger is needed.
     if(needsRebuildV1221)queueCupBracketConnectorsV1038(A);
     if(route==="home")queueActiveEventFitV1102();
     if(route==="league"&&testCompetition?.draw?.kind==='league'&&!leagueDrawAnimationOpenV1095){

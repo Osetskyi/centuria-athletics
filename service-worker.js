@@ -1,5 +1,5 @@
-// v12.23 Cup BYE once-per-player rule
-const CACHE_VERSION="centuria-pwa-v12230-cup-bye-once";
+// v12.30 inline SVG winner effects; current BYE rule retained
+const CACHE_VERSION="centuria-pwa-v12300-winner-inline-svg";
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();
