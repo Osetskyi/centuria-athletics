@@ -1,8 +1,8 @@
-/* Centuria v12.33 — v12.31 League player add feature retained. */
+/* Centuria v12.34 — add-player control moved below the League table tab. */
 (()=>{
   'use strict';
 
-  const BUILD='12.33';
+  const BUILD='12.34';
   const BLOCK_ID='arenaLeagueAddPlayerBlockV1231';
   const MODAL_ID='arenaLeagueAddPlayerModalV1231';
   let uiBusy=false;
@@ -229,15 +229,16 @@
       removeBlock();
       return;
     }
+    // v12.34: show the ADMIN control only inside the TABLE tab and place it
+    // directly below the standings card. On every other League tab it is hidden.
+    const tableCard=root.querySelector('.arena-league-standings-card-v1096');
+    if(!tableCard){removeBlock();return;}
     const old=document.getElementById(BLOCK_ID);
     const count=comp.participants?.length||0;
-    if(old?.dataset.count===String(count))return;
+    if(old?.dataset.count===String(count) && old.previousElementSibling===tableCard)return;
     old?.remove();
     const block=makeBlock(comp);block.dataset.count=String(count);
-    const drawTrigger=root.querySelector('.arena-league-draw-trigger-v1095');
-    const head=root.querySelector('.arena-route-head-v920.arena-league-head-v920');
-    const anchor=drawTrigger||head;
-    if(anchor)anchor.insertAdjacentElement('afterend',block);
+    tableCard.insertAdjacentElement('afterend',block);
   };
 
   async function refreshUi(){

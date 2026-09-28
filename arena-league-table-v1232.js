@@ -1,8 +1,8 @@
-/* Centuria v12.33 — club crests inside the active League standings table. */
+/* Centuria v12.34 — club crests in League standings and Active Event table. */
 (()=>{
   'use strict';
 
-  const BUILD='12.33';
+  const BUILD='12.34';
   let refreshTimer=0;
 
   const normalize=s=>String(s??'')
@@ -86,7 +86,7 @@
   const enhance=()=>{
     updateVersion();
     const root=document.getElementById('arenaApp');
-    if(!root||root.dataset.route!=='league')return;
+    if(!root)return;
 
     root.querySelectorAll('.arena-league-standings-card-v1096 .arena-league-mobile-row-v1099:not(.mobile-head)').forEach(row=>{
       const cell=row.querySelector('.mobile-player');

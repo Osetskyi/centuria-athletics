@@ -1,4 +1,4 @@
-/* Centuria v12.32 — League standings: club crest left, player + club shifted right. */
+/* Centuria v12.34 — League standings crests + matching Active Event table. */
 
 /* Phone / tablet standings used in the Arena screen. */
 #screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232{
@@ -103,5 +103,40 @@
     width:26px!important;
     height:26px!important;
     border-radius:7px!important;
+  }
+}
+
+/* v12.34 — Active Event uses the same League standings card as the League TABLE tab. */
+#screen-arena .arena-app-v852[data-route="home"] .arena-active-event-preview-v879.arena-active-event-league-full-v1234{
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+}
+#screen-arena .arena-app-v852[data-route="home"] .arena-active-event-league-full-v1234 .arena-active-event-full-table-v1234{
+  width:100%!important;
+  margin:0!important;
+  border-radius:18px!important;
+  box-shadow:none!important;
+}
+#screen-arena .arena-app-v852[data-route="home"] .arena-active-event-league-full-v1234 .arena-league-standings-head-v1097{
+  position:sticky!important;
+  top:0!important;
+  z-index:20!important;
+}
+#screen-arena.active .arena-app-v852[data-route="home"] .arena-home-menu-v854.arena-home-docked-v1123 > .arena-active-event-v877{
+  max-height:min(48dvh,410px)!important;
+}
+#screen-arena.active .arena-app-v852[data-route="home"] .arena-home-menu-v854.arena-home-docked-v1123 .arena-active-event-preview-v879.arena-active-event-league-full-v1234{
+  max-height:min(36dvh,300px)!important;
+}
+@media(max-width:430px){
+  #screen-arena .arena-app-v852[data-route="home"] .arena-active-event-league-full-v1234 .arena-active-event-full-table-v1234{
+    border-radius:16px!important;
+  }
+  #screen-arena.active .arena-app-v852[data-route="home"] .arena-home-menu-v854.arena-home-docked-v1123 .arena-active-event-preview-v879.arena-active-event-league-full-v1234{
+    max-height:min(34dvh,285px)!important;
   }
 }
