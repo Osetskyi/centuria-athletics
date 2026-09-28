@@ -170,7 +170,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.36",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.37",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -7478,6 +7478,9 @@ document.addEventListener("click",e=>{
   const button=e.target.closest("button");
   if(!button) return;
   if(button.dataset.viewerAllowed==="true") return;
+  // v12.37 — saving a player's own Arena favorite club is a viewer action.
+  // Ownership is still enforced by saveArenaPlayer(), CenturiaArenaPlayerPrefsApi.save(), and Supabase RLS.
+  if(button.classList.contains("arena-player-team-save-v1146")) return;
   const text=(button.textContent||"").toUpperCase();
   const protectedWords=["ДОДАТИ","РЕДАГУВАТИ","ВИДАЛИТИ","ЗБЕРЕГТИ","ПЕРЕЙМЕНУВАТИ","ОЧИСТИТИ"];
   if(protectedWords.some(word=>text.includes(word))){
@@ -11912,7 +11915,7 @@ if(document.readyState==="loading"){
 
 /* v12.36 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.36");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.37");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);

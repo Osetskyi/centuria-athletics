@@ -4843,7 +4843,7 @@
               <div class="arena-club-live-preview-v1003" id="arenaFavTeamLivePreviewV1003"><div class="arena-club-live-preview-badge-v1003" id="arenaFavTeamLiveBadgeV1003">${crestBadge(p.favoriteTeam,"")}</div><div class="arena-club-live-preview-copy-v1003"><small>ПОПЕРЕДНІЙ ПЕРЕГЛЯД ЕМБЛЕМИ</small><strong id="arenaFavTeamLiveTextV1003">${esc(p.favoriteTeam)}</strong></div></div>
               <div class="arena-player-team-admin-note-v987"><h3 class="arena-player-team-admin-title-v1215">ЕМБЛЕМА — ТІЛЬКИ ЧЕРЕЗ БАЗУ КЛУБІВ</h3><p class="arena-player-team-admin-copy-v1215">Тут можна або вписати назву клубу вручну, або вибрати вже доданий клуб із бази. Емблема та назва нижче оновлюються одразу, ще до збереження. Після збереження новий клуб зʼявиться в базі. Емблему до нього може додати тільки ADMIN.</p></div>
               <datalist id="arenaFavTeamsV930">${options}</datalist>
-              <div class="arena-player-team-editor-actions-v941"><button class="arena-primary-v852 arena-player-team-save-v1146" type="button" onclick="ArenaV852.saveArenaPlayer('${jsq(name)}')">ЗБЕРЕГТИ</button><button class="arena-secondary-v852 arena-player-team-cancel-v1147" type="button" onclick="ArenaV852.toggleArenaTeamEditor(false,'${jsq(name)}')">СКАСУВАТИ</button></div>
+              <div class="arena-player-team-editor-actions-v941"><button class="arena-primary-v852 arena-player-team-save-v1146" type="button" data-viewer-allowed="true" onclick="ArenaV852.saveArenaPlayer('${jsq(name)}')">ЗБЕРЕГТИ</button><button class="arena-secondary-v852 arena-player-team-cancel-v1147" type="button" onclick="ArenaV852.toggleArenaTeamEditor(false,'${jsq(name)}')">СКАСУВАТИ</button></div>
             </div>`:""}
           </section>
         </div>
