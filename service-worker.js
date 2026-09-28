@@ -1,5 +1,11 @@
-// v12.30 inline SVG winner effects; current BYE rule retained
-const CACHE_VERSION="centuria-pwa-v12300-winner-inline-svg";
+// v12.33 active-event League fix + v12.32 table crests + v12.31 pre-result player additions
+const CACHE_VERSION="centuria-pwa-v12330-active-event-league";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.33";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.33";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.33";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.33";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.33";
+
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
   const keys=await caches.keys();
@@ -38,15 +44,41 @@ self.addEventListener("notificationclick",event=>{
   })());
 });
 
+const injectArenaPatchAssetsV1233=async response=>{
+  const type=String(response.headers.get("content-type")||"").toLowerCase();
+  if(!response.ok || !type.includes("text/html"))return response;
+  let html=await response.text();
+  if(!html.includes("arena-league-add-v1231.css")){
+    html=html.replace(/<\/head>/i,`<link rel="stylesheet" href="${ADD_PLAYER_STYLE}">\n</head>`);
+  }
+  if(!html.includes("arena-league-table-v1232.css")){
+    html=html.replace(/<\/head>/i,`<link rel="stylesheet" href="${TABLE_STYLE}">\n</head>`);
+  }
+  if(!html.includes("arena-league-add-v1231.js")){
+    html=html.replace(/<\/body>/i,`<script src="${ADD_PLAYER_SCRIPT}"></script>\n</body>`);
+  }
+  if(!html.includes("arena-league-table-v1232.js")){
+    html=html.replace(/<\/body>/i,`<script src="${TABLE_SCRIPT}"></script>\n</body>`);
+  }
+  if(!html.includes("arena-active-event-v1233.js")){
+    html=html.replace(/<\/body>/i,`<script src="${ACTIVE_EVENT_SCRIPT}"></script>\n</body>`);
+  }
+  const headers=new Headers(response.headers);
+  headers.delete("content-length");
+  headers.delete("content-encoding");
+  headers.set("content-type","text/html; charset=utf-8");
+  headers.set("cache-control","no-cache");
+  return new Response(html,{status:response.status,statusText:response.statusText,headers});
+};
 
-// v6.52: keep navigation fresh; cache only successful same-origin static responses as fallback.
 self.addEventListener("fetch",event=>{
   if(event.request.method!=="GET") return;
   const url=new URL(event.request.url);
   if(url.origin!==self.location.origin) return;
   event.respondWith((async()=>{
     try{
-      const response=await fetch(event.request,{cache:"no-store"});
+      let response=await fetch(event.request,{cache:"no-store"});
+      if(event.request.mode==="navigate")response=await injectArenaPatchAssetsV1233(response);
       if(response && response.ok){
         const cache=await caches.open(CACHE_VERSION);
         cache.put(event.request,response.clone()).catch(()=>{});

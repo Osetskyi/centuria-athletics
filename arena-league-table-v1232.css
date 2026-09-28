@@ -1,0 +1,107 @@
+/* Centuria v12.32 — League standings: club crest left, player + club shifted right. */
+
+/* Phone / tablet standings used in the Arena screen. */
+#screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232{
+  position:relative!important;
+  min-height:35px!important;
+  padding-left:37px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  align-items:stretch!important;
+  box-sizing:border-box!important;
+  text-align:left!important;
+}
+#screen-arena .arena-league-mobile-row-v1099 .arena-league-table-crest-v1232{
+  position:absolute!important;
+  left:1px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:29px!important;
+  height:29px!important;
+  padding:2px!important;
+  border-radius:8px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.075)!important;
+  border:1px solid rgba(229,190,105,.25)!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.20)!important;
+}
+#screen-arena .arena-league-mobile-row-v1099 .arena-league-table-crest-v1232 img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+#screen-arena .arena-league-mobile-row-v1099 .arena-league-table-crest-fallback-v1232{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  height:100%!important;
+  font-size:17px!important;
+  line-height:1!important;
+}
+#screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232 b,
+#screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232 small{
+  padding-left:1px!important;
+}
+
+/* Full desktop standings use the same layout. */
+#screen-arena .arena-league-player-cell-v1096.has-club-crest-v1232{
+  position:relative!important;
+  padding-left:51px!important;
+  min-height:44px!important;
+  box-sizing:border-box!important;
+  vertical-align:middle!important;
+}
+#screen-arena .arena-league-player-cell-v1096 .arena-league-table-crest-desktop-v1232{
+  position:absolute!important;
+  left:12px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:30px!important;
+  height:30px!important;
+  padding:2px!important;
+  border-radius:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  background:rgba(255,255,255,.075)!important;
+  border:1px solid rgba(229,190,105,.25)!important;
+  box-shadow:0 3px 10px rgba(0,0,0,.18)!important;
+}
+#screen-arena .arena-league-player-cell-v1096 .arena-league-table-crest-desktop-v1232 img{
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  display:block!important;
+}
+
+/* Light theme equivalents. */
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+#screen-arena .arena-league-mobile-row-v1099 .arena-league-table-crest-v1232,
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme)
+#screen-arena .arena-league-player-cell-v1096 .arena-league-table-crest-desktop-v1232{
+  background:rgba(255,255,255,.72)!important;
+  border-color:rgba(151,108,29,.24)!important;
+  box-shadow:0 3px 9px rgba(86,62,18,.10)!important;
+}
+
+@media(max-width:360px){
+  #screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232{
+    padding-left:33px!important;
+    min-height:32px!important;
+  }
+  #screen-arena .arena-league-mobile-row-v1099 .arena-league-table-crest-v1232{
+    width:26px!important;
+    height:26px!important;
+    border-radius:7px!important;
+  }
+}

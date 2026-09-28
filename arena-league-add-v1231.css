@@ -1,0 +1,118 @@
+/* Centuria v12.31 — theme-aware active League participant manager */
+#screen-arena .arena-league-add-admin-v1231{
+  margin:10px 0 14px!important;
+  padding:12px!important;
+  border:1px solid rgba(226,189,112,.34)!important;
+  border-radius:18px!important;
+  background:linear-gradient(145deg,rgba(25,27,32,.96),rgba(13,15,19,.96))!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.22)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+}
+#screen-arena .arena-league-add-copy-v1231{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important;}
+#screen-arena .arena-league-add-copy-v1231 b{font-size:12px!important;letter-spacing:.06em!important;color:#f0cf86!important;}
+#screen-arena .arena-league-add-copy-v1231 small{font-size:10px!important;line-height:1.35!important;color:#c7c2b8!important;}
+#screen-arena .arena-league-add-btn-v1231{
+  flex:0 0 auto!important;min-height:42px!important;padding:0 15px!important;border-radius:14px!important;
+  border:1px solid #c79738!important;background:linear-gradient(180deg,#f0ce78,#b9852c)!important;color:#171108!important;
+  font-weight:900!important;font-size:11px!important;letter-spacing:.035em!important;box-shadow:0 7px 16px rgba(177,128,37,.22)!important;
+}
+#screen-arena .arena-league-add-btn-v1231:disabled{opacity:.44!important;filter:saturate(.5)!important;}
+
+.arena-league-add-modal-v1231{position:fixed!important;inset:0!important;z-index:100500!important;padding:18px!important;background:rgba(2,4,8,.72)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;display:flex!important;align-items:center!important;justify-content:center!important;}
+.arena-league-add-dialog-v1231{width:min(560px,100%)!important;max-height:min(82vh,720px)!important;overflow:hidden!important;border-radius:24px!important;border:1px solid rgba(226,189,112,.38)!important;background:linear-gradient(155deg,#17191f,#0d0f13)!important;color:#f6f2e9!important;box-shadow:0 24px 70px rgba(0,0,0,.48)!important;display:flex!important;flex-direction:column!important;}
+.arena-league-add-head-v1231{padding:18px 18px 12px!important;display:flex!important;gap:12px!important;align-items:flex-start!important;justify-content:space-between!important;}
+.arena-league-add-head-v1231 small{color:#d6ad56!important;font-size:9px!important;font-weight:900!important;letter-spacing:.16em!important;}
+.arena-league-add-head-v1231 h2{margin:4px 0 7px!important;font-size:22px!important;line-height:1!important;}
+.arena-league-add-head-v1231 p{margin:0!important;color:#c8c2b7!important;font-size:11px!important;line-height:1.45!important;}
+.arena-league-add-close-v1231{width:38px!important;height:38px!important;min-width:38px!important;border-radius:50%!important;border:1px solid rgba(226,189,112,.3)!important;background:#22252d!important;color:#f1d28a!important;font-weight:900!important;}
+.arena-league-add-stats-v1231{margin:0 18px 12px!important;padding:9px!important;border:1px solid rgba(226,189,112,.18)!important;border-radius:16px!important;background:rgba(255,255,255,.035)!important;display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:7px!important;}
+.arena-league-add-stats-v1231 span{text-align:center!important;display:flex!important;flex-direction:column!important;gap:2px!important;}
+.arena-league-add-stats-v1231 b{color:#edc765!important;font-size:18px!important;}
+.arena-league-add-stats-v1231 small{color:#aca69c!important;font-size:7px!important;font-weight:800!important;letter-spacing:.06em!important;}
+.arena-league-add-list-v1231{padding:0 18px!important;overflow:auto!important;-webkit-overflow-scrolling:touch!important;display:flex!important;flex-direction:column!important;gap:8px!important;}
+.arena-league-add-player-row-v1231{width:100%!important;min-height:56px!important;padding:10px 12px!important;border-radius:16px!important;border:1px solid rgba(226,189,112,.22)!important;background:#1d2027!important;color:#f5f1e8!important;display:flex!important;align-items:center!important;justify-content:space-between!important;text-align:left!important;}
+.arena-league-add-player-row-v1231 span{display:flex!important;flex-direction:column!important;gap:3px!important;min-width:0!important;}
+.arena-league-add-player-row-v1231 b{font-size:13px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+.arena-league-add-player-row-v1231 small{color:#aeadab!important;font-size:9px!important;}
+.arena-league-add-player-row-v1231 em{font-style:normal!important;font-size:22px!important;color:#e9c365!important;}
+.arena-league-add-player-row-v1231.is-loading{opacity:.55!important;pointer-events:none!important;}
+.arena-league-add-empty-v1231{padding:22px 14px!important;border:1px dashed rgba(226,189,112,.25)!important;border-radius:16px!important;color:#bdb6aa!important;text-align:center!important;font-size:11px!important;}
+.arena-league-add-note-v1231{margin:12px 18px 18px!important;padding-top:10px!important;border-top:1px solid rgba(226,189,112,.15)!important;color:#9f9a91!important;font-size:9px!important;line-height:1.4!important;}
+
+html[data-site-theme="light"] #screen-arena .arena-league-add-admin-v1231,
+html.light-theme #screen-arena .arena-league-add-admin-v1231,
+body[data-site-theme="light"] #screen-arena .arena-league-add-admin-v1231,
+body.light-theme #screen-arena .arena-league-add-admin-v1231{
+  border-color:rgba(163,119,30,.28)!important;background:linear-gradient(145deg,#fffdf6,#f4ead5)!important;box-shadow:0 9px 22px rgba(99,73,22,.12)!important;
+}
+html[data-site-theme="light"] #screen-arena .arena-league-add-copy-v1231 b,
+html.light-theme #screen-arena .arena-league-add-copy-v1231 b,
+body[data-site-theme="light"] #screen-arena .arena-league-add-copy-v1231 b,
+body.light-theme #screen-arena .arena-league-add-copy-v1231 b{color:#8a641d!important;}
+html[data-site-theme="light"] #screen-arena .arena-league-add-copy-v1231 small,
+html.light-theme #screen-arena .arena-league-add-copy-v1231 small,
+body[data-site-theme="light"] #screen-arena .arena-league-add-copy-v1231 small,
+body.light-theme #screen-arena .arena-league-add-copy-v1231 small{color:#5e574b!important;}
+html[data-site-theme="light"] #screen-arena .arena-league-add-btn-v1231,
+html.light-theme #screen-arena .arena-league-add-btn-v1231,
+body[data-site-theme="light"] #screen-arena .arena-league-add-btn-v1231,
+body.light-theme #screen-arena .arena-league-add-btn-v1231{border-color:#d1aa52!important;background:linear-gradient(180deg,#fff4ce,#ead08c)!important;color:#4c3508!important;box-shadow:0 7px 15px rgba(109,80,19,.12)!important;}
+
+html[data-site-theme="light"] .arena-league-add-modal-v1231,
+html.light-theme .arena-league-add-modal-v1231,
+body[data-site-theme="light"] .arena-league-add-modal-v1231,
+body.light-theme .arena-league-add-modal-v1231{background:rgba(65,53,31,.28)!important;}
+html[data-site-theme="light"] .arena-league-add-dialog-v1231,
+html.light-theme .arena-league-add-dialog-v1231,
+body[data-site-theme="light"] .arena-league-add-dialog-v1231,
+body.light-theme .arena-league-add-dialog-v1231{border-color:#d8bd7a!important;background:linear-gradient(155deg,#fffef9,#f5ecd9)!important;color:#272218!important;box-shadow:0 22px 60px rgba(75,59,27,.18)!important;}
+html[data-site-theme="light"] .arena-league-add-head-v1231 small,
+html.light-theme .arena-league-add-head-v1231 small,
+body[data-site-theme="light"] .arena-league-add-head-v1231 small,
+body.light-theme .arena-league-add-head-v1231 small{color:#90691f!important;}
+html[data-site-theme="light"] .arena-league-add-head-v1231 p,
+html.light-theme .arena-league-add-head-v1231 p,
+body[data-site-theme="light"] .arena-league-add-head-v1231 p,
+body.light-theme .arena-league-add-head-v1231 p{color:#61594c!important;}
+html[data-site-theme="light"] .arena-league-add-close-v1231,
+html.light-theme .arena-league-add-close-v1231,
+body[data-site-theme="light"] .arena-league-add-close-v1231,
+body.light-theme .arena-league-add-close-v1231{border-color:#d8bd7a!important;background:#fff9e9!important;color:#72501b!important;}
+html[data-site-theme="light"] .arena-league-add-stats-v1231,
+html.light-theme .arena-league-add-stats-v1231,
+body[data-site-theme="light"] .arena-league-add-stats-v1231,
+body.light-theme .arena-league-add-stats-v1231{border-color:#e0c98f!important;background:rgba(171,126,36,.06)!important;}
+html[data-site-theme="light"] .arena-league-add-stats-v1231 b,
+html.light-theme .arena-league-add-stats-v1231 b,
+body[data-site-theme="light"] .arena-league-add-stats-v1231 b,
+body.light-theme .arena-league-add-stats-v1231 b{color:#8d6417!important;}
+html[data-site-theme="light"] .arena-league-add-stats-v1231 small,
+html.light-theme .arena-league-add-stats-v1231 small,
+body[data-site-theme="light"] .arena-league-add-stats-v1231 small,
+body.light-theme .arena-league-add-stats-v1231 small{color:#756c5e!important;}
+html[data-site-theme="light"] .arena-league-add-player-row-v1231,
+html.light-theme .arena-league-add-player-row-v1231,
+body[data-site-theme="light"] .arena-league-add-player-row-v1231,
+body.light-theme .arena-league-add-player-row-v1231{border-color:#ddc483!important;background:#fffaf0!important;color:#272117!important;}
+html[data-site-theme="light"] .arena-league-add-player-row-v1231 small,
+html.light-theme .arena-league-add-player-row-v1231 small,
+body[data-site-theme="light"] .arena-league-add-player-row-v1231 small,
+body.light-theme .arena-league-add-player-row-v1231 small{color:#756c5d!important;}
+html[data-site-theme="light"] .arena-league-add-player-row-v1231 em,
+html.light-theme .arena-league-add-player-row-v1231 em,
+body[data-site-theme="light"] .arena-league-add-player-row-v1231 em,
+body.light-theme .arena-league-add-player-row-v1231 em{color:#986d1c!important;}
+html[data-site-theme="light"] .arena-league-add-note-v1231,
+html.light-theme .arena-league-add-note-v1231,
+body[data-site-theme="light"] .arena-league-add-note-v1231,
+body.light-theme .arena-league-add-note-v1231{color:#746c60!important;border-color:#dfc992!important;}
+
+@media(max-width:620px){
+  #screen-arena .arena-league-add-admin-v1231{align-items:stretch!important;flex-direction:column!important;}
+  #screen-arena .arena-league-add-btn-v1231{width:100%!important;}
+  .arena-league-add-modal-v1231{padding:10px!important;align-items:flex-end!important;}
+  .arena-league-add-dialog-v1231{max-height:88vh!important;border-radius:22px 22px 14px 14px!important;}
+}
