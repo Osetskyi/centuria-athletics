@@ -730,7 +730,21 @@
     while(out.length<count) out.push(...shuffleCupDrawV1032(base));
     return out.slice(0,count);
   };
-  const canEditArenaFavoriteTeam=name=>isArenaAdmin() || (!!linkedArenaPlayerName() && sameArenaPlayer(linkedArenaPlayerName(),name));
+  // v12.36 — identify the player's own Arena card by immutable player_id first.
+  // Name matching remains only as a fallback for older sessions while data refreshes.
+  const isOwnArenaPlayerV1236=name=>{
+    const myId=String(window.getCenturiaCurrentPlayerId?.()||"").trim();
+    let targetId="";
+    try{
+      const live=window.getCenturiaArenaPlayers?.()||[];
+      const target=live.find(p=>sameArenaPlayer(p?.name,name));
+      targetId=String(target?.id||"").trim();
+    }catch(_e){}
+    if(myId&&targetId)return myId===targetId;
+    const linked=linkedArenaPlayerName();
+    return !!linked&&sameArenaPlayer(linked,name);
+  };
+  const canEditArenaFavoriteTeam=name=>isArenaAdmin() || isOwnArenaPlayerV1236(name);
   // v10.63 — Trophy counts come from the actual completed Arena archives,
   // not from EVO or manually entered values. Include a just-finished tournament
   // while its archive is syncing; do not count the same competition twice.
@@ -4794,7 +4808,7 @@
       const played=(rec.w||0)+(rec.d||0)+(rec.l||0);
       const trophies=arenaTrophiesForV1063(name);
       const canEditTeam=canEditArenaFavoriteTeam(name);
-      const isOwnProfile=!!linkedArenaPlayerName() && sameArenaPlayer(linkedArenaPlayerName(),name);
+      const isOwnProfile=isOwnArenaPlayerV1236(name);
       const teamOptions=clubDbNames();
       const options=[p.favoriteTeam,...teamOptions].filter((v,i,a)=>v&&a.indexOf(v)===i).map(team=>`<option value="${esc(team)}"></option>`).join("");
       modal(`<div class="arena-info-modal-v919 arena-player-modal-v932">

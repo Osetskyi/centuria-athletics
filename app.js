@@ -170,7 +170,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.30",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.36",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -8845,6 +8845,11 @@ window.CenturiaArenaPlayerPrefsApi={
     if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
     const player=await this.resolvePlayer(playerName);
     if(!player) throw new Error('Гравця не знайдено');
+    const isAdmin=String(authRole||'viewer').toLowerCase()==='admin';
+    const ownPlayerId=String(authProfile?.player_id||'').trim();
+    if(!isAdmin && (!ownPlayerId || ownPlayerId!==String(player.id||'').trim())){
+      throw new Error('Можна змінювати тільки свій улюблений клуб');
+    }
     const team=String(favoriteTeam||'').trim();
     if(!team) throw new Error('Вкажи улюблений клуб');
     const {data,error}=await sb.from('arena_player_preferences')
@@ -10960,13 +10965,38 @@ if(document.readyState==="loading"){
     }catch(err){console.error('Announcement acknowledge',err);showToast('Не вдалося підтвердити сповіщення');}
     finally{if(btn)btn.disabled=false}
   }
+  // v12.36 — a newly created account/player must not inherit the team's old
+  // announcement backlog. The eligible window starts only once BOTH the account
+  // and its linked player already exist. Existing accounts keep their normal unread flow.
+  function announcementEligibilityStartV1236(){
+    const stamps=[];
+    const add=value=>{
+      const ms=Date.parse(String(value||''));
+      if(Number.isFinite(ms))stamps.push(ms);
+    };
+    add(authUser?.created_at);
+    add(authProfile?.created_at);
+    const playerId=String(authProfile?.player_id||'').trim();
+    if(playerId){
+      const linked=(Array.isArray(players)?players:[]).find(p=>String(p?.id||'').trim()===playerId);
+      add(linked?.created_at);
+    }
+    return stamps.length?new Date(Math.max(...stamps)).toISOString():null;
+  }
   async function loadUnreadAnnouncementsV818(){
     if(!sb||!authUser||!currentHasSiteAccessV629())return;
     if(announcementsCheckedForUserV818===authUser.id)return;
     announcementsCheckedForUserV818=authUser.id;
     try{
+      const eligibleFrom=announcementEligibilityStartV1236();
+      let announcementQuery=sb.from('site_announcements')
+        .select('id,created_by,body,image_url,created_at')
+        .eq('is_active',true)
+        .lte('created_at',ANNOUNCEMENT_SESSION_START_V818);
+      if(eligibleFrom)announcementQuery=announcementQuery.gte('created_at',eligibleFrom);
+      announcementQuery=announcementQuery.order('created_at',{ascending:true});
       const [{data:items,error:e1},{data:reads,error:e2}]=await Promise.all([
-        sb.from('site_announcements').select('id,created_by,body,image_url,created_at').eq('is_active',true).lte('created_at',ANNOUNCEMENT_SESSION_START_V818).order('created_at',{ascending:true}),
+        announcementQuery,
         sb.from('site_announcement_reads').select('announcement_id').eq('user_id',authUser.id)
       ]);
       if(e1)throw e1;if(e2)throw e2;
@@ -11880,9 +11910,9 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.30 — keep the Settings footer in sync with the deployed build. */
+/* v12.36 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.30");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.36");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
