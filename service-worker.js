@@ -1,10 +1,10 @@
-// v12.34 Active Event full League table + add-player below TABLE tab
-const CACHE_VERSION="centuria-pwa-v12340-active-event-full-table";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.34";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.34";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.34";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.34";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.34";
+// v12.35 personal My Match + stable Active Event League table
+const CACHE_VERSION="centuria-pwa-v12350-my-match-stable-active-event";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.35";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.35";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.35";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.35";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.35";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
@@ -44,7 +44,7 @@ self.addEventListener("notificationclick",event=>{
   })());
 });
 
-const injectArenaPatchAssetsV1234=async response=>{
+const injectArenaPatchAssetsV1235=async response=>{
   const type=String(response.headers.get("content-type")||"").toLowerCase();
   if(!response.ok || !type.includes("text/html"))return response;
   let html=await response.text();
@@ -78,7 +78,7 @@ self.addEventListener("fetch",event=>{
   event.respondWith((async()=>{
     try{
       let response=await fetch(event.request,{cache:"no-store"});
-      if(event.request.mode==="navigate")response=await injectArenaPatchAssetsV1234(response);
+      if(event.request.mode==="navigate")response=await injectArenaPatchAssetsV1235(response);
       if(response && response.ok){
         const cache=await caches.open(CACHE_VERSION);
         cache.put(event.request,response.clone()).catch(()=>{});

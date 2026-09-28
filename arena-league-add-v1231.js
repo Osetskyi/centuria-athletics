@@ -1,8 +1,8 @@
-/* Centuria v12.34 — add-player control moved below the League table tab. */
+/* Centuria v12.35 — add-player control moved below the League table tab. */
 (()=>{
   'use strict';
 
-  const BUILD='12.34';
+  const BUILD='12.35';
   const BLOCK_ID='arenaLeagueAddPlayerBlockV1231';
   const MODAL_ID='arenaLeagueAddPlayerModalV1231';
   let uiBusy=false;
@@ -195,6 +195,18 @@
       if(!saved?.active_competition || !(saved.active_competition.participants||[]).some(p=>same(p,name))){
         throw new Error('Сервер не підтвердив додавання гравця');
       }
+      // v12.35: keep the instant Arena cache in lock-step with Supabase.
+      // Without this, the next draw can briefly use the pre-add schedule and
+      // then redraw again when realtime arrives, which makes Active Event jump.
+      try{
+        localStorage.setItem('ca_arena_active_competition_v996',JSON.stringify(saved.active_competition));
+        if(saved.active_event){
+          const eventRaw=JSON.stringify(saved.active_event);
+          localStorage.setItem('ca_arena_active_event',eventRaw);
+          localStorage.setItem('ca_arena_active_event_v925',eventRaw);
+          window.__CENTURIA_ARENA_ACTIVE_EVENT__=saved.active_event;
+        }
+      }catch(_e){}
 
       lastRow=saved;
       closeModal();
@@ -203,7 +215,7 @@
       setTimeout(()=>window.ArenaV852?.go?.('league'),180);
       setTimeout(refreshUi,450);
     }catch(err){
-      console.warn('League add player v12.31',err);
+      console.warn('League add player v12.35',err);
       window.showToast?.(err?.message||'Не вдалося додати гравця');
     }finally{
       uiBusy=false;

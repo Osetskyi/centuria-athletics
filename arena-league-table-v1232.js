@@ -1,8 +1,8 @@
-/* Centuria v12.34 — club crests in League standings and Active Event table. */
+/* Centuria v12.35 — club crests in League standings and Active Event table. */
 (()=>{
   'use strict';
 
-  const BUILD='12.34';
+  const BUILD='12.35';
   let refreshTimer=0;
 
   const normalize=s=>String(s??'')

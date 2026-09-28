@@ -1,4 +1,4 @@
-/* Centuria v12.34 — League standings crests + matching Active Event table. */
+/* Centuria v12.35 — League standings crests + matching Active Event table. */
 
 /* Phone / tablet standings used in the Arena screen. */
 #screen-arena .arena-league-mobile-row-v1099 .mobile-player.has-club-crest-v1232{
@@ -106,7 +106,7 @@
   }
 }
 
-/* v12.34 — Active Event uses the same League standings card as the League TABLE tab. */
+/* v12.35 — Active Event uses the same League standings card as the League TABLE tab. */
 #screen-arena .arena-app-v852[data-route="home"] .arena-active-event-preview-v879.arena-active-event-league-full-v1234{
   padding:0!important;
   border:0!important;

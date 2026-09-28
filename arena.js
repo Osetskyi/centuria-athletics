@@ -2101,7 +2101,27 @@
       const playoff=leaguePlayoffRoundsV1108(testCompetition);
       return activeBracketMiniWrapV1112('ПЛЕЙ-ОФ ЛІГИ',testCompetition,playoff[0],playoff[1]||null);
     }
-    const rows=testCompetition?.kind==="league"?leagueStandings():P.map((p,i)=>({name:p[0],p:4,gf:[8,5,3,0,-2,2,1,-1][i]||0,ga:0,pts:[10,9,7,5,4,4,3,1][i]||0}));
+    // v12.35: build the final Active Event League table in the base render.
+    // This removes the compact-table -> full-table swap that caused visible
+    // size jumps. Crest slots exist from the first frame, so logos can hydrate
+    // later without changing the layout.
+    if(testCompetition?.kind==='league'){
+      const rows=leagueStandings();
+      const matches=(testCompetition.rounds||[]).flatMap(r=>r?.playoff?[]:(r?.matches||[])).filter(m=>!String(m?.id||'').startsWith('LP_'));
+      const completed=matches.filter(isScored).length;
+      const placeClass=i=>i===0?'place-1':i===1?'place-2':i===2?'place-3':'place-rest';
+      return `<div class="arena-active-event-preview-v879 arena-active-event-league-preview-v879 arena-active-event-preview-full-v1101 arena-active-event-league-full-v1234">
+        <div class="arena-card-v852 arena-league-card-v920 arena-league-standings-card-v1096 arena-active-event-full-table-v1234">
+          <div class="arena-league-standings-head-v1097"><div><small>ОФІЦІЙНА ТУРНІРНА ТАБЛИЦЯ</small><strong>${esc(testCompetition.title||'CENTURIA LEAGUE')}</strong></div><span>${completed}/${matches.length} матчів</span></div>
+          <div class="arena-league-standings-wrap-v1096">
+            <table class="arena-table-v852 arena-league-standings-table-v1096"><thead><tr><th>#</th><th>ГРАВЕЦЬ / КЛУБ</th><th>І</th><th>В</th><th>Н</th><th>П</th><th>ЗГ</th><th>ПГ</th><th>РГ</th><th>О</th></tr></thead><tbody>${rows.map((p,i)=>{const gd=p.gf-p.ga;const club=competitionClubFor(p.name);return `<tr class="arena-league-place-row-v1097 ${placeClass(i)}"><td><span class="arena-league-rank-v1096"><span class="arena-league-rank-num-v1128">${i+1}</span></span></td><td class="arena-league-player-cell-v1096 has-club-crest-v1232"><span class="arena-league-table-crest-desktop-v1232" aria-hidden="true"></span><strong>${esc(p.name)}</strong><small>${esc(club)}</small></td><td>${p.p}</td><td>${p.w}</td><td>${p.d}</td><td>${p.l}</td><td>${p.gf}</td><td>${p.ga}</td><td><span class="arena-league-gd-v1096 ${gd>0?'plus':gd<0?'minus':'zero'}">${gd>0?'+':''}${gd}</span></td><td><b class="arena-league-points-v1096">${p.pts}</b></td></tr>`;}).join('')}</tbody></table>
+            <div class="arena-league-mobile-grid-v1099" role="table" aria-label="Турнірна таблиця Ліги"><div class="arena-league-mobile-row-v1099 mobile-head" role="row"><span role="columnheader">#</span><span role="columnheader">ГРАВЕЦЬ</span><span role="columnheader">І</span><span role="columnheader">В</span><span role="columnheader">Н</span><span role="columnheader">П</span><span role="columnheader">ЗГ</span><span role="columnheader">ПГ</span><span role="columnheader">РГ</span><span role="columnheader">О</span></div>${rows.map((p,i)=>{const gd=p.gf-p.ga;const club=competitionClubFor(p.name);return `<div class="arena-league-mobile-row-v1099 ${placeClass(i)}" role="row"><span class="mobile-place" role="cell">${i+1}</span><span class="mobile-player has-club-crest-v1232" role="cell" title="${esc(p.name)} · ${esc(club)}"><span class="arena-league-table-crest-v1232" aria-hidden="true"></span><b>${esc(p.name)}</b><small>${esc(club)}</small></span><span role="cell">${p.p}</span><span role="cell">${p.w}</span><span role="cell">${p.d}</span><span role="cell">${p.l}</span><span role="cell">${p.gf}</span><span role="cell">${p.ga}</span><span role="cell">${gd>0?'+':''}${gd}</span><span class="mobile-points" role="cell"><b>${p.pts}</b></span></div>`;}).join('')}</div>
+          </div>
+          <div class="arena-league-standings-legend-v1097"><span><i class="top1"></i>1 місце</span><span><i class="top2"></i>2 місце</span><span><i class="top3"></i>3 місце</span></div>
+        </div>
+      </div>`;
+    }
+    const rows=P.map((p,i)=>({name:p[0],p:4,gf:[8,5,3,0,-2,2,1,-1][i]||0,ga:0,pts:[10,9,7,5,4,4,3,1][i]||0}));
     return `<div class="arena-active-event-preview-v879 arena-active-event-league-preview-v879 arena-active-event-preview-full-v1101">
       <div class="arena-active-event-preview-title-v879"><span>ТУРНІРНА ТАБЛИЦЯ</span><span>Учасники: ${rows.length}</span></div>
       <div class="arena-active-event-table-v879">
@@ -2220,8 +2240,12 @@
     if(testCompetition?.kind==="league"){
       const round=currentLeagueRound();
       const viewer=linkedArenaPlayerName();
-      const pending=(round?.matches||[]).find(m=>!isScored(m)&&(isArenaAdmin()||(viewer&&(sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away)))));
-      const ownCompleted=!isArenaAdmin()&&viewer?(round?.matches||[]).find(m=>isScored(m)&&(sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away))):null;
+      // v12.35: “МОЇ МАТЧІ” is always personal, including ADMIN accounts.
+      // Previously ADMIN matched the first unfinished fixture of the round,
+      // so after rebuilding the calendar an admin could see somebody else’s game.
+      const viewerMatch=viewer?(round?.matches||[]).find(m=>sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away)):null;
+      const pending=viewerMatch&&!isScored(viewerMatch)?viewerMatch:null;
+      const ownCompleted=viewerMatch&&isScored(viewerMatch)?viewerMatch:null;
       const standings=leagueStandings();
       const leaguePlaceChanges=leaguePlaceChangesV1100(standings);
       const playoffRounds=leaguePlayoffRoundsV1108(testCompetition);
