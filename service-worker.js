@@ -1,10 +1,10 @@
-// v12.37 viewer own favorite-club save bypasses legacy editor guard
-const CACHE_VERSION="centuria-pwa-v12370-own-club-viewer-save";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.37";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.37";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.37";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.37";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.37";
+// v12.42 my-profile extra positions use tile picker
+const CACHE_VERSION="centuria-pwa-v12420-my-profile-extra-positions";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.42";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.42";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.42";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.42";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.42";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{
@@ -44,7 +44,7 @@ self.addEventListener("notificationclick",event=>{
   })());
 });
 
-const injectArenaPatchAssetsV1237=async response=>{
+const injectArenaPatchAssetsV1238=async response=>{
   const type=String(response.headers.get("content-type")||"").toLowerCase();
   if(!response.ok || !type.includes("text/html"))return response;
   let html=await response.text();
@@ -78,7 +78,7 @@ self.addEventListener("fetch",event=>{
   event.respondWith((async()=>{
     try{
       let response=await fetch(event.request,{cache:"no-store"});
-      if(event.request.mode==="navigate")response=await injectArenaPatchAssetsV1237(response);
+      if(event.request.mode==="navigate")response=await injectArenaPatchAssetsV1238(response);
       if(response && response.ok){
         const cache=await caches.open(CACHE_VERSION);
         cache.put(event.request,response.clone()).catch(()=>{});

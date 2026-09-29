@@ -6,10 +6,230 @@ const POSITIONS = [
 const POS_LABEL = Object.fromEntries(POSITIONS);
 const ARCHETYPES = [
   "Стовб","Бомбардир","Чарівник","Іскра","Мозг","Маестро","Переробка",
-  "Термінатор","Мотор","Босс","Прогресор","Воротар-ліберо","Стоппер"
+  "Термінатор","Руйнівник","Босс","Прогресор","Воротар-ліберо","Стоппер"
 ];
 const PLAYER_PLACEHOLDER = "player-placeholder.png";
-const ARCHETYPE_ICONS = {"Стовб": "archetype-target.png", "Бомбардир": "archetype-scorer.png", "Чарівник": "archetype-wizard.png", "Іскра": "archetype-spark.png", "Мозг": "archetype-brain.png", "Маестро": "archetype-maestro.png", "Переробка": "archetype-recycling.png", "Термінатор": "archetype-terminator.png", "Мотор": "archetype-motor.png", "Босс": "archetype-boss.png", "Прогресор": "archetype-progressor.png", "Воротар-ліберо": "archetype-sweeper_keeper.png", "Стоппер": "archetype-stopper.png"};
+const ARCHETYPE_ALIASES = {"Мотор": "Руйнівник", "Райнівник": "Руйнівник"};
+const ARCHETYPE_ICONS = {"Стовб": "archetype-target.png", "Бомбардир": "archetype-scorer.png", "Чарівник": "archetype-wizard.png", "Іскра": "archetype-spark.png", "Мозг": "archetype-brain.png", "Маестро": "archetype-maestro.png", "Переробка": "archetype-recycling.png", "Термінатор": "archetype-terminator.png", "Руйнівник": "archetype-destroyer.png", "Райнівник": "archetype-destroyer.png", "Мотор": "archetype-destroyer.png", "Босс": "archetype-boss.png", "Прогресор": "archetype-progressor.png", "Воротар-ліберо": "archetype-sweeper_keeper.png", "Стоппер": "archetype-stopper.png"};
+function normalizeArchetype(value){
+  const key=String(value||"").trim();
+  return ARCHETYPE_ALIASES[key] || key;
+}
+
+/* v12.39 — multiple archetypes with numeric levels */
+function normalizeArchetypeLevelsV1239(list){
+  const seen=new Set();
+  const out=[];
+  (Array.isArray(list)?list:[]).forEach((item,index)=>{
+    const archetype=normalizeArchetype(item?.archetype||item?.name||"");
+    const raw=String(item?.level??"").replace(/\D/g,"");
+    const level=raw?Number(raw):null;
+    if(!ARCHETYPES.includes(archetype)||!Number.isInteger(level)||level<1||seen.has(archetype))return;
+    seen.add(archetype);
+    out.push({archetype,level,sort_order:Number.isInteger(Number(item?.sort_order))?Number(item.sort_order):index});
+  });
+  return out.sort((a,b)=>a.sort_order-b.sort_order);
+}
+
+function archetypeLevelsTextV1239(list){
+  const rows=normalizeArchetypeLevelsV1239(list);
+  return rows.length?rows.map(x=>`${x.archetype} · lvl ${x.level}`).join(", "):"—";
+}
+
+function archetypeLevelRowsHtmlV1239(list){
+  const values=new Map(normalizeArchetypeLevelsV1239(list).map(x=>[x.archetype,x.level]));
+  return ARCHETYPES.map(a=>`<label class="archetype-level-row-v1239">
+    <span class="archetype-level-name-v1239"><img src="${ARCHETYPE_ICONS[a]||""}" alt=""><b>${esc(a)}</b></span>
+    <span class="archetype-level-input-wrap-v1239"><span>lvl</span><input type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-archetype-level-v1239="${esc(a)}" value="${values.get(a)??""}" placeholder="—"></span>
+  </label>`).join("");
+}
+
+function bindArchetypeLevelInputsV1239(root){
+  root?.querySelectorAll?.("[data-archetype-level-v1239]").forEach(input=>{
+    const sanitize=()=>{ input.value=String(input.value||"").replace(/\D/g,""); };
+    input.addEventListener("input",sanitize);
+    input.addEventListener("paste",()=>setTimeout(sanitize,0));
+  });
+}
+
+function collectArchetypeLevelsV1239(root){
+  if(!root)return [];
+  const rows=[];
+  root.querySelectorAll("[data-archetype-level-v1239]").forEach((input,index)=>{
+    const raw=String(input.value||"").replace(/\D/g,"");
+    if(!raw)return;
+    const level=Number(raw);
+    if(!Number.isInteger(level)||level<1)return;
+    rows.push({archetype:normalizeArchetype(input.dataset.archetypeLevelV1239||""),level,sort_order:index});
+  });
+  return normalizeArchetypeLevelsV1239(rows);
+}
+
+function renderArchetypeLevelsProfileV1239(list){
+  const rows=normalizeArchetypeLevelsV1239(list);
+  if(!rows.length)return "—";
+  return `<div class="profile-archetypes-v1239">${rows.map(x=>`<span class="profile-archetype-v1239"><img src="${ARCHETYPE_ICONS[x.archetype]||""}" alt=""><span>${esc(x.archetype)}</span><b>lvl ${x.level}</b></span>`).join("")}</div>`;
+}
+
+function ensureArchetypeLevelsUiV1239(){
+  if(!document.getElementById("archetypeLevelsStyleV1239")){
+    const style=document.createElement("style");
+    style.id="archetypeLevelsStyleV1239";
+    style.textContent=`
+      .archetype-level-editor-v1239{grid-column:1/-1;border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:14px;display:grid;gap:10px}
+      body.light .archetype-level-editor-v1239{border-color:rgba(0,0,0,.14)}
+      .archetype-level-editor-title-v1239{font-size:12px;font-weight:900;letter-spacing:.08em;opacity:.78;margin-bottom:2px}
+      .archetype-level-editor-hint-v1239{font-size:11px;opacity:.62;margin-top:-4px;margin-bottom:4px}
+      .archetype-level-grid-v1239{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+      .archetype-level-row-v1239{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:13px;background:rgba(255,255,255,.055);min-width:0}
+      body.light .archetype-level-row-v1239{background:rgba(0,0,0,.045)}
+      .archetype-level-name-v1239{display:flex;align-items:center;gap:7px;min-width:0;font-size:12px}
+      .archetype-level-name-v1239 img{width:24px;height:24px;object-fit:contain;flex:0 0 auto}
+      .archetype-level-name-v1239 b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .archetype-level-input-wrap-v1239{display:flex;align-items:center;gap:4px;flex:0 0 auto;font-size:10px;font-weight:900;text-transform:uppercase;opacity:.95}
+      .archetype-level-input-wrap-v1239 input{width:48px!important;min-width:48px!important;max-width:48px!important;padding:7px 5px!important;text-align:center!important;border-radius:9px!important;font-weight:900!important}
+      .profile-archetypes-v1239{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+      .profile-archetype-v1239{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border-radius:12px;background:rgba(255,255,255,.07);font-size:12px;font-weight:800}
+      body.light .profile-archetype-v1239{background:rgba(0,0,0,.055)}
+      .profile-archetype-v1239 img{width:23px;height:23px;object-fit:contain}
+      html[data-site-theme="light"] .archetype-level-name-v1239 img,
+      html.light-theme .archetype-level-name-v1239 img,
+      body[data-site-theme="light"] .archetype-level-name-v1239 img,
+      body.light-theme .archetype-level-name-v1239 img,
+      body.light .archetype-level-name-v1239 img,
+      html[data-site-theme="light"] .profile-archetype-v1239 img,
+      html.light-theme .profile-archetype-v1239 img,
+      body[data-site-theme="light"] .profile-archetype-v1239 img,
+      body.light-theme .profile-archetype-v1239 img,
+      body.light .profile-archetype-v1239 img,
+      html[data-site-theme="light"] .archetype-option img,
+      html.light-theme .archetype-option img,
+      body[data-site-theme="light"] .archetype-option img,
+      body.light-theme .archetype-option img,
+      body.light .archetype-option img,
+      html[data-site-theme="light"] .view-archetype img,
+      html.light-theme .view-archetype img,
+      body[data-site-theme="light"] .view-archetype img,
+      body.light-theme .view-archetype img,
+      body.light .view-archetype img{filter:brightness(0)!important}
+      .profile-archetype-v1239 b{font-size:11px;opacity:.78;white-space:nowrap}
+      @media(max-width:640px){.archetype-level-grid-v1239{grid-template-columns:1fr}.profile-archetypes-v1239{justify-content:flex-start}.profile-archetype-v1239{width:100%;justify-content:flex-start}.profile-archetype-v1239 b{margin-left:auto}}
+    `;
+    document.head.appendChild(style);
+  }
+  const oldBtn=document.getElementById("archetypePickerBtn");
+  const oldLabel=oldBtn?.closest("label");
+  if(oldLabel)oldLabel.style.display="none";
+  if(oldLabel && !document.getElementById("archetypeLevelsAdminV1239")){
+    const box=document.createElement("div");
+    box.id="archetypeLevelsAdminV1239";
+    box.className="archetype-level-editor-v1239";
+    oldLabel.insertAdjacentElement("afterend",box);
+  }
+  const view=document.getElementById("viewArchetype");
+  const viewRow=view?.closest(".view-row");
+  const viewLabel=viewRow?.querySelector(":scope > span");
+  if(viewLabel)viewLabel.textContent="АРХЕТИПИ";
+}
+
+function renderAdminArchetypeLevelsV1239(list){
+  ensureArchetypeLevelsUiV1239();
+  const box=document.getElementById("archetypeLevelsAdminV1239");
+  if(!box)return;
+  box.innerHTML=`<div class="archetype-level-editor-title-v1239">АРХЕТИПИ ТА РІВНІ</div><div class="archetype-level-editor-hint-v1239">Вводь тільки цифри. Порожній рівень — архетип не показується.</div><div class="archetype-level-grid-v1239">${archetypeLevelRowsHtmlV1239(list)}</div>`;
+  bindArchetypeLevelInputsV1239(box);
+}
+
+
+/* v12.42 — extra positions in My Profile request use the same tile picker as player edit */
+function ensureMyProfileExtraPositionsUiV1242(){
+  if(document.getElementById("myProfileExtraPositionsStyleV1242"))return;
+  const style=document.createElement("style");
+  style.id="myProfileExtraPositionsStyleV1242";
+  style.textContent=`
+    .extra-pos-editor-v1242{grid-column:1/-1;border:1px solid rgba(255,255,255,.13);border-radius:18px;padding:14px;display:grid;gap:10px}
+    body.light .extra-pos-editor-v1242{border-color:rgba(0,0,0,.18)}
+    .extra-pos-editor-title-v1242{font-size:12px;font-weight:900;letter-spacing:.08em;opacity:.78;margin-bottom:2px}
+    .extra-pos-grid-v1242{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+    .extra-pos-chip-v1242{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:10px 8px;border:1.6px solid rgba(255,255,255,.16);border-radius:14px;background:rgba(255,255,255,.05);cursor:pointer;user-select:none;transition:.16s ease;overflow:hidden}
+    body.light .extra-pos-chip-v1242{border-color:rgba(0,0,0,.16);background:#fff}
+    .extra-pos-chip-v1242 input{position:absolute;opacity:0;pointer-events:none}
+    .extra-pos-box-v1242{width:18px;height:18px;border-radius:6px;border:2px solid currentColor;opacity:.46;display:inline-block;flex:0 0 auto}
+    .extra-pos-label-v1242{font-size:13px;font-weight:900;letter-spacing:.01em;white-space:nowrap}
+    .extra-pos-chip-v1242.checked{border-color:#d6b35f;background:rgba(214,179,95,.18)}
+    body.light .extra-pos-chip-v1242.checked{background:rgba(214,179,95,.30)}
+    .extra-pos-chip-v1242.checked .extra-pos-box-v1242{background:#1e90ff;border-color:#1e90ff;opacity:1;position:relative}
+    .extra-pos-chip-v1242.checked .extra-pos-box-v1242::after{content:"";position:absolute;left:4px;top:0px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+    .extra-pos-chip-v1242.disabled{opacity:.55;cursor:not-allowed}
+    .extra-pos-chip-v1242.disabled .extra-pos-box-v1242{opacity:.22}
+    @media(max-width:640px){.extra-pos-grid-v1242{grid-template-columns:repeat(3,minmax(0,1fr))}.extra-pos-chip-v1242{min-height:56px}}
+  `;
+  document.head.appendChild(style);
+}
+
+function extraPositionsPickerHtmlV1242(selected,primary){
+  const sel=new Set(Array.isArray(selected)?selected:[]);
+  const currentPrimary=String(primary||"").toUpperCase();
+  return `<div class="extra-pos-editor-v1242"><div class="extra-pos-editor-title-v1242">ДОДАТКОВІ ПОЗИЦІЇ — ДО 3</div><div class="extra-pos-grid-v1242">${POSITIONS.map(([v,l])=>{
+    const checked=sel.has(v) && v!==currentPrimary;
+    const disabled=v===currentPrimary;
+    return `<label class="extra-pos-chip-v1242${checked?` checked`:``}${disabled?` disabled`:``}" data-extra-pos-chip-v1242="${v}"><input type="checkbox" value="${v}" data-extra-pos-v1242 ${checked?`checked`:``} ${disabled?`disabled`:``}><span class="extra-pos-box-v1242"></span><span class="extra-pos-label-v1242">${l}</span></label>`;
+  }).join("")}</div></div>`;
+}
+
+function bindExtraPositionsPickerV1242(root){
+  if(!root)return;
+  ensureMyProfileExtraPositionsUiV1242();
+  const sync=()=>{
+    const primary=String(root.querySelector('[name="primary_position"]')?.value||"").toUpperCase();
+    const inputs=[...root.querySelectorAll('[data-extra-pos-v1242]')];
+    inputs.forEach(input=>{
+      const chip=input.closest('[data-extra-pos-chip-v1242]');
+      const isPrimary=input.value===primary;
+      if(isPrimary) input.checked=false;
+      input.disabled=isPrimary;
+      chip?.classList.toggle('disabled',isPrimary);
+      chip?.classList.toggle('checked',!!input.checked && !isPrimary);
+    });
+    const checked=inputs.filter(x=>x.checked && !x.disabled);
+    if(checked.length>3){
+      const overflow=checked.slice(3);
+      overflow.forEach(input=>{
+        input.checked=false;
+        input.closest('[data-extra-pos-chip-v1242]')?.classList.remove('checked');
+      });
+      showToast('Максимум 3 додаткові позиції');
+    }
+  };
+  root.querySelectorAll('[data-extra-pos-v1242]').forEach(input=>input.addEventListener('change',sync));
+  root.querySelector('[name="primary_position"]')?.addEventListener('change',sync);
+  sync();
+}
+
+function collectExtraPositionsV1242(root){
+  return [...(root?.querySelectorAll?.('[data-extra-pos-v1242]:checked')||[])].map(x=>String(x.value||'').toUpperCase()).filter(Boolean).slice(0,3);
+}
+
+async function syncPlayerArchetypesV1239(playerId,list){
+  if(!sb||!playerId)return;
+  const rows=normalizeArchetypeLevelsV1239(list);
+  if(!rows.length){
+    const delAll=await sb.from("player_archetypes").delete().eq("player_id",playerId);
+    if(delAll.error)throw delAll.error;
+    return;
+  }
+  const payload=rows.map((x,index)=>({player_id:playerId,archetype:x.archetype,level:x.level,sort_order:index,updated_by:authUser?.id||null,updated_at:new Date().toISOString()}));
+  const upsertRes=await sb.from("player_archetypes").upsert(payload,{onConflict:"player_id,archetype"});
+  if(upsertRes.error)throw upsertRes.error;
+  const currentRes=await sb.from("player_archetypes").select("archetype").eq("player_id",playerId);
+  if(currentRes.error)throw currentRes.error;
+  const keep=new Set(rows.map(x=>x.archetype));
+  const remove=(currentRes.data||[]).map(x=>x.archetype).filter(x=>!keep.has(x));
+  if(remove.length){
+    const delRes=await sb.from("player_archetypes").delete().eq("player_id",playerId).in("archetype",remove);
+    if(delRes.error)throw delRes.error;
+  }
+}
 
 const PLAYER_STATUSES = [
   ["","Без статусу"],
@@ -170,7 +390,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.37",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.42",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -845,7 +1065,8 @@ function playerFromDb(p){
     platform:p.platform || "",
     primaryPos:p.primary_position,
     extraPositions:p.extra_positions || [],
-    archetype:p.archetype || "",
+    archetype:normalizeArchetype(p.archetype),
+    archetypes:[],
     status:decoded.status,
     note:decoded.note,
     cardImage:p.card_image_url || "",
@@ -882,11 +1103,23 @@ async function uploadDataImage(path,dataUrl){
 async function getAll(store){
   if(!sb) return [];
   if(store==="players"){
-    const {data,error}=await sb.from("players")
-      .select("*")
-      .order("created_at",{ascending:true});
-    if(error){console.error(error);showToast("Не вдалося завантажити гравців");return []}
-    return (data||[]).map(playerFromDb);
+    const [playersRes,archetypesRes]=await Promise.all([
+      sb.from("players").select("*").order("created_at",{ascending:true}),
+      sb.from("player_archetypes").select("player_id,archetype,level,sort_order").order("sort_order",{ascending:true})
+    ]);
+    if(playersRes.error){console.error(playersRes.error);showToast("Не вдалося завантажити гравців");return []}
+    if(archetypesRes.error)console.error("player_archetypes load",archetypesRes.error);
+    const byPlayer=new Map();
+    (archetypesRes.data||[]).forEach(row=>{
+      if(!byPlayer.has(row.player_id))byPlayer.set(row.player_id,[]);
+      byPlayer.get(row.player_id).push({archetype:normalizeArchetype(row.archetype),level:Number(row.level),sort_order:Number(row.sort_order)||0});
+    });
+    return (playersRes.data||[]).map(raw=>{
+      const p=playerFromDb(raw);
+      p.archetypes=normalizeArchetypeLevelsV1239(byPlayer.get(p.id)||[]);
+      p.archetype=p.archetypes[0]?.archetype||normalizeArchetype(raw.archetype||"");
+      return p;
+    });
   }
   if(store==="squads"){
     const local=getLocalFallbackSquads();
@@ -928,13 +1161,14 @@ async function put(store,obj){
       platform:obj.platform || null,
       primary_position:obj.primaryPos,
       extra_positions:obj.extraPositions || [],
-      archetype:obj.archetype || null,
+      archetype:normalizeArchetypeLevelsV1239(obj.archetypes)[0]?.archetype || normalizeArchetype(obj.archetype) || null,
       note:encodePlayerNote(obj.status||"",obj.note||"") || null,
       card_image_url:cardUrl || null,
       created_by:authUser?.id || null
     };
     const {error}=await sb.from("players").upsert(payload,{onConflict:"id"});
     if(error) throw error;
+    await syncPlayerArchetypesV1239(obj.id,obj.archetypes||[]);
 
     /* Remove the previous generated player-card file after the DB update.
        Old legacy players/{id}.png files and versioned files are both handled. */
@@ -1153,6 +1387,8 @@ function setupFormOptions(){
       btn.addEventListener("click",()=>selectArchetype(btn.dataset.value));
     });
   }
+  ensureArchetypeLevelsUiV1239();
+  renderAdminArchetypeLevelsV1239([]);
 
   const statusMenu=$("statusMenu");
   if(statusMenu){
@@ -1539,6 +1775,7 @@ function resetPlayerModal(){
   $("cardPreview").innerHTML=`<span>＋</span><small>ЗАВАНТАЖИТИ ГОТОВУ КАРТКУ (НЕОБОВ’ЯЗКОВО)</small>`;
   $("nameInput").value="";$("numberInput").value="";$("ageInput").value="";$("primaryPos").value="GK";
   selectArchetype("");selectStatus("");selectPlatform("");$("noteInput").value="";
+  renderAdminArchetypeLevelsV1239([]);
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=false);
   if($("playerAccountLinkField"))$("playerAccountLinkField").classList.toggle("hidden",authRole!=="admin");
   if($("playerAccountSelect"))$("playerAccountSelect").value="";
@@ -1563,9 +1800,7 @@ function fillViewMode(p){
   $("viewAge").textContent=p.age!=="" && p.age!=null ? p.age : "—";
   $("viewPlatform").innerHTML=p.platform ? `<span class="view-platform"><span class="platform-icon">${platformIcon(p.platform)}</span><span>${esc(p.platform)}</span></span>` : "—";
   $("viewPrimaryPos").textContent=POS_LABEL[p.primaryPos]||"—";
-  $("viewArchetype").innerHTML=p.archetype
-    ? `<span class="view-archetype"><img src="${ARCHETYPE_ICONS[p.archetype]||""}" alt=""><span>${esc(p.archetype)}</span></span>`
-    : "—";
+  $("viewArchetype").innerHTML=renderArchetypeLevelsProfileV1239(p.archetypes||[]);
   $("viewStatus").textContent=p.status||"—";
   $("viewNote").textContent=p.note||"—";
 
@@ -1588,6 +1823,7 @@ function fillEditMode(p){
   selectPlatform(p.platform||"");
   $("primaryPos").value=p.primaryPos;
   selectArchetype(p.archetype||"");
+  renderAdminArchetypeLevelsV1239(p.archetypes||[]);
   selectStatus(p.status||"");
   $("noteInput").value=p.note||"";
   $("extraPositions").querySelectorAll("input").forEach(x=>x.checked=(p.extraPositions||[]).includes(x.value));
@@ -1718,7 +1954,8 @@ $("savePlayerBtn").addEventListener("click",async()=>{
   const obj={
     id:editPlayerId||uid(),name,number:$("numberInput").value.trim(),age:$("ageInput").value.trim(),platform:$("platformValue").value,
     primaryPos:$("primaryPos").value,extraPositions:extra,
-    archetype:$("archetypeValue") ? $("archetypeValue").value : "",status:$("statusValue") ? $("statusValue").value : "",note:$("noteInput").value.trim(),
+    archetypes:collectArchetypeLevelsV1239(document.getElementById("archetypeLevelsAdminV1239")),
+    archetype:"",status:$("statusValue") ? $("statusValue").value : "",note:$("noteInput").value.trim(),
     cardImage:currentCardImage,updatedAt:Date.now()
   };
   try{
@@ -9262,7 +9499,7 @@ function fieldLabelV589(k){
   return ({
     name:"Нік / ім’я",shirt_number:"Номер",age:"Вік",platform:"Платформа",
     primary_position:"Основна позиція",extra_positions:"Додаткові позиції",
-    archetype:"Архетип",status:"Статус",note:"Примітка",card_image_url:"Картка"
+    archetype:"Архетип",archetypes:"Архетипи / рівні",status:"Статус",note:"Примітка",card_image_url:"Картка"
   })[k]||k;
 }
 
@@ -9370,7 +9607,7 @@ function openMyPlayerModalV589(){
   }
   const pending=playerChangeRequestsV589.some(r=>r.player_id===p.id&&r.user_id===authUser.id&&r.status==="pending");
   const posOptions=POSITIONS.map(([v,l])=>`<option value="${v}" ${p.primaryPos===v?"selected":""}>${l}</option>`).join("");
-  const arcOptions=['<option value="">Без архетипу</option>'].concat(ARCHETYPES.map(a=>`<option ${p.archetype===a?"selected":""}>${a}</option>`)).join("");
+  const archetypeLevelsFormV1239=`<div class="wide archetype-level-editor-v1239"><div class="archetype-level-editor-title-v1239">АРХЕТИПИ ТА РІВНІ</div><div class="archetype-level-editor-hint-v1239">Вводь тільки цифри. Порожній рівень — архетип не показується.</div><div class="archetype-level-grid-v1239">${archetypeLevelRowsHtmlV1239(p.archetypes||[])}</div></div>`;
   const statOptions=PLAYER_STATUSES.map(([v,l])=>`<option value="${v}" ${p.status===v?"selected":""}>${l}</option>`).join("");
   const platOptions=['<option value="">Не вибрано</option>'].concat(PLAYER_PLATFORMS.map(v=>`<option ${p.platform===v?"selected":""}>${v}</option>`)).join("");
   box.innerHTML=`
@@ -9382,8 +9619,8 @@ function openMyPlayerModalV589(){
       <label>ВІК<input name="age" type="number" min="10" max="99" value="${p.age??""}"></label>
       <label>ПЛАТФОРМА<select name="platform">${platOptions}</select></label>
       <label>ОСНОВНА ПОЗИЦІЯ<select name="primary_position">${posOptions}</select></label>
-      <label>ДОДАТКОВІ ПОЗИЦІЇ<input name="extra_positions" value="${esc((p.extraPositions||[]).join(", "))}" placeholder="CB, RB"></label>
-      <label>АРХЕТИП<select name="archetype">${arcOptions}</select></label>
+      ${extraPositionsPickerHtmlV1242(p.extraPositions||[], p.primaryPos)}
+      ${archetypeLevelsFormV1239}
       <label>СТАТУС<select name="status">${statOptions}</select></label>
       <label class="wide">ПРИМІТКА<textarea name="note" maxlength="100">${esc(p.note||"")}</textarea></label>
       <label class="wide">КАРТКА ГРАВЦЯ<input id="myPlayerCardFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
@@ -9392,6 +9629,8 @@ function openMyPlayerModalV589(){
     <div class="my-player-awards-title">🏅 НАГОРОДИ</div>
     <div class="player-awards-grid">${awardsForPlayerV589(p.id).length?awardsForPlayerV589(p.id).map(a=>`<div class="player-award-card"><div class="player-award-icon">${esc(a.icon||"🏅")}</div><strong>${esc(a.title)}</strong><span>${esc(a.award_date||"")}</span></div>`).join(""):'<div class="empty-state">Нагород поки немає.</div>'}</div>`;
   modal.classList.remove("hidden");
+  bindArchetypeLevelInputsV1239($("myPlayerRequestForm"));
+  bindExtraPositionsPickerV1242($("myPlayerRequestForm"));
 
   $("myPlayerRequestForm")?.addEventListener("submit",submitMyPlayerRequestV589);
 }
@@ -9480,8 +9719,8 @@ async function submitMyPlayerRequestV589(e){
       age:fd.get("age")===""?null:Number(fd.get("age")),
       platform:String(fd.get("platform")||"")||null,
       primary_position:String(fd.get("primary_position")||""),
-      extra_positions:String(fd.get("extra_positions")||"").split(",").map(x=>x.trim().toUpperCase()).filter(Boolean).slice(0,3),
-      archetype:String(fd.get("archetype")||"")||null,
+      extra_positions:collectExtraPositionsV1242(form),
+      archetypes:collectArchetypeLevelsV1239(form),
       status:rawStatus,
       note:String(fd.get("note")||"").trim(),
       card_image_url:cardUrl
@@ -9539,10 +9778,11 @@ function renderPlayerRequestsV589(){
       else if(k==="primary_position")oldv=p?.primaryPos;
       else if(k==="extra_positions")oldv=(p?.extraPositions||[]).join(", ");
       else if(k==="archetype")oldv=p?.archetype;
+      else if(k==="archetypes")oldv=archetypeLevelsTextV1239(p?.archetypes||[]);
       else if(k==="status")oldv=p?.status;
       else if(k==="note")oldv=p?.note;
       else if(k==="card_image_url")oldv=p?.cardImage?"Поточна картка":"Немає";
-      const nv=Array.isArray(v)?v.join(", "):(k==="card_image_url"?(v?"Нова картка":"Немає"):String(v??"—"));
+      const nv=k==="archetypes"?archetypeLevelsTextV1239(v):(Array.isArray(v)?v.join(", "):(k==="card_image_url"?(v?"Нова картка":"Немає"):String(v??"—")));
       return `<div class="request-diff"><span>${fieldLabelV589(k)}</span><small>${esc(String(oldv??"—"))}</small><b>→ ${esc(nv)}</b></div>`;
     }).join("");
     return `<div class="player-request-card">
@@ -9572,6 +9812,7 @@ async function reviewPlayerRequestV589(id,approve){
   if(approve){
     const d=r.proposed_data||{};
     const note=encodePlayerNote(d.status||"",d.note||"");
+    const requestedArchetypes=Array.isArray(d.archetypes)?normalizeArchetypeLevelsV1239(d.archetypes):null;
     const payload={
       name:d.name,
       shirt_number:d.shirt_number,
@@ -9579,7 +9820,7 @@ async function reviewPlayerRequestV589(id,approve){
       platform:d.platform,
       primary_position:d.primary_position,
       extra_positions:d.extra_positions||[],
-      archetype:d.archetype,
+      archetype:requestedArchetypes?(requestedArchetypes[0]?.archetype||null):(normalizeArchetype(d.archetype||"")||null),
       note:note||null,
       card_image_url:d.card_image_url||null,
       updated_at:new Date().toISOString()
@@ -9593,6 +9834,15 @@ async function reviewPlayerRequestV589(id,approve){
         showToast("Не вдалося застосувати зміни");
       }
       return;
+    }
+    if(requestedArchetypes){
+      try{
+        await syncPlayerArchetypesV1239(r.player_id,requestedArchetypes);
+      }catch(err){
+        console.error("player archetypes apply",err);
+        showToast("Не вдалося зберегти рівні архетипів");
+        return;
+      }
     }
   }
   const {error}=await sb.from("player_change_requests").update({
@@ -11915,7 +12165,7 @@ if(document.readyState==="loading"){
 
 /* v12.36 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.37");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.42");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
