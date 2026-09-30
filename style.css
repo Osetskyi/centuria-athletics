@@ -35910,21 +35910,32 @@ body.light-theme #screen-arena .arena-winner-close-v1223:hover{
 }
 
 /* ==========================================================
-   v12.43 — player edit long archetype list: single stable scroll
-   iOS/Safari fix: avoid nested scrolling between <dialog> and .modal.
+   v12.44 — iPhone player modal: full bottom reach
+   Keep ONE scroll container (.modal), but include padding in its
+   viewport box so the action buttons can be fully reached.
    ========================================================== */
 #playerDialog{
+  box-sizing:border-box!important;
   max-height:calc(100dvh - 16px)!important;
   overflow:hidden!important;
   overscroll-behavior:none;
 }
 #playerDialog > .modal{
+  box-sizing:border-box!important;
+  width:100%!important;
   max-height:calc(100dvh - 16px)!important;
+  min-height:0!important;
   overflow-x:hidden!important;
   overflow-y:auto!important;
   overscroll-behavior-y:contain;
   -webkit-overflow-scrolling:touch;
   touch-action:pan-y;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom))!important;
+  scroll-padding-bottom:calc(28px + env(safe-area-inset-bottom));
+}
+#playerDialog .modal-actions{
+  margin-bottom:4px!important;
+  scroll-margin-bottom:calc(28px + env(safe-area-inset-bottom));
 }
 #playerDialog #playerEditMode,
 #playerDialog .archetype-level-editor-v1239,
