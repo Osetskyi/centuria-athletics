@@ -1,10 +1,10 @@
-// v12.42 my-profile extra positions use tile picker
-const CACHE_VERSION="centuria-pwa-v12420-my-profile-extra-positions";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.42";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.42";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.42";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.42";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.42";
+// v12.43 player modal long archetype list scroll fix
+const CACHE_VERSION="centuria-pwa-v12430-player-modal-scroll";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.43";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.43";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.43";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.43";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.43";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{

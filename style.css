@@ -35908,3 +35908,33 @@ body.light-theme #screen-arena .arena-winner-close-v1223:hover{
   78%{opacity:1;}
   100%{-webkit-transform:translate3d(var(--drift),455px,0) rotate(var(--spin)) scale(1.04);opacity:.18;}
 }
+
+/* ==========================================================
+   v12.43 — player edit long archetype list: single stable scroll
+   iOS/Safari fix: avoid nested scrolling between <dialog> and .modal.
+   ========================================================== */
+#playerDialog{
+  max-height:calc(100dvh - 16px)!important;
+  overflow:hidden!important;
+  overscroll-behavior:none;
+}
+#playerDialog > .modal{
+  max-height:calc(100dvh - 16px)!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  touch-action:pan-y;
+}
+#playerDialog #playerEditMode,
+#playerDialog .archetype-level-editor-v1239,
+#playerDialog .archetype-level-grid-v1239,
+#playerDialog .archetype-level-row-v1239{
+  touch-action:pan-y;
+}
+@supports(height:100svh){
+  #playerDialog,
+  #playerDialog > .modal{
+    max-height:calc(100svh - 16px)!important;
+  }
+}
