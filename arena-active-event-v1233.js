@@ -2,7 +2,7 @@
 (()=>{
   'use strict';
 
-  const BUILD='12.35';
+  const BUILD='12.45';
   const ACTIVE_EVENT_KEY='ca_arena_active_event';
   const ACTIVE_EVENT_LEGACY_KEY='ca_arena_active_event_v925';
   let busy=false;
@@ -54,11 +54,12 @@
     return changed;
   };
 
-  const leagueRows=comp=>{
+  const leagueRows=(comp,throughRoundIndex=null)=>{
     const names=[...(comp?.participants||[])];
     const map=new Map(names.map(name=>[name,{name,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}]));
     const rounds=comp?.rounds||[];
-    for(const round of rounds){
+    const visibleRounds=throughRoundIndex===null?rounds:rounds.slice(0,Math.max(0,throughRoundIndex+1));
+    for(const round of visibleRounds){
       if(round?.playoff)continue;
       for(const m of round?.matches||[]){
         if(String(m?.id||'').startsWith('LP_')||!isScored(m))continue;
@@ -89,14 +90,41 @@
   const clubFor=(comp,name)=>String(comp?.participantClubs?.[name]||'Centuria').trim()||'Centuria';
   const placeClass=i=>i===0?'place-1':i===1?'place-2':i===2?'place-3':'place-rest';
 
+  // v12.45: mirror the League tab's round-to-round movement calculation.
+  const leaguePlaceChanges=(comp,currentRows=leagueRows(comp))=>{
+    if(comp?.kind!=='league')return new Map();
+    const rounds=comp.rounds||[];
+    let lastPlayed=-1;
+    rounds.forEach((r,i)=>{
+      if(r?.playoff)return;
+      if((r?.matches||[]).some(isScored)||(comp.leagueFormat==='swiss'&&(r?.byes||[]).length))lastPlayed=i;
+    });
+    if(lastPlayed<0)return new Map();
+    const previous=leagueRows(comp,lastPlayed-1);
+    const previousPlace=new Map(previous.map((row,i)=>[row.name,i+1]));
+    return new Map(currentRows.map((row,i)=>[row.name,(previousPlace.get(row.name)||i+1)-(i+1)]));
+  };
+  const placeArrow=(change,compact=false)=>{
+    const numeric=Number.isFinite(change)?change:0;
+    const cls=numeric>0?'up':numeric<0?'down':'same';
+    const message=numeric>0
+      ? `Піднявся на ${numeric} ${numeric===1?'місце':'місць'}`
+      : numeric<0
+        ? `Опустився на ${-numeric} ${numeric===-1?'місце':'місць'}`
+        : 'Без змін у таблиці';
+    const glyph=numeric>0?'↑':numeric<0?'↓':'—';
+    return `<span class="arena-league-place-change-v1100 ${cls}${compact?' compact':''}" title="${esc(message)}" aria-label="${esc(message)}">${glyph}</span>`;
+  };
+
   const leagueTableMarkup=comp=>{
     const rows=leagueRows(comp);
+    const placeChanges=leaguePlaceChanges(comp,rows);
     const counts=leagueMatchCounts(comp);
     return `<div class="arena-card-v852 arena-league-card-v920 arena-league-standings-card-v1096 arena-active-event-full-table-v1234">
       <div class="arena-league-standings-head-v1097"><div><small>ОФІЦІЙНА ТУРНІРНА ТАБЛИЦЯ</small><strong>${esc(comp.title||'CENTURIA LEAGUE')}</strong></div><span>${counts.completed}/${counts.total} матчів</span></div>
       <div class="arena-league-standings-wrap-v1096">
-        <table class="arena-table-v852 arena-league-standings-table-v1096"><thead><tr><th>#</th><th>ГРАВЕЦЬ / КЛУБ</th><th>І</th><th>В</th><th>Н</th><th>П</th><th>ЗГ</th><th>ПГ</th><th>РГ</th><th>О</th></tr></thead><tbody>${rows.map((p,i)=>{const gd=p.gf-p.ga;return `<tr class="arena-league-place-row-v1097 ${placeClass(i)}"><td><span class="arena-league-rank-v1096"><span class="arena-league-rank-num-v1128">${i+1}</span></span></td><td class="arena-league-player-cell-v1096 has-club-crest-v1232"><span class="arena-league-table-crest-desktop-v1232" aria-hidden="true"></span><strong>${esc(p.name)}</strong><small>${esc(clubFor(comp,p.name))}</small></td><td>${p.p}</td><td>${p.w}</td><td>${p.d}</td><td>${p.l}</td><td>${p.gf}</td><td>${p.ga}</td><td><span class="arena-league-gd-v1096 ${gd>0?'plus':gd<0?'minus':'zero'}">${gd>0?'+':''}${gd}</span></td><td><b class="arena-league-points-v1096">${p.pts}</b></td></tr>`;}).join('')}</tbody></table>
-        <div class="arena-league-mobile-grid-v1099" role="table" aria-label="Турнірна таблиця Ліги"><div class="arena-league-mobile-row-v1099 mobile-head" role="row"><span role="columnheader">#</span><span role="columnheader">ГРАВЕЦЬ</span><span role="columnheader">І</span><span role="columnheader">В</span><span role="columnheader">Н</span><span role="columnheader">П</span><span role="columnheader">ЗГ</span><span role="columnheader">ПГ</span><span role="columnheader">РГ</span><span role="columnheader">О</span></div>${rows.map((p,i)=>{const gd=p.gf-p.ga;return `<div class="arena-league-mobile-row-v1099 ${placeClass(i)}" role="row"><span class="mobile-place" role="cell">${i+1}</span><span class="mobile-player has-club-crest-v1232" role="cell" title="${esc(p.name)} · ${esc(clubFor(comp,p.name))}"><span class="arena-league-table-crest-v1232" aria-hidden="true"></span><b>${esc(p.name)}</b><small>${esc(clubFor(comp,p.name))}</small></span><span role="cell">${p.p}</span><span role="cell">${p.w}</span><span role="cell">${p.d}</span><span role="cell">${p.l}</span><span role="cell">${p.gf}</span><span role="cell">${p.ga}</span><span role="cell">${gd>0?'+':''}${gd}</span><span class="mobile-points" role="cell"><b>${p.pts}</b></span></div>`;}).join('')}</div>
+        <table class="arena-table-v852 arena-league-standings-table-v1096"><thead><tr><th>#</th><th>ГРАВЕЦЬ / КЛУБ</th><th>І</th><th>В</th><th>Н</th><th>П</th><th>ЗГ</th><th>ПГ</th><th>РГ</th><th>О</th></tr></thead><tbody>${rows.map((p,i)=>{const gd=p.gf-p.ga;return `<tr class="arena-league-place-row-v1097 ${placeClass(i)}"><td><span class="arena-league-rank-v1096"><span class="arena-league-rank-num-v1128">${i+1}</span>${placeArrow(placeChanges.get(p.name))}</span></td><td class="arena-league-player-cell-v1096 has-club-crest-v1232"><span class="arena-league-table-crest-desktop-v1232" aria-hidden="true"></span><strong>${esc(p.name)}</strong><small>${esc(clubFor(comp,p.name))}</small></td><td>${p.p}</td><td>${p.w}</td><td>${p.d}</td><td>${p.l}</td><td>${p.gf}</td><td>${p.ga}</td><td><span class="arena-league-gd-v1096 ${gd>0?'plus':gd<0?'minus':'zero'}">${gd>0?'+':''}${gd}</span></td><td><b class="arena-league-points-v1096">${p.pts}</b></td></tr>`;}).join('')}</tbody></table>
+        <div class="arena-league-mobile-grid-v1099" role="table" aria-label="Турнірна таблиця Ліги"><div class="arena-league-mobile-row-v1099 mobile-head" role="row"><span role="columnheader">#</span><span role="columnheader">ГРАВЕЦЬ</span><span role="columnheader">І</span><span role="columnheader">В</span><span role="columnheader">Н</span><span role="columnheader">П</span><span role="columnheader">ЗГ</span><span role="columnheader">ПГ</span><span role="columnheader">РГ</span><span role="columnheader">О</span></div>${rows.map((p,i)=>{const gd=p.gf-p.ga;return `<div class="arena-league-mobile-row-v1099 ${placeClass(i)}" role="row"><span class="mobile-place" role="cell">${i+1}${placeArrow(placeChanges.get(p.name),true)}</span><span class="mobile-player has-club-crest-v1232" role="cell" title="${esc(p.name)} · ${esc(clubFor(comp,p.name))}"><span class="arena-league-table-crest-v1232" aria-hidden="true"></span><b>${esc(p.name)}</b><small>${esc(clubFor(comp,p.name))}</small></span><span role="cell">${p.p}</span><span role="cell">${p.w}</span><span role="cell">${p.d}</span><span role="cell">${p.l}</span><span role="cell">${p.gf}</span><span role="cell">${p.ga}</span><span role="cell">${gd>0?'+':''}${gd}</span><span class="mobile-points" role="cell"><b>${p.pts}</b></span></div>`;}).join('')}</div>
       </div>
       <div class="arena-league-standings-legend-v1097"><span><i class="top1"></i>1 місце</span><span><i class="top2"></i>2 місце</span><span><i class="top3"></i>3 місце</span></div>
     </div>`;
