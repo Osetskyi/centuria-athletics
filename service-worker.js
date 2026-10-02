@@ -1,10 +1,10 @@
-// v12.46 League arrows track the last accepted result
-const CACHE_VERSION="centuria-pwa-v1246-league-last-result-arrows";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.46";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.46";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.46";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.46";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.46";
+// v12.48 restore the already played 3:0 movement; future results remain server-tracked
+const CACHE_VERSION="centuria-pwa-v1248-recover-current-league-arrows";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.48";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.48";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.48";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.48";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.48";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{

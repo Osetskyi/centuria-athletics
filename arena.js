@@ -1822,14 +1822,14 @@
   // v11.00: the same ranking rules for the live table and each completed round.
   // A round cutoff only limits which results are counted; no snapshot or client
   // storage is needed, so all viewers derive identical movement from shared scores.
-  const leagueStandings=(throughRoundIndex=null,revertLastResult=false)=>{
+  const leagueStandings=(throughRoundIndex=null,revertLastResult=false,forcedMovement=null)=>{
     const comp=testCompetition;
     const names=comp?.kind==="league"?comp.participants:P.map(x=>x[0]);
     const s=new Map(names.map(n=>[n,{name:n,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}]));
     const rounds=comp?.kind==='league'?(comp.rounds||[]):[];
     const visibleRounds=throughRoundIndex===null?rounds:rounds.slice(0,Math.max(0,throughRoundIndex+1));
     const matches=comp?.kind==='league'?visibleRounds.flatMap(r=>r.matches||[]):allMatches();
-    const movement=revertLastResult&&comp?.leagueLastResultChange&&typeof comp.leagueLastResultChange==='object'?comp.leagueLastResultChange:null;
+    const movement=revertLastResult?(forcedMovement||(comp?.leagueLastResultChange&&typeof comp.leagueLastResultChange==='object'?comp.leagueLastResultChange:null)):null;
     for(const m of matches){
       // TOP-4 playoffs determine the champion but do not alter league rankings.
       if(comp?.kind==='league'&&String(m.id||'').startsWith('LP_'))continue;
@@ -1882,13 +1882,33 @@
   const leaguePlaceChangesV1100=(currentRows=leagueStandings())=>{
     const comp=testCompetition;
     if(comp?.kind!=='league')return new Map();
-    // v12.46: if Supabase stored the result that changed most recently, compare
+    // v12.47: backend trigger stores the result that changed most recently, compare
     // against the exact table immediately before that result. This works even
     // when League matches are entered out of round order.
     if(comp?.leagueLastResultChange?.matchId){
       const previous=leagueStandings(null,true);
       const previousPlace=new Map(previous.map((row,i)=>[row.name,i+1]));
       return new Map(currentRows.map((row,i)=>[row.name,(previousPlace.get(row.name)||i+1)-(i+1)]));
+    }
+    // v12.48 one-time recovery for the already played 3:0 Osetskyi_3 match.
+    // The old result had no server snapshot, so reconstruct only the known table
+    // state (4th -> 2nd). The next accepted result creates the normal server marker
+    // and this compatibility branch stops being used automatically.
+    if(String(comp?.id||'')==='league_1790592009707'){
+      const currentPlace=new Map(currentRows.map((row,i)=>[row.name,i+1]));
+      const candidates=allMatches().filter(m=>{
+        if(!isScored(m)||String(m?.id||'').startsWith('LP_'))return false;
+        const home=String(m?.home||'').toLowerCase(),away=String(m?.away||'').toLowerCase();
+        return (home==='osetskyi_3'&&Number(m.homeScore)===3&&Number(m.awayScore)===0)||
+               (away==='osetskyi_3'&&Number(m.awayScore)===3&&Number(m.homeScore)===0);
+      }).reverse();
+      for(const m of candidates){
+        const previous=leagueStandings(null,true,{matchId:m.id,beforeHomeScore:null,beforeAwayScore:null});
+        const previousPlace=new Map(previous.map((row,i)=>[row.name,i+1]));
+        if(currentPlace.get('Osetskyi_3')===2&&previousPlace.get('Osetskyi_3')===4){
+          return new Map(currentRows.map((row,i)=>[row.name,(previousPlace.get(row.name)||i+1)-(i+1)]));
+        }
+      }
     }
     // Fallback for old saved competitions until the next official result.
     const rounds=comp.rounds||[];
