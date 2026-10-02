@@ -1822,21 +1822,27 @@
   // v11.00: the same ranking rules for the live table and each completed round.
   // A round cutoff only limits which results are counted; no snapshot or client
   // storage is needed, so all viewers derive identical movement from shared scores.
-  const leagueStandings=(throughRoundIndex=null)=>{
+  const leagueStandings=(throughRoundIndex=null,revertLastResult=false)=>{
     const comp=testCompetition;
     const names=comp?.kind==="league"?comp.participants:P.map(x=>x[0]);
     const s=new Map(names.map(n=>[n,{name:n,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}]));
     const rounds=comp?.kind==='league'?(comp.rounds||[]):[];
     const visibleRounds=throughRoundIndex===null?rounds:rounds.slice(0,Math.max(0,throughRoundIndex+1));
     const matches=comp?.kind==='league'?visibleRounds.flatMap(r=>r.matches||[]):allMatches();
+    const movement=revertLastResult&&comp?.leagueLastResultChange&&typeof comp.leagueLastResultChange==='object'?comp.leagueLastResultChange:null;
     for(const m of matches){
       // TOP-4 playoffs determine the champion but do not alter league rankings.
       if(comp?.kind==='league'&&String(m.id||'').startsWith('LP_'))continue;
-      if(!isScored(m))continue;
+      let homeScore=m.homeScore,awayScore=m.awayScore;
+      if(movement&&String(movement.matchId||'')===String(m.id||'')){
+        homeScore=movement.beforeHomeScore;
+        awayScore=movement.beforeAwayScore;
+      }
+      if(!Number.isFinite(homeScore)||!Number.isFinite(awayScore))continue;
       const h=s.get(m.home),a=s.get(m.away);if(!h||!a)continue;
-      h.p++;a.p++;h.gf+=m.homeScore;h.ga+=m.awayScore;a.gf+=m.awayScore;a.ga+=m.homeScore;
-      if(m.homeScore>m.awayScore){h.w++;a.l++;h.pts+=3}
-      else if(m.homeScore<m.awayScore){a.w++;h.l++;a.pts+=3}
+      h.p++;a.p++;h.gf+=homeScore;h.ga+=awayScore;a.gf+=awayScore;a.ga+=homeScore;
+      if(homeScore>awayScore){h.w++;a.l++;h.pts+=3}
+      else if(homeScore<awayScore){a.w++;h.l++;a.pts+=3}
       else{h.d++;a.d++;h.pts++;a.pts++}
     }
     if(comp?.kind==='league'&&comp.leagueFormat==='swiss'){
@@ -1876,6 +1882,15 @@
   const leaguePlaceChangesV1100=(currentRows=leagueStandings())=>{
     const comp=testCompetition;
     if(comp?.kind!=='league')return new Map();
+    // v12.46: if Supabase stored the result that changed most recently, compare
+    // against the exact table immediately before that result. This works even
+    // when League matches are entered out of round order.
+    if(comp?.leagueLastResultChange?.matchId){
+      const previous=leagueStandings(null,true);
+      const previousPlace=new Map(previous.map((row,i)=>[row.name,i+1]));
+      return new Map(currentRows.map((row,i)=>[row.name,(previousPlace.get(row.name)||i+1)-(i+1)]));
+    }
+    // Fallback for old saved competitions until the next official result.
     const rounds=comp.rounds||[];
     let lastPlayed=-1;
     rounds.forEach((r,i)=>{

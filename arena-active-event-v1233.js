@@ -2,7 +2,7 @@
 (()=>{
   'use strict';
 
-  const BUILD='12.45';
+  const BUILD='12.46';
   const ACTIVE_EVENT_KEY='ca_arena_active_event';
   const ACTIVE_EVENT_LEGACY_KEY='ca_arena_active_event_v925';
   let busy=false;
@@ -54,22 +54,29 @@
     return changed;
   };
 
-  const leagueRows=(comp,throughRoundIndex=null)=>{
+  const leagueRows=(comp,throughRoundIndex=null,revertLastResult=false)=>{
     const names=[...(comp?.participants||[])];
     const map=new Map(names.map(name=>[name,{name,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0}]));
     const rounds=comp?.rounds||[];
     const visibleRounds=throughRoundIndex===null?rounds:rounds.slice(0,Math.max(0,throughRoundIndex+1));
+    const movement=revertLastResult&&comp?.leagueLastResultChange&&typeof comp.leagueLastResultChange==='object'?comp.leagueLastResultChange:null;
     for(const round of visibleRounds){
       if(round?.playoff)continue;
       for(const m of round?.matches||[]){
-        if(String(m?.id||'').startsWith('LP_')||!isScored(m))continue;
+        if(String(m?.id||'').startsWith('LP_'))continue;
+        let homeScore=m.homeScore,awayScore=m.awayScore;
+        if(movement&&String(movement.matchId||'')===String(m?.id||'')){
+          homeScore=movement.beforeHomeScore;
+          awayScore=movement.beforeAwayScore;
+        }
+        if(!Number.isFinite(homeScore)||!Number.isFinite(awayScore))continue;
         const h=map.get(m.home),a=map.get(m.away);
         if(!h||!a)continue;
         h.p++;a.p++;
-        h.gf+=Number(m.homeScore)||0;h.ga+=Number(m.awayScore)||0;
-        a.gf+=Number(m.awayScore)||0;a.ga+=Number(m.homeScore)||0;
-        if(m.homeScore>m.awayScore){h.w++;a.l++;h.pts+=3;}
-        else if(m.homeScore<m.awayScore){a.w++;h.l++;a.pts+=3;}
+        h.gf+=Number(homeScore)||0;h.ga+=Number(awayScore)||0;
+        a.gf+=Number(awayScore)||0;a.ga+=Number(homeScore)||0;
+        if(homeScore>awayScore){h.w++;a.l++;h.pts+=3;}
+        else if(homeScore<awayScore){a.w++;h.l++;a.pts+=3;}
         else{h.d++;a.d++;h.pts++;a.pts++;}
       }
       if(comp?.leagueFormat==='swiss'){
@@ -90,9 +97,14 @@
   const clubFor=(comp,name)=>String(comp?.participantClubs?.[name]||'Centuria').trim()||'Centuria';
   const placeClass=i=>i===0?'place-1':i===1?'place-2':i===2?'place-3':'place-rest';
 
-  // v12.45: mirror the League tab's round-to-round movement calculation.
+  // v12.46: compare against the exact table before the most recently accepted result.
   const leaguePlaceChanges=(comp,currentRows=leagueRows(comp))=>{
     if(comp?.kind!=='league')return new Map();
+    if(comp?.leagueLastResultChange?.matchId){
+      const previous=leagueRows(comp,null,true);
+      const previousPlace=new Map(previous.map((row,i)=>[row.name,i+1]));
+      return new Map(currentRows.map((row,i)=>[row.name,(previousPlace.get(row.name)||i+1)-(i+1)]));
+    }
     const rounds=comp.rounds||[];
     let lastPlayed=-1;
     rounds.forEach((r,i)=>{

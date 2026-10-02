@@ -1,10 +1,10 @@
-// v12.45 League position movement arrows fix
-const CACHE_VERSION="centuria-pwa-v12440-player-modal-scroll-bottom";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.45";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.45";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.45";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.45";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.45";
+// v12.46 League arrows track the last accepted result
+const CACHE_VERSION="centuria-pwa-v1246-league-last-result-arrows";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.46";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.46";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.46";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.46";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.46";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{

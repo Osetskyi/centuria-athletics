@@ -390,7 +390,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.45",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.46",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -9257,7 +9257,7 @@ window.CenturiaArenaStateApi={
   },
   async matchAction({action,competitionId,matchId,leg=1,homeScore=null,awayScore=null,tiebreakWinner=null}={}){
     if(!sb||!authUser)throw new Error('Увійди в акаунт');
-    const {data,error}=await sb.rpc('centuria_arena_match_action_v1223',{
+    const {data,error}=await sb.rpc('centuria_arena_match_action_v1246',{
       p_action:String(action||''),p_competition_id:String(competitionId||''),
       p_match_id:String(matchId||''),p_leg:Number(leg)||1,
       p_home_score:homeScore==null?null:Number(homeScore),
@@ -12165,7 +12165,7 @@ if(document.readyState==="loading"){
 
 /* v12.36 — keep the Settings footer in sync with the deployed build. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.45");
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.46");
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
