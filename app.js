@@ -390,7 +390,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.57",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.57.1",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -12221,15 +12221,36 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.57 — always show the version deployed with the current HTML.
-   The Settings footer can otherwise be overwritten by older build listeners. */
-function syncSettingsVersionV1210(){
-  const value=String(document.querySelector('meta[name="centuria-build"]')?.content||"12.57").trim();
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent=`v${value}`);
-}
-if(document.readyState==="loading"){
-  document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
-}else{
-  syncSettingsVersionV1210();
-}
-window.addEventListener("pageshow",syncSettingsVersionV1210);
+/* v12.57 — Settings version, sourced from the HTML build metadata.
+   Legacy version handlers may update the footer later, so keep it in sync
+   with a narrowly scoped observer rather than another hardcoded version. */
+(function(){
+  const footerSelector=".settings-version";
+  const currentVersion=()=>{
+    const raw=String(document.querySelector('meta[name="centuria-build"]')?.content||"12.57").trim();
+    return `v${raw.replace(/^v/i,"")}`;
+  };
+  function syncSettingsVersion(){
+    const value=currentVersion();
+    document.querySelectorAll(`${footerSelector} strong`).forEach(el=>{
+      if(el.textContent!==value)el.textContent=value;
+    });
+  }
+  function initializeSettingsVersion(){
+    syncSettingsVersion();
+    document.querySelectorAll(footerSelector).forEach(footer=>{
+      new MutationObserver(syncSettingsVersion).observe(footer,{
+        subtree:true,childList:true,characterData:true
+      });
+    });
+  }
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",initializeSettingsVersion);
+  }else{
+    initializeSettingsVersion();
+  }
+  window.addEventListener("pageshow",syncSettingsVersion);
+  document.addEventListener("visibilitychange",()=>{
+    if(!document.hidden)syncSettingsVersion();
+  });
+})();
