@@ -1,0 +1,158 @@
+/* Centuria v12.50 fourth subpage / 20 distinct Russian position codes */
+#playerDialog .player-view-tabs{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important}
+#playerDialog .player-view-tabs .player-view-tab{font-size:9px!important;padding:7px 2px!important;min-height:40px;height:auto!important;letter-spacing:0!important;overflow:hidden;text-overflow:ellipsis}
+#playerViewSlider.player-view-slider{width:400%!important}
+#playerViewSlider > .player-view-slide{flex:0 0 25%!important;width:25%!important;max-width:25%!important}
+#playerPositionsSlide{box-sizing:border-box;padding:3px 0 15px;overflow:visible}
+.pt-header{text-align:center;margin-bottom:12px}
+.pt-header strong{display:block;color:#f5e7c7;font-size:20px;letter-spacing:.03em}
+.pt-header span{display:block;font-size:13px;color:#c7b58c;margin-top:3px}
+.pt-field{aspect-ratio:320 / 475;position:relative;isolation:isolate;overflow:hidden;border-radius:16px;border:1px solid #5f986f;background:repeating-linear-gradient(0deg,#1c5a3b 0%,#1c5a3b 12.5%,#1a5137 12.5%,#1a5137 25%);box-shadow:inset 0 0 18px rgba(0,0,0,.36);min-width:0;max-width:420px;margin:0 auto}
+.pt-field-border,.pt-half-line,.pt-center-circle,.pt-top-box,.pt-bottom-box,.pt-top-goal,.pt-bottom-goal{position:absolute;pointer-events:none;border-color:rgba(233,245,225,.60)!important}
+.pt-field-border{inset:3%;border:1.6px solid;border-radius:1px}
+.pt-half-line{left:3%;right:3%;top:50%;border-top:1.6px solid}
+.pt-center-circle{width:28%;aspect-ratio:1;top:50%;left:50%;transform:translate(-50%,-50%);border:1.6px solid;border-radius:50%}
+.pt-top-box,.pt-bottom-box{width:62%;height:13%;left:19%;border:1.6px solid}
+.pt-top-box{top:3%;border-top:0}.pt-bottom-box{bottom:3%;border-bottom:0}
+.pt-top-goal,.pt-bottom-goal{width:24%;height:5%;left:38%;border:1px solid}.pt-top-goal{top:3%;border-top:0}.pt-bottom-goal{bottom:3%;border-bottom:0}
+#playerPositionsSlide .pt-dot{position:absolute!important;left:var(--pt-x);top:var(--pt-y);transform:translate(-50%,-50%);width:clamp(34px,10.4vw,43px);height:clamp(38px,11.1vw,47px);padding:2px!important;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;border-radius:50%!important;background:#172733!important;color:#d4d7dc!important;border:1.5px solid rgba(209,222,219,.30)!important;box-shadow:0 2px 6px rgba(0,0,0,.32);cursor:pointer;font-family:inherit;z-index:2;line-height:1.1}
+#playerPositionsSlide .pt-dot b{font-size:clamp(9px,2.6vw,12px);font-weight:900}
+#playerPositionsSlide .pt-dot small{font-size:clamp(10px,3vw,13px);font-weight:800}
+#playerPositionsSlide .pt-dot.pt-used{color:#f4e7c1!important;border-color:#d7b957!important;background:#2a322c!important}
+#playerPositionsSlide .pt-dot.pt-most{color:#effff8!important;border:2px solid #16d6ab!important;background:#084c43!important;box-shadow:0 0 14px rgba(26,210,164,.26)}
+#playerPositionsSlide .pt-dot:focus-visible{outline:2px solid #ffdc79;outline-offset:2px}
+.pt-selected{font-size:12px;text-align:center;color:#d6bd8b;min-height:21px;margin:10px 0}
+.pt-summary{background:rgba(14,22,32,.82);padding:13px;border:1px solid #57492e;border-radius:15px;margin-top:10px;color:#eee}
+.pt-summary-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.pt-summary-head strong{font-size:23px;color:#f0d07b}
+.pt-summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-top:10px}
+.pt-summary-cell{text-align:center;border-top:1px solid rgba(222,211,185,.15);padding:8px 2px 0;min-width:0}
+.pt-summary-cell strong{display:block;font-size:20px;color:#3bdbb4}.pt-summary-cell span{font-size:10px;color:#c8cad3}
+.pt-caption{font-size:11px;line-height:1.5;color:#c3b78f;margin:8px 2px 13px}
+html[data-site-theme="light"] #playerPositionsSlide .pt-summary{background:#eae0cc;color:#302a23}
+html[data-site-theme="light"] #playerPositionsSlide .pt-caption,html[data-site-theme="light"] #playerPositionsSlide .pt-summary-cell span{color:#584d42}
+html[data-site-theme="light"] #playerPositionsSlide .pt-header strong{color:#40331d}
+html[data-site-theme="light"] #playerPositionsSlide .pt-header span{color:#735f37}
+
+@media(max-width:390px){#playerDialog .player-view-tabs .player-view-tab{font-size:8px!important}}
+
+#playerPositionsSlide [hidden]{display:none!important}
+#playerDialog .pt-field{width:100%}
+#playerDialog #playerPositionsSlide{max-height:calc(100dvh - 250px)!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin;padding-bottom:20px}
+html.light-theme #playerPositionsSlide .pt-summary{background:#eae0cc;color:#302a23}
+/* v12.51 — read-only positional averages, selected position and monthly history */
+#playerPositionsSlide .pt-dot.pt-selected-dot{
+  outline:2px solid #ffdf88!important;outline-offset:1px;
+  box-shadow:0 0 15px rgba(255,223,136,.55)!important;
+}
+#playerPositionsSlide .pt-details{
+  background:rgba(14,22,32,.92);border:1px solid #aa8950;border-radius:14px;
+  padding:12px;margin-top:12px;color:#eee;
+}
+#playerPositionsSlide .pt-details-title{font-size:15px;font-weight:850;color:#f1d486;line-height:1.35;margin-bottom:10px}
+#playerPositionsSlide .pt-details-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#playerPositionsSlide .pt-details-grid>div{min-width:0;border-radius:10px;background:rgba(255,255,255,.06);padding:10px 8px;text-align:center}
+#playerPositionsSlide .pt-details-grid span{display:block;font-size:11px;line-height:1.4;color:#cfcac0;min-height:32px}
+#playerPositionsSlide .pt-details-grid strong{display:block;font-size:23px;color:#43dfad;margin-top:6px;font-variant-numeric:tabular-nums}
+#playerPositionsSlide .pt-rating-coverage{font-size:11px;line-height:1.5;color:#edd39b;margin:9px 0}
+#playerPositionsSlide .pt-months-title{font-size:12px;font-weight:850;letter-spacing:.015em;color:#ecd296;margin-top:13px;margin-bottom:4px}
+#playerPositionsSlide .pt-month-row{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.14);padding:10px 2px}
+#playerPositionsSlide .pt-month-row span{display:grid;gap:3px}
+#playerPositionsSlide .pt-month-row b{font-size:13px;font-weight:750;color:#f4eee1}
+#playerPositionsSlide .pt-month-row small{font-size:11px;color:#c1cbc2}
+#playerPositionsSlide .pt-month-row>strong{font-variant-numeric:tabular-nums;font-size:18px;color:#43dfad;white-space:nowrap}
+#playerPositionsSlide .pt-no-months{color:#c7c1b2;font-size:12px;margin:10px 0 0}
+html.light-theme #playerPositionsSlide .pt-details,
+html[data-site-theme="light"] #playerPositionsSlide .pt-details{background:#eae0cc;color:#322b21;border-color:#98845e}
+html.light-theme #playerPositionsSlide .pt-details-title,
+html[data-site-theme="light"] #playerPositionsSlide .pt-details-title,
+html.light-theme #playerPositionsSlide .pt-months-title,
+html[data-site-theme="light"] #playerPositionsSlide .pt-months-title{color:#574021}
+html.light-theme #playerPositionsSlide .pt-details-grid>div,
+html[data-site-theme="light"] #playerPositionsSlide .pt-details-grid>div{background:rgba(0,0,0,.07)}
+html.light-theme #playerPositionsSlide .pt-details-grid span,
+html[data-site-theme="light"] #playerPositionsSlide .pt-details-grid span,
+html.light-theme #playerPositionsSlide .pt-month-row small,
+html[data-site-theme="light"] #playerPositionsSlide .pt-month-row small{color:#665d4d}
+html.light-theme #playerPositionsSlide .pt-month-row b,
+html[data-site-theme="light"] #playerPositionsSlide .pt-month-row b{color:#3e362a}
+html.light-theme #playerPositionsSlide .pt-details-grid strong,
+html[data-site-theme="light"] #playerPositionsSlide .pt-details-grid strong,
+html.light-theme #playerPositionsSlide .pt-month-row>strong,
+html[data-site-theme="light"] #playerPositionsSlide .pt-month-row>strong{color:#087f61}
+html.light-theme #playerPositionsSlide .pt-no-months,
+html[data-site-theme="light"] #playerPositionsSlide .pt-no-months{color:#695f4d}
+
+/* v12.52: позиції за часткою всіх матчів із визначеною позицією */
+#playerPositionsSlide .pt-dot.pt-mid{
+  color:#f3faff!important;border:2px solid #50b9ff!important;
+  background:#124368!important;box-shadow:0 0 12px rgba(43,152,233,.33);
+}
+#playerPositionsSlide .pt-dot.pt-gold{
+  color:#fff7db!important;border:2px solid #ffe396!important;
+  background:linear-gradient(145deg,#805517,#4c310a)!important;
+  box-shadow:0 0 8px 2px rgba(255,219,116,.67),0 0 21px 6px rgba(244,178,45,.43),inset 0 0 8px rgba(255,245,176,.24);
+  animation:pt-gold-glow-v1252 2.8s ease-in-out infinite alternate;
+}
+#playerPositionsSlide .pt-dot.pt-gold b,#playerPositionsSlide .pt-dot.pt-gold small{
+  color:#fff9e9!important;text-shadow:0 1px 2px rgba(38,25,0,.85);
+}
+@keyframes pt-gold-glow-v1252{
+  from{box-shadow:0 0 8px 2px rgba(255,219,116,.67),0 0 21px 6px rgba(244,178,45,.43),inset 0 0 8px rgba(255,245,176,.24)}
+  to{box-shadow:0 0 11px 3px rgba(255,231,153,.90),0 0 26px 9px rgba(246,181,40,.64),inset 0 0 11px rgba(255,250,201,.34)}
+}
+#playerPositionsSlide .pt-dot.pt-gold.pt-selected-dot{
+  outline:2px solid #fff5bb!important;outline-offset:3px;
+  box-shadow:0 0 10px 3px rgba(255,228,132,.90),0 0 24px 8px rgba(244,178,45,.55),inset 0 0 9px rgba(255,245,176,.30)!important;
+}
+@media(prefers-reduced-motion:reduce){#playerPositionsSlide .pt-dot.pt-gold{animation:none}}
+#playerPositionsSlide .pt-color-legend{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:5px 11px;
+  color:inherit;font-size:10px;line-height:1.4;margin:10px 0 2px;
+}
+#playerPositionsSlide .pt-color-legend span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+#playerPositionsSlide .pt-color-legend i{width:9px;height:9px;display:inline-block;border-radius:50%;border:1px solid rgba(0,0,0,.16)}
+#playerPositionsSlide .pt-color-legend .pt-key-idle{background:#65747b}
+#playerPositionsSlide .pt-color-legend .pt-key-rare{background:#d7b957}
+#playerPositionsSlide .pt-color-legend .pt-key-mid{background:#50b9ff}
+#playerPositionsSlide .pt-color-legend .pt-key-often{background:#16d6ab}
+#playerPositionsSlide .pt-color-legend .pt-key-gold{background:#f7d15a;box-shadow:0 0 8px rgba(242,188,45,.9)}
+
+/* v12.55 — persistent positional award cards (both site themes) */
+.general-awards-grid .general-award-card.general-award-pending{
+  justify-content:space-between;
+  gap:6px;
+  min-height:110px;
+  border-style:dashed;
+  border-color:rgba(201,174,109,.35);
+}
+.general-awards-grid .general-award-pending-symbol{
+  font-size:26px;
+  line-height:1.3;
+  filter:grayscale(.25);
+  opacity:.7;
+}
+.general-awards-grid .general-award-card.general-award-pending strong{
+  font-size:10px;
+  font-weight:800;
+  line-height:1.25;
+  color:#d3c8aa;
+}
+.general-awards-grid .general-award-card.general-award-pending b{
+  font-size:9px;
+  line-height:1.4;
+  font-weight:700;
+  color:#a79a80;
+}
+html[data-site-theme="light"] .general-awards-grid .general-award-card.general-award-pending,
+html.light-theme .general-awards-grid .general-award-card.general-award-pending{
+  border-color:#cfc5ae!important;
+}
+html[data-site-theme="light"] .general-awards-grid .general-award-card.general-award-pending strong,
+html.light-theme .general-awards-grid .general-award-card.general-award-pending strong{
+  color:#665839!important;
+}
+html[data-site-theme="light"] .general-awards-grid .general-award-card.general-award-pending b,
+html.light-theme .general-awards-grid .general-award-card.general-award-pending b{
+  color:#766b56!important;
+}

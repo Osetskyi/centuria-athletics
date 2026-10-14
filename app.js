@@ -390,7 +390,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.46",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.57",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -945,6 +945,12 @@ async function refreshAuth(){
 
   const critical=await Promise.allSettled([playersPromise,statsPromise,homeEventPromise]);
   critical.forEach(r=>{if(r.status==="rejected")console.error("Home critical refresh error",r.reason);});
+
+  /* v12.57: load the per-match positions before either showing or issuing
+     positional awards. Otherwise a cold sign-in would use an empty cache. */
+  try{
+    await window.CenturiaPositionsV1250?.refresh?.();
+  }catch(err){ console.warn("v12.57 position history refresh",err); }
 
   /* v7.54: once players + statistics are ready, an ADMIN/EDITOR can safely
      finalize any completed month. The routine is idempotent and skips awards
@@ -1533,26 +1539,29 @@ $("searchToggle").addEventListener("click",()=>$("searchRow").classList.toggle("
 async function playerViewSlide(index){
   const slider=$("playerViewSlider");
   if(!slider)return;
-  index=Math.max(0,Math.min(2,index));
-  slider.style.transform=`translateX(-${index*(100/3)}%)`;
+  index=Math.max(0,Math.min(3,index));
+  slider.style.transform=`translateX(-${index*25}%)`;
   $("playerInfoTab")?.classList.toggle("active",index===0);
   $("playerStatsTab")?.classList.toggle("active",index===1);
   if(index===1) setTimeout(()=>setPlayerStatsMode("training"),0);
   $("playerAwardsTab")?.classList.toggle("active",index===2);
+  $("playerPositionsTab")?.classList.toggle("active",index===3);
+  if(index===3) window.CenturiaPositionsV1250?.render?.(editPlayerId);
 
   // v7.28: only the active subpage determines modal height.
   // Statistics can be large; Information/Awards return to their compact size.
   const dialog=$("playerDialog");
-  dialog?.classList.toggle("player-stats-open",index===1);
+  dialog?.classList.toggle("player-stats-open",index===1||index===3);
   const slides=[
     $("playerInfoSlide"),
     $("playerStatsSlide"),
-    $("playerAwardsPane")
+    $("playerAwardsPane"),
+    $("playerPositionsSlide")
   ];
   const activeSlide=slides[index];
   const syncPlayerSliderHeight=()=>{
     if(!slider || !activeSlide)return;
-    slider.style.height=`${activeSlide.scrollHeight}px`;
+    slider.style.height=`${index===3?activeSlide.clientHeight:activeSlide.scrollHeight}px`;
   };
   requestAnimationFrame(()=>{
     syncPlayerSliderHeight();
@@ -1848,6 +1857,7 @@ function openPlayerModal(id=null){
 
 $("playerInfoTab")?.addEventListener("click",()=>playerViewSlide(0));
 $("playerStatsTab")?.addEventListener("click",()=>playerViewSlide(1));
+$("playerPositionsTab")?.addEventListener("click",()=>playerViewSlide(3));
 function setPlayerStatsMode(mode){
   const official=mode==="official";
   $("officialStatsPanel")?.classList.toggle("hidden",!official);
@@ -1870,9 +1880,8 @@ let playerSwipeStartY=null;
 
 function currentPlayerSlideV598(){
   const tr=$("playerViewSlider")?.style.transform||"";
-  if(tr.includes("66.666") || tr.includes("66.667"))return 2;
-  if(tr.includes("33.333") || tr.includes("33.334"))return 1;
-  return 0;
+  const match=tr.match(/translateX\(-([\d.]+)%\)/);
+  return match?Math.max(0,Math.min(3,Math.round(Number(match[1])/25))):0;
 }
 
 $("playerViewSlider")?.addEventListener("touchstart",e=>{
@@ -1893,7 +1902,7 @@ $("playerViewSlider")?.addEventListener("touchend",async e=>{
   if(Math.abs(dx)<45 || Math.abs(dx)<=Math.abs(dy)*1.15)return;
 
   const page=currentPlayerSlideV598();
-  if(dx<0 && page<2) await playerViewSlide(page+1);
+  if(dx<0 && page<3) await playerViewSlide(page+1);
   if(dx>0 && page>0) await playerViewSlide(page-1);
 },{passive:true});
 
@@ -5364,14 +5373,17 @@ $("homeNextEvent")?.addEventListener("click",openHomeNextEvent);
 /* Training days, official stats and MVP */
 async function loadStatisticsData(){
   if(!sb||!authUser)return;
-  const [td,ts,os]=await Promise.all([
+  const [td,ts,os,pm]=await Promise.all([
     sb.from("training_days").select("*").order("training_date",{ascending:true}),
     sb.from("training_player_stats").select("*"),
-    sb.from("official_match_player_stats").select("*")
+    sb.from("official_match_player_stats").select("*"),
+    sb.from("player_position_matches").select("*")
   ]);
   if(!td.error)trainingDays=td.data||[];
   if(!ts.error)trainingStats=ts.data||[];
   if(!os.error)officialMatchStats=os.data||[];
+  if(!pm.error)window.CenturiaPositionMatchesV1250=pm.data||[];
+  else console.warn("Position match data unavailable",pm.error);
   renderCalendar();
   await loadLatestMvp();
 }
@@ -6761,7 +6773,7 @@ function generalModeEventDate(row){
   return trainingDays.find(d=>d.id===row.training_day_id)?.training_date||null;
 }
 
-function generalTeamMatches(monthDate=null){
+function generalTeamMatches(monthDate=null,sinceDate=null){
   const monthKey=monthDate?generalMonthKey(monthDate):null;
   if(generalStatsMode==="official"){
     const ids=new Set();
@@ -6769,6 +6781,7 @@ function generalTeamMatches(monthDate=null){
       const date=calendarMatches.find(m=>m.id===r.match_id)?.match_date||null;
       if(!date)return;
       if(monthKey && generalMonthKey(new Date(`${date}T12:00:00`))!==monthKey)return;
+      if(sinceDate && date<sinceDate)return;
       ids.add(r.match_id);
     });
     return ids.size;
@@ -6780,6 +6793,7 @@ function generalTeamMatches(monthDate=null){
     const date=day?.training_date||null;
     if(!date)return;
     if(monthKey && generalMonthKey(new Date(`${date}T12:00:00`))!==monthKey)return;
+    if(sinceDate && date<sinceDate)return;
     dayIds.add(r.training_day_id);
   });
 
@@ -6804,12 +6818,33 @@ function generalAdjustedRating(stats,teamMatches){
   return Math.max(0,avg-(.20*(1-participation)));
 }
 
+/* v12.57: lifetime rating eligibility is relative to each player's FIRST
+   recorded match in the selected mode, not the club's lifetime total.
+   A minimum of ten personal matches avoids one-gathering top rankings.
+   Monthly awards intentionally keep their existing separate rule. */
+const GENERAL_LIFETIME_MIN_PERSONAL_MATCHES_V1254=10;
+const GENERAL_LIFETIME_PARTICIPATION_V1254=.40;
+function generalLifetimeEligibilityV1254(player,stats){
+  const firstDate=generalPlayerRows(player.id)
+    .map(row=>row.event_date)
+    .filter(date=>typeof date==='string' && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort()[0]||null;
+  // Include the whole first calendar day; training sessions can include several games.
+  const teamSinceJoined=firstDate?generalTeamMatches(null,firstDate):0;
+  const minMatches=Math.max(GENERAL_LIFETIME_MIN_PERSONAL_MATCHES_V1254,
+    Math.ceil(teamSinceJoined*GENERAL_LIFETIME_PARTICIPATION_V1254));
+  return {
+    teamSinceJoined,minMatches,firstDate,
+    eligible:teamSinceJoined>0 && stats.matches>=minMatches,
+    adjusted:generalAdjustedRating(stats,teamSinceJoined)
+  };
+}
+
 function renderGeneralPlayers(){
   const teamMatches=generalTeamMatches();
-  const minMatches=generalMinMatches(teamMatches);
   const rows=players.map(p=>{
     const stats=generalAggregatePlayer(p);
-    return {player:p,stats,eligible:stats.matches>=minMatches,adjusted:generalAdjustedRating(stats,teamMatches)};
+    return {player:p,stats,...generalLifetimeEligibilityV1254(p,stats)};
   });
 
   rows.sort((a,b)=>{
@@ -6823,7 +6858,7 @@ function renderGeneralPlayers(){
   });
 
   $("generalPlayersSummary").textContent=teamMatches
-    ?`Гравців: ${players.length} • Матчів: ${teamMatches} • Мін. ${minMatches}`
+    ?`Гравців: ${players.length} • Матчів: ${teamMatches} • Допуск: 40% від першого матчу (мін. 10)`
     :`Гравців: ${players.length}`;
 
   let ratedPlace=0;
@@ -6836,7 +6871,9 @@ function renderGeneralPlayers(){
       ?(x.eligible&&x.adjusted?x.adjusted.toFixed(2):"—")
       :x.stats[generalStatsSort];
     const detail=ratingMode&&!x.eligible
-      ?`Недостатньо матчів • потрібно ${minMatches}`
+      ?(x.firstDate
+        ?`Недостатньо матчів • ${x.stats.matches}/${x.minMatches} (40% від першого матчу)`
+        :`Недостатньо матчів • ще немає дати першого матчу`)
       :`Ср. ${x.stats.average?x.stats.average.toFixed(2):"—"} • MVP ${x.stats.mvp}`;
     return `<button type="button" class="general-player-full-row ${ratingMode&&!x.eligible?"rating-ineligible":""}" data-general-player="${x.player.id}" data-viewer-allowed="true">
       <span class="general-place ${placeClass}">${place}</span>
@@ -7060,38 +7097,35 @@ function renderGeneralAwards(){
   const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
 
   const teamMatches=generalTeamMatches(generalAwardsMonthCursor);
-  const minMatches=generalMinMatches(teamMatches);
-  $("generalAwardsState").textContent=teamMatches
-    ?`${current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ"} • МІНІМУМ ${minMatches} МАТЧІВ`
-    :(current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ");
+  const minMatches=generalMinMatches(teamMatches); // Unchanged for goals, assists and MVP.
+  const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
+  // No single minimum describes every monthly award; show thresholds on each
+  // positional/pending card instead of the misleading shared 30% heading.
+  $("generalAwardsState").textContent=current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ";
 
   const data=players.map(player=>{
     const stats=generalMonthAggregate(player,generalAwardsMonthCursor);
     return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
   }).filter(x=>x.stats.events>0||x.stats.matches>0);
   const eligible=data.filter(x=>x.stats.matches>=minMatches);
-
+  // v12.57: Player of Month requires 50% of all team matches this month.
+  // Other counting awards still use their existing separate 30% requirement.
+  const playerMonthEligible=teamMatches>0
+    ?data.filter(x=>x.stats.matches>=minPlayerMonthMatches):[];
   const maxima={
-    goals:Math.max(0,...eligible.map(x=>x.stats.goals||0)),
-    assists:Math.max(0,...eligible.map(x=>x.stats.assists||0)),
-    mvp:Math.max(0,...eligible.map(x=>x.stats.mvp||0))
+    goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
+    assists:Math.max(0,...playerMonthEligible.map(x=>x.stats.assists||0)),
+    mvp:Math.max(0,...playerMonthEligible.map(x=>x.stats.mvp||0))
   };
 
-  const playerOfMonth=generalPickByScore(eligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+  const playerOfMonth=generalPickByScore(playerMonthEligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
   const scorer=generalPickCountingAward(eligible,"goals");
   const assistant=generalPickCountingAward(eligible,"assists");
 
-  const defenders=eligible.filter(x=>["LB","CB","RB"].includes(String(x.player.primaryPos||"").toUpperCase()));
-  const defenderMaxima={
-    goals:Math.max(0,...defenders.map(x=>x.stats.goals||0)),
-    assists:Math.max(0,...defenders.map(x=>x.stats.assists||0)),
-    mvp:Math.max(0,...defenders.map(x=>x.stats.mvp||0))
-  };
-  const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
-
-  const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-  const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
-  const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+  const attackerOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"attack",teamMatches)||null;
+  const midfielderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"midfield",teamMatches)||null;
+  const defenderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"defense",teamMatches)||null;
+  const goalkeeperOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"keeper",teamMatches)||null;
 
   const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
   generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -7105,12 +7139,36 @@ function renderGeneralAwards(){
       <b>${value}</b>
     </div>`:"";
 
+  /* v12.57: show all four positional awards even before anyone qualifies.
+     Winners still use the same monthWinner() 50% threshold and positional
+     averages; the placeholders affect display only, never award issuance. */
+  const positionAwardCardV1255=(icon,title,winner)=>winner
+    ?card(icon,title,winner,winner.adjusted.toFixed(2))
+    :`<div class="general-award-card general-award-pending" data-position-award-pending="true">
+        <small>${icon} ${title}</small>
+        <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
+        <strong>Недостатньо матчів</strong>
+        <b>${teamMatches>0?`Мін. ${Math.ceil(teamMatches/2)} матчів`:'Поки немає матчів'}</b>
+      </div>`;
+
   const awardCards=[];
-  if(playerOfMonth)awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.adjusted.toFixed(2),true));
+  // Make the stricter Player-of-Month requirement visible when nobody qualifies.
+  if(playerOfMonth){
+    awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.adjusted.toFixed(2),true));
+  }else{
+    awardCards.push(`<div class="general-award-card general-award-pending main" data-player-month-pending="true">
+      <small>👑 ГРАВЕЦЬ МІСЯЦЯ</small>
+      <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
+      <strong>Недостатньо матчів</strong>
+      <b>${teamMatches>0?`Мін. ${minPlayerMonthMatches} матчів (50%)`:'Поки немає матчів'}</b>
+    </div>`);
+  }
   if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
   if(assistant)awardCards.push(card("🎯","АСИСТЕНТ",assistant,`${assistant.stats.assists}`));
-  if(defenderOfMonth)awardCards.push(card("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth,defenderOfMonth.adjusted.toFixed(2)));
-  if(goalkeeperOfMonth)awardCards.push(card("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth,goalkeeperOfMonth.adjusted.toFixed(2)));
+  awardCards.push(positionAwardCardV1255("⚡","НАПАДНИК МІСЯЦЯ",attackerOfMonth));
+  awardCards.push(positionAwardCardV1255("🎮","ПІВЗАХИСНИК МІСЯЦЯ",midfielderOfMonth));
+  awardCards.push(positionAwardCardV1255("🛡️","ЗАХИСНИК МІСЯЦЯ",defenderOfMonth));
+  awardCards.push(positionAwardCardV1255("🧤","ВОРОТАР МІСЯЦЯ",goalkeeperOfMonth));
   if(generalMonthlyMvpWinners.length){
     const first=generalMonthlyMvpWinners[0];
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
@@ -7122,9 +7180,9 @@ function renderGeneralAwards(){
     </div>`);
   }
 
-  $("generalAwardsList").innerHTML=data.length
-    ?(awardCards.join("")||`<div class="empty-state"><strong>НЕМАЄ ГРАВЦІВ, ЯКІ ЗІГРАЛИ 30% МАТЧІВ</strong><span>Потрібно мінімум ${minMatches} матчів.</span></div>`)
-    :`<div class="empty-state"><strong>У ЦЬОМУ МІСЯЦІ СТАТИСТИКИ НЕМАЄ</strong></div>`;
+  // Even months without saved player statistics display the positional
+  // award cards, so the absence of winners is clear rather than invisible.
+  $("generalAwardsList").innerHTML=awardCards.join("");
 
   if(generalMonthlyMvpWinners.length){paintGeneralMonthlyMvp();bindGeneralMonthlyMvp();restartGeneralMonthlyMvp();}
   $("generalAwardsNext").disabled=generalMonthKey(generalAwardsMonthCursor)>=generalMonthKey(now);
@@ -7185,6 +7243,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
   try{
     const teamMatches=generalTeamMatches(monthDate);
     const minMatches=generalMinMatches(teamMatches);
+    const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
     if(!teamMatches)return {teamMatches,minMatches,awards:[]};
 
     const data=players.map(player=>{
@@ -7194,26 +7253,22 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     const eligible=data.filter(x=>x.stats.matches>=minMatches);
     if(!eligible.length)return {teamMatches,minMatches,awards:[]};
 
+    // Keep completed-month auto-issued awards consistent with the on-screen
+    // Player-of-Month rule. Do not change scorer, assist or MVP eligibility.
+    const playerMonthEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
     const maxima={
-      goals:Math.max(0,...eligible.map(x=>x.stats.goals||0)),
-      assists:Math.max(0,...eligible.map(x=>x.stats.assists||0)),
-      mvp:Math.max(0,...eligible.map(x=>x.stats.mvp||0))
+      goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
+      assists:Math.max(0,...playerMonthEligible.map(x=>x.stats.assists||0)),
+      mvp:Math.max(0,...playerMonthEligible.map(x=>x.stats.mvp||0))
     };
-    const playerOfMonth=generalPickByScore(eligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+    const playerOfMonth=generalPickByScore(playerMonthEligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
     const scorer=generalPickCountingAward(eligible,"goals");
     const assistant=generalPickCountingAward(eligible,"assists");
 
-    const defenders=eligible.filter(x=>["LB","CB","RB"].includes(String(x.player.primaryPos||"").toUpperCase()));
-    const defenderMaxima={
-      goals:Math.max(0,...defenders.map(x=>x.stats.goals||0)),
-      assists:Math.max(0,...defenders.map(x=>x.stats.assists||0)),
-      mvp:Math.max(0,...defenders.map(x=>x.stats.mvp||0))
-    };
-    const defenderOfMonth=generalPickByScore(defenders,x=>generalAwardComposite(x,defenderMaxima,{rating:75,goals:5,assists:5,mvp:15}));
-
-    const goalkeepers=eligible.filter(x=>String(x.player.primaryPos||"").toUpperCase()==="GK");
-    const goalkeeperMaxima={goals:0,assists:0,mvp:Math.max(0,...goalkeepers.map(x=>x.stats.mvp||0))};
-    const goalkeeperOfMonth=generalPickByScore(goalkeepers,x=>generalAwardComposite(x,goalkeeperMaxima,{rating:90,mvp:10}));
+    const attackerOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"attack",teamMatches)||null;
+    const midfielderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"midfield",teamMatches)||null;
+    const defenderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"defense",teamMatches)||null;
+    const goalkeeperOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"keeper",teamMatches)||null;
 
     const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
     const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -7224,6 +7279,8 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     push(playerOfMonth,"Гравець місяця","👑",`${modeLabel} • ${Number(playerOfMonth?.awardScore||0).toFixed(1)} бала`);
     push(scorer,"Бомбардир місяця","⚽",`${modeLabel} • ${scorer?.stats?.goals||0} голів`);
     push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
+    push(attackerOfMonth,"Нападник місяця","⚡",`${modeLabel} • середня ${Number(attackerOfMonth?.stats?.average||0).toFixed(2)} за матчі в нападі`);
+    push(midfielderOfMonth,"Півзахисник місяця","🎮",`${modeLabel} • середня ${Number(midfielderOfMonth?.stats?.average||0).toFixed(2)} за матчі в півзахисті`);
     push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • ${Number(defenderOfMonth?.awardScore||0).toFixed(1)} бала`);
     push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • ${Number(goalkeeperOfMonth?.awardScore||0).toFixed(1)} бала`);
     mvpWinners.forEach(x=>push(x,"MVP місяця","🏆",`${modeLabel} • ${x.stats.mvp||0} MVP`));
@@ -10583,6 +10640,7 @@ window.addEventListener("centuria-theme-change",e=>{
       "playerInfoTab",
       "playerStatsTab",
       "playerAwardsTab",
+      "playerPositionsTab",
       "viewDeletePlayerBtn",
       "editPlayerBtn"
     ].forEach(function(id){
@@ -12163,12 +12221,15 @@ if(document.readyState==="loading"){
   try{if('caches' in window){caches.keys().then(keys=>Promise.all(keys.filter(k=>k.includes('centuria-pwa')&&!k.includes('v1008')).map(k=>caches.delete(k)))).catch(()=>{});}}catch(_e){}
 })();
 
-/* v12.36 — keep the Settings footer in sync with the deployed build. */
+/* v12.57 — always show the version deployed with the current HTML.
+   The Settings footer can otherwise be overwritten by older build listeners. */
 function syncSettingsVersionV1210(){
-  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent="v12.46");
+  const value=String(document.querySelector('meta[name="centuria-build"]')?.content||"12.57").trim();
+  document.querySelectorAll(".settings-version strong").forEach(el=>el.textContent=`v${value}`);
 }
 if(document.readyState==="loading"){
   document.addEventListener("DOMContentLoaded",syncSettingsVersionV1210);
 }else{
   syncSettingsVersionV1210();
 }
+window.addEventListener("pageshow",syncSettingsVersionV1210);

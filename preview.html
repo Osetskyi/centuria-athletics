@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#090909">
+  <meta name="centuria-build" content="12.57">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -22,9 +23,9 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=12.49">
+<link rel="stylesheet" href="style.css?v=12.57">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest?v=12.49">
+  <link rel="manifest" href="manifest.webmanifest?v=12.57">
 
 <script>
 (function(){
@@ -75,7 +76,8 @@
 })();
 </script>
 
-<style>#siteAccessGate{display:none!important} #screen-home{display:block!important}</style></head>
+<style>#siteAccessGate{display:none!important} #screen-home{display:block!important}</style><link rel="stylesheet" href="position-tracker-v1250.css?v=12.57">
+</head>
 <body>
 
 <div id="siteAccessGate" class="site-access-gate">
@@ -563,7 +565,7 @@
     <div class="settings-card author">
       <span>АВТОР</span>
       <strong>Daniil Osetskyi</strong>
-<div class="settings-version" data-viewer-allowed="true">Версія <strong>v12.49</strong></div>
+<div class="settings-version" data-viewer-allowed="true">Версія <strong>v12.57</strong></div>
     </div>
   </section>
 
@@ -598,6 +600,7 @@
         <button type="button" id="playerInfoTab" class="player-view-tab active" data-viewer-allowed="true">ІНФОРМАЦІЯ</button>
         <button type="button" id="playerStatsTab" class="player-view-tab" data-viewer-allowed="true">СТАТИСТИКА ›</button>
         <button type="button" id="playerAwardsTab" class="player-view-tab" data-viewer-allowed="true">НАГОРОДИ 🏅</button>
+        <button type="button" id="playerPositionsTab" class="player-view-tab" data-viewer-allowed="true">ПОЗИЦІЇ ⚽</button>
       </div>
       <div id="playerViewSlider" class="player-view-slider">
         <div id="playerInfoSlide" class="player-view-slide">
@@ -711,6 +714,40 @@
                             <button id="addPlayerAwardBtn" type="button" class="gold-btn">ДОДАТИ НАГОРОДУ</button>
                           </div>
                         </div>
+        <!-- v12.57: четвертий екран — 20 позицій, помісячні оцінки, без ручної форми -->
+        <div id="playerPositionsSlide" class="player-view-slide player-positions-slide">
+          <div class="pt-header"><strong>Позиції</strong><span id="positionPlayerLabelV1250">—</span></div>
+          <div id="positionPitchV1250" class="pt-field" role="group" aria-label="Позиції на футбольному полі"></div>
+          <div class="pt-color-legend" aria-label="Кольори за часткою матчів на позиції">
+            <span><i class="pt-key-idle"></i> 0%</span>
+            <span><i class="pt-key-rare"></i> &lt;20%</span>
+            <span><i class="pt-key-mid"></i> 20–39,9%</span>
+            <span><i class="pt-key-often"></i> 40–90%</span>
+            <span><i class="pt-key-gold"></i> &gt;90%</span>
+          </div>
+
+          <div class="pt-summary">
+            <div class="pt-summary-head"><span>Матчів із зазначеною позицією</span><strong id="positionTotalV1250">0</strong></div>
+            <div class="pt-summary-grid">
+              <div class="pt-summary-cell"><strong id="position-keeper-total">0</strong><span>Воротар</span></div>
+              <div class="pt-summary-cell"><strong id="position-defense-total">0</strong><span>Захист</span></div>
+              <div class="pt-summary-cell"><strong id="position-midfield-total">0</strong><span>Півзахист</span></div>
+              <div class="pt-summary-cell"><strong id="position-attack-total">0</strong><span>Атака</span></div>
+            </div>
+          </div>
+          <p class="pt-caption">Враховано лише матчі з визначеною позицією на фінальному скріншоті FC27. Позиції та оцінки додаються під час обробки скріншотів; старі матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.</p>
+          <section id="positionDetailsV1250" class="pt-details" aria-live="polite" hidden>
+            <div class="pt-details-title" id="positionDetailsTitleV1250">—</div>
+            <div class="pt-details-grid">
+              <div><span>Матчів на позиції</span><strong id="positionDetailsMatchesV1250">0</strong></div>
+              <div><span>Середня оцінка за весь час</span><strong id="positionDetailsAvgV1250">—</strong></div>
+            </div>
+            <p id="positionDetailsCoverageV1250" class="pt-rating-coverage" hidden></p>
+            <div class="pt-months-title">Середня оцінка за місяцями</div>
+            <div id="positionDetailsMonthsV1250" class="pt-months-list"></div>
+          </section>
+        </div>
+
       </div>
 
       
@@ -1197,7 +1234,8 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=12.49"></script>
+<script src="app.js?v=12.57"></script>
+<script src="position-tracker-v1250.js?v=12.57"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">
