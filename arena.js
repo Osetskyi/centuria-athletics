@@ -6,7 +6,9 @@
 /* v12.8 — dark-theme club database secondary buttons remain dark. */
 // v10.93 — League creator, registration, clubs and formats; Cup v10.92 retained.
 (() => {
-  const P=[["Volkovson",1000,"Manchester United"],["Osetskyi_3",1000,"Real Madrid"],["Romeo_130901",1000,"Arsenal"],["Mitsuki_one_love",1000,"Barcelona"],["Loter24",1000,"Milan"],["vladiks56",1000,"Chelsea"]];
+  // Legacy demo fixtures only. The real EVO/Players roster comes exclusively
+  // from getCenturiaArenaPlayers() and must not include removed players.
+  const P=[["Volkovson",1000,"Manchester United"],["Osetskyi_3",1000,"Real Madrid"],["Romeo_130901",1000,"Arsenal"],["Mitsuki_one_love",1000,"Barcelona"],["Loter24",1000,"Milan"]];
   const C={"Manchester United":"🔴","Real Madrid":"⚪","Arsenal":"🔴","Barcelona":"🔵","Milan":"⚫","Chelsea":"🔵","Liverpool":"🔴","Juventus":"⚫","Bayern Munich":"🔴","PSG":"🔵","Inter":"🔵","Centuria":"🟡"};
   let route="home", tab="mine", hist="cup", testParticipants=[];
   let leagueTableViewV1108="table";
@@ -227,15 +229,29 @@
     }catch(_e){}
     if(!remoteArenaStateApplyingV1012) queueRemoteArenaStateSaveV1012();
   };
+  // v12.49: Supabase-backed players are the only source for the Arena roster.
+  // Do not silently reintroduce deleted players from legacy demo entries or
+  // archived games. Retain participants in an active tournament for fixtures.
+  const activeArenaPlayersV1249=()=>{
+    try{
+      const rows=window.getCenturiaArenaPlayers?.();
+      if(!Array.isArray(rows))return [];
+      const seen=new Set();
+      return rows.map(row=>typeof row==="string"?{name:row}:row).filter(row=>{
+        const name=String(row?.name||"").trim();
+        const key=name.toLocaleLowerCase("uk");
+        if(!name||seen.has(key))return false;
+        seen.add(key);
+        return true;
+      });
+    }catch(_e){return [];}
+  };
   const playerPool=()=>{
-    let live=[];
-    try{ live=(window.getCenturiaArenaPlayers?.()||[]).map(x=>typeof x==="string"?x:x?.name).filter(Boolean); }catch(_e){}
-    const fallback=P.map(x=>x[0]);
-    // v10.12: only shared/persistent participants affect Arena-wide lists.
-    // A manual draft nickname exists only while ADMIN is building a tournament
-    // and must not make the Players/EVO page differ on one device.
+    const live=activeArenaPlayersV1249().map(p=>String(p.name).trim());
+    // An ongoing competition retains its original opponents even if one leaves
+    // the club; it does not grant ex-members a place in EVO/Players rankings.
     const activeParticipants=Array.isArray(testCompetition?.participants)?testCompetition.participants:[];
-    return [...new Set([...live,...fallback,...activeParticipants].map(x=>String(x||"").trim()).filter(Boolean))];
+    return [...new Set([...live,...activeParticipants].map(x=>String(x||"").trim()).filter(Boolean))];
   };
   const ARENA_BASE_EVO=1000;
   const ARENA_ELO_K=24;
@@ -789,14 +805,12 @@
     return stats;
   };
   const arenaPlayerList=()=>{
-    let live=[];
-    try{ live=window.getCenturiaArenaPlayers?.()||[]; }catch(_e){ live=[]; }
-    const baseOrder=P.map(x=>x[0]);
-    const extras=live.map(x=>String(x?.name||"").trim()).filter(Boolean).filter(n=>!baseOrder.includes(n));
-    const names=[...baseOrder,...extras];
-    const list=names.map(name=>{
+    // Do not merge in P/demo entries, old competition participants or Elo
+    // history: those can contain players who have been removed from the site.
+    const live=activeArenaPlayersV1249();
+    const list=live.map(livePlayer=>{
+      const name=String(livePlayer.name).trim();
       const base=P.find(x=>x[0]===name);
-      const livePlayer=live.find(x=>String(x?.name||"").trim()===name)||{};
       const prefs=effectivePlayerPrefV1011(name);
       return {
         name,

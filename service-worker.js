@@ -1,10 +1,10 @@
-// v12.48 restore the already played 3:0 movement; future results remain server-tracked
-const CACHE_VERSION="centuria-pwa-v1248-recover-current-league-arrows";
-const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.48";
-const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.48";
-const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.48";
-const TABLE_STYLE="/arena-league-table-v1232.css?v=12.48";
-const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.48";
+// v12.49 — live-only EVO roster, correct settings version, plus v12.48 arrow recovery
+const CACHE_VERSION="centuria-pwa-v1249-evo-live-roster";
+const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.49";
+const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.49";
+const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.49";
+const TABLE_STYLE="/arena-league-table-v1232.css?v=12.49";
+const ACTIVE_EVENT_SCRIPT="/arena-active-event-v1233.js?v=12.49";
 
 self.addEventListener("install",()=>self.skipWaiting());
 self.addEventListener("activate",event=>event.waitUntil((async()=>{

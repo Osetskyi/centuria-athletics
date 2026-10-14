@@ -2,7 +2,7 @@
 (()=>{
   'use strict';
 
-  const BUILD='12.47';
+  const BUILD='12.49';
   const ACTIVE_EVENT_KEY='ca_arena_active_event';
   const ACTIVE_EVENT_LEGACY_KEY='ca_arena_active_event_v925';
   let busy=false;
