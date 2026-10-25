@@ -26,7 +26,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=12.79">
+<link rel="stylesheet" href="style.css?v=12.83">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest?v=12.61">
 
@@ -1279,7 +1279,8 @@
 
       <div class="match-team-edit-grid">
         <div class="match-team-editor">
-          <label>Клуб із бази<select id="matchHomeClubCatalog"><option value="">— Обрати клуб —</option></select></label>
+          <label>Спочатку обери лігу<select id="matchHomeLeagueCatalog"><option value="">— Обрати лігу —</option></select></label>
+          <label>Клуб із цієї ліги<select id="matchHomeClubCatalog" disabled><option value="">— Спочатку обери лігу —</option></select></label>
           <div id="matchHomePreview" class="match-team-preview"><span>КОМАНДА 1</span></div>
           <input id="matchHomeImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
           <button id="chooseMatchHomeImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
@@ -1287,7 +1288,8 @@
         </div>
         <div class="match-edit-vs">VS</div>
         <div class="match-team-editor">
-          <label>Клуб із бази<select id="matchAwayClubCatalog"><option value="">— Обрати клуб —</option></select></label>
+          <label>Спочатку обери лігу<select id="matchAwayLeagueCatalog"><option value="">— Обрати лігу —</option></select></label>
+          <label>Клуб із цієї ліги<select id="matchAwayClubCatalog" disabled><option value="">— Спочатку обери лігу —</option></select></label>
           <div id="matchAwayPreview" class="match-team-preview"><span>КОМАНДА 2</span></div>
           <input id="matchAwayImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
           <button id="chooseMatchAwayImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
@@ -1509,8 +1511,8 @@
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=12.78"></script>
-<script src="arena.js?v=12.76"></script>
+<script src="app.js?v=12.83"></script>
+<script src="arena.js?v=12.83"></script>
 <script src="arena-league-add-v1231.js?v=12.59"></script>
 <script src="arena-league-table-v1232.js?v=12.59"></script>
 <script src="arena-active-event-v1233.js?v=12.59"></script>

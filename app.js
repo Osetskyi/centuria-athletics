@@ -1556,6 +1556,7 @@ $("searchToggle").addEventListener("click",()=>$("searchRow").classList.toggle("
 
 
 /* Player statistics */
+let playerSlideResizeObserverV1281=null;
 async function playerViewSlide(index){
   const slider=$("playerViewSlider");
   if(!slider)return;
@@ -1581,11 +1582,19 @@ async function playerViewSlide(index){
   const activeSlide=slides[index];
   const syncPlayerSliderHeight=()=>{
     if(!slider || !activeSlide)return;
-    slider.style.height=`${index===3?activeSlide.clientHeight:activeSlide.scrollHeight}px`;
+    // Use the full content height on every page. clientHeight clipped the
+    // fourth (positions) page when its pitch/details were taller than the view.
+    slider.style.height=`${Math.max(activeSlide.scrollHeight,activeSlide.getBoundingClientRect().height)}px`;
   };
+  playerSlideResizeObserverV1281?.disconnect();
+  if(window.ResizeObserver&&activeSlide){
+    playerSlideResizeObserverV1281=new ResizeObserver(syncPlayerSliderHeight);
+    playerSlideResizeObserverV1281.observe(activeSlide);
+  }
   requestAnimationFrame(()=>{
     syncPlayerSliderHeight();
-    setTimeout(syncPlayerSliderHeight,80);
+    setTimeout(syncPlayerSliderHeight,100);
+    setTimeout(syncPlayerSliderHeight,300);
   });
 
   if(index===2 && editPlayerId){
@@ -5925,9 +5934,19 @@ function setMatchPreview(id,src,label){
   box.innerHTML=src?`<img src="${src}" alt="">`:`<span>${label}</span>`;
 }
 
-let calendarClubCatalogV1268={leagues:[],clubs:[]};
+let calendarClubCatalogV1268={groups:[],leagues:[],clubs:[]};
 let calendarAutoLogoClubV1268={home:"",away:""};
 const calendarClubNameKeyV1268=value=>String(value||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9а-яіїєґ]+/gi," ").trim().replace(/\s+/g," ");
+const calendarClubLeagueKeyV1282=club=>`${String(club?.country||'').trim().toUpperCase()}::${String(club?.league_code||'').trim().toUpperCase()}`;
+function rebuildCalendarClubOptionsV1282(type,selectedName=''){
+  const home=type==='home',leagueSelect=$(home?'matchHomeLeagueCatalog':'matchAwayLeagueCatalog'),clubSelect=$(home?'matchHomeClubCatalog':'matchAwayClubCatalog');
+  if(!leagueSelect||!clubSelect)return;
+  const leagueKey=leagueSelect.value;
+  const clubs=calendarClubCatalogV1268.clubs.filter(club=>calendarClubLeagueKeyV1282(club)===leagueKey).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'uk'));
+  clubSelect.innerHTML='<option value="">— Обрати клуб —</option>'+clubs.map(club=>`<option value="${esc(club.name)}">${esc(club.name)}</option>`).join('');
+  clubSelect.disabled=!leagueKey||!clubs.length;
+  clubSelect.value=clubs.find(club=>calendarClubNameKeyV1268(club.name)===calendarClubNameKeyV1268(selectedName))?.name||'';
+}
 const calendarClubNameSimilarityV1268=(a,b)=>{
   if(!a||!b)return 0;if(a===b)return 1;
   let previous=Array.from({length:b.length+1},(_,i)=>i);
@@ -5953,6 +5972,9 @@ function syncCalendarClubEmblemV1268(type){
   const club=key?findCalendarClubMatchV1268(key):null;
   if(club){
     const wasAutoMatched=Boolean(calendarAutoLogoClubV1268[type]);
+    const leagueSelect=$(home?"matchHomeLeagueCatalog":"matchAwayLeagueCatalog");
+    const clubLeagueKey=calendarClubLeagueKeyV1282(club);
+    if(leagueSelect&&leagueSelect.value!==clubLeagueKey){leagueSelect.value=clubLeagueKey;rebuildCalendarClubOptionsV1282(type,club.name);}
     if(select)select.value=club.name;
     calendarAutoLogoClubV1268[type]=club.name;
     if(String(club.logo||"").trim())calendarDraftImages[type]=club.logo;
@@ -5968,30 +5990,38 @@ function syncCalendarClubEmblemV1268(type){
   }
 }
 async function populateCalendarClubCatalogV1268(match=null){
-  const leagueSelect=$('matchCompetitionCatalog'),homeSelect=$('matchHomeClubCatalog'),awaySelect=$('matchAwayClubCatalog');
-  if(!leagueSelect||!homeSelect||!awaySelect)return;
+  const leagueSelect=$('matchCompetitionCatalog'),homeLeague=$('matchHomeLeagueCatalog'),awayLeague=$('matchAwayLeagueCatalog'),homeSelect=$('matchHomeClubCatalog'),awaySelect=$('matchAwayClubCatalog');
+  if(!leagueSelect||!homeLeague||!awayLeague||!homeSelect||!awaySelect)return;
   try{
     const api=window.CenturiaArenaClubApi;
     const [groups,leagues,clubs]=await Promise.all([api?.listGroups?.()||[],api?.listLeagues?.()||[],api?.list?.()||[]]);
     calendarClubCatalogV1268={groups,leagues,clubs};
     leagueSelect.innerHTML='<option value="">— Обрати лігу —</option>'+leagues.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('');
+    leagueSelect.value=leagues.find(x=>x.name===(match?.competition_name||''))?.code||'';
     const countryName=code=>groups.find(x=>String(x.code||'').toUpperCase()===String(code||'').toUpperCase())?.name||'Без країни';
     const leagueName=code=>leagues.find(x=>String(x.code||'').toUpperCase()===String(code||'').toUpperCase())?.name||'Без ліги';
     const buckets=new Map();
     clubs.forEach(club=>{
-      const country=String(club.country||'').trim(),league=String(club.league_code||'').trim();
-      const label=`${countryName(country)} · ${leagueName(league)}`;
-      if(!buckets.has(label))buckets.set(label,[]);buckets.get(label).push(club);
+      const key=calendarClubLeagueKeyV1282(club);
+      if(!buckets.has(key))buckets.set(key,[]);
+      buckets.get(key).push(club);
     });
-    const clubOptions='<option value="">— Обрати клуб за лігою —</option>'+[...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0],'uk')).map(([label,items])=>`<optgroup label="${esc(label)}">${items.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'uk')).map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
-    homeSelect.innerHTML=clubOptions;awaySelect.innerHTML=clubOptions;
-    leagueSelect.value=leagues.find(x=>x.name===(match?.competition_name||''))?.code||'';
-    homeSelect.value=clubs.find(x=>x.name===(match?.home_team_name||''))?.name||'';
-    awaySelect.value=clubs.find(x=>x.name===(match?.away_team_name||''))?.name||'';
+    const options='<option value="">— Обрати лігу —</option>'+[...buckets.entries()].map(([key,items])=>{
+      const club=items[0],label=`${countryName(club.country)} · ${leagueName(club.league_code)}`;
+      return {key,label};
+    }).sort((a,b)=>a.label.localeCompare(b.label,'uk')).map(item=>`<option value="${esc(item.key)}">${esc(item.label)}</option>`).join('');
+    homeLeague.innerHTML=options;awayLeague.innerHTML=options;
+    const homeClub=clubs.find(x=>calendarClubNameKeyV1268(x.name)===calendarClubNameKeyV1268(match?.home_team_name||'Centuria Athletics'));
+    const awayClub=clubs.find(x=>calendarClubNameKeyV1268(x.name)===calendarClubNameKeyV1268(match?.away_team_name||''));
+    homeLeague.value=homeClub?calendarClubLeagueKeyV1282(homeClub):'';
+    awayLeague.value=awayClub?calendarClubLeagueKeyV1282(awayClub):'';
+    rebuildCalendarClubOptionsV1282('home',match?.home_team_name||'Centuria Athletics');
+    rebuildCalendarClubOptionsV1282('away',match?.away_team_name||'');
     syncCalendarClubEmblemV1268('home');
     syncCalendarClubEmblemV1268('away');
   }catch(err){console.warn('Calendar club catalog load',err);}
 }
+
 function applyCalendarCatalogChoiceV1268(type,code){
   if(type==='competition'){
     const item=calendarClubCatalogV1268.leagues.find(x=>x.code===code);if(!item)return;
@@ -6257,6 +6287,14 @@ $("chooseMatchCompetitionImage")?.addEventListener("click",()=>chooseCalendarIma
 $("chooseMatchHomeImage")?.addEventListener("click",()=>chooseCalendarImage("matchHomeImageInput","home","matchHomePreview","КОМАНДА 1"));
 $("chooseMatchAwayImage")?.addEventListener("click",()=>chooseCalendarImage("matchAwayImageInput","away","matchAwayPreview","КОМАНДА 2"));
 $("matchCompetitionCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("competition",e.target.value));
+$("matchHomeLeagueCatalog")?.addEventListener("change",()=>{
+  $("matchHomeName").value="";calendarAutoLogoClubV1268.home="";calendarDraftImages.home=null;setMatchPreview("matchHomePreview",null,"КОМАНДА 1");
+  rebuildCalendarClubOptionsV1282("home");
+});
+$("matchAwayLeagueCatalog")?.addEventListener("change",()=>{
+  $("matchAwayName").value="";calendarAutoLogoClubV1268.away="";calendarDraftImages.away=null;setMatchPreview("matchAwayPreview",null,"КОМАНДА 2");
+  rebuildCalendarClubOptionsV1282("away");
+});
 $("matchHomeClubCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("home",e.target.value));
 $("matchAwayClubCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("away",e.target.value));
 $("matchHomeName")?.addEventListener("input",()=>syncCalendarClubEmblemV1268("home"));

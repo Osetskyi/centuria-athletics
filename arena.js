@@ -976,13 +976,12 @@
   const reloadClubGroupsV123=async()=>{
     const api=clubApiV1009();
     if(!api?.listGroups||!api?.isReady?.())return clubGroupsV123;
-    const rows=await api.listGroups();
+    const [rows,leagues]=await Promise.all([api.listGroups(),api.listLeagues?api.listLeagues():Promise.resolve([])]);
     clubGroupsV123=(Array.isArray(rows)?rows:[]).map(g=>({
       code:clubGroupKeyV123(g?.code),name:String(g?.name||"").trim(),flag:String(g?.flag||"📁").trim()||"📁"
     })).filter(g=>g.code&&g.name);
     remoteClubGroupsLoadedV123=true;
     if(api.listLeagues){
-      const leagues=await api.listLeagues();
       clubLeaguesV125=(Array.isArray(leagues)?leagues:[]).map(g=>({
         code:clubLeagueKeyV125(g?.code),country_code:clubGroupKeyV123(g?.country_code),
         name:String(g?.name||'').trim(),icon:String(g?.icon||'🏆').trim()||'🏆',image_url:String(g?.image_url||'')
@@ -997,6 +996,8 @@
   let clubDatabaseDeleted=[];
   let remoteClubDatabaseV1009=[];
   let remoteClubDatabaseLoadedV1009=false;
+  let clubLogoRecoveryInFlightV1280=false;
+  let clubDatabaseModalOpeningV1275=false;
   let remoteClubDatabaseLoadingV1009=false;
   let remoteClubPollV1009=0;
   const CLUB_REMOTE_MIGRATION_V1009="ca_arena_clubs_remote_migrated_v1009";
@@ -1193,6 +1194,15 @@
     return true;
   };
   const clubApiV1009=()=>window.CenturiaArenaClubApi||null;
+  const applyClubToRemoteCacheV1280=(club,renameFrom='')=>{
+    if(!club||!remoteClubDatabaseLoadedV1009)return;
+    const key=value=>String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
+    const nextName=String(club.name||'').trim(),oldKey=key(renameFrom),nextKey=key(nextName);
+    remoteClubDatabaseV1009=(remoteClubDatabaseV1009||[]).filter(c=>key(c.name)!==nextKey&&(!oldKey||key(c.name)!==oldKey));
+    remoteClubDatabaseV1009.push({name:nextName,logo:String(club.logo||''),country:clubCountryV122(club.country),league_code:clubLeagueV125(club.league_code,clubCountryV122(club.country))});
+    remoteClubDatabaseLoadedV1009=true;
+    loadClubDatabase();
+  };
   const migrateAdminClubLogosToRemoteV1009=async()=>{
     const api=clubApiV1009();
     if(!api?.isReady?.() || !api?.canWrite?.() || !api?.upsertMany)return;
@@ -1223,11 +1233,26 @@
         : [];
       // First ADMIN open uploads the old local emblems to Supabase once.
       if(api?.canWrite?.()) await migrateAdminClubLogosToRemoteV1009();
-      await reloadClubGroupsV123();
-      if(localLogoSnapshot.length&&api?.restoreMissingLogos){
-        try{await api.restoreMissingLogos(localLogoSnapshot)}catch(err){console.warn('Arena club logo recovery',err)}
+      const recoveryKey='ca_arena_logo_recovery_once_v1280';
+      let recoveryDone=false;
+      try{recoveryDone=localStorage.getItem(recoveryKey)==='1'}catch(_e){}
+      if(localLogoSnapshot.length&&api?.restoreMissingLogos&&!recoveryDone&&!clubLogoRecoveryInFlightV1280){
+        // Recover old cached logos in the background; never make every refresh
+        // wait for one network request per club.
+        clubLogoRecoveryInFlightV1280=true;
+        api.restoreMissingLogos(localLogoSnapshot).then(()=>{
+          try{localStorage.setItem(recoveryKey,'1')}catch(_e){}
+          return api.list();
+        }).then(rows=>{
+          if(!Array.isArray(rows))return;
+          remoteClubDatabaseV1009=rows.map(r=>({name:String(r?.name||'').trim(),logo:String(r?.logo||'').trim(),country:clubCountryV122(r?.country),league_code:clubLeagueV125(r?.league_code,clubCountryV122(r?.country))})).filter(c=>c.name);
+          loadClubDatabase();
+          if(document.getElementById('screen-arena')?.classList.contains('active'))draw();
+        }).catch(err=>console.warn('Arena club logo recovery',err)).finally(()=>{clubLogoRecoveryInFlightV1280=false});
+      }else if(!localLogoSnapshot.length){
+        try{localStorage.setItem(recoveryKey,'1')}catch(_e){}
       }
-      const rows=await api.list();
+      const [rows]=await Promise.all([api.list(),reloadClubGroupsV123()]);
       remoteClubDatabaseV1009=(Array.isArray(rows)?rows:[]).map(r=>({
         name:String(r?.name||"").trim(),
         logo:String(r?.logo||"").trim(),
@@ -4412,34 +4437,23 @@
       try{window.showToast?.("Турнір завершено та збережено в Історії")}catch(_e){}
     },
     async openClubDatabase(){
-      if(!isArenaAdmin())return;
-      // Wait for the shared database before drawing the modal. This prevents
-      // the temporary legacy/local list from flashing before the real clubs.
+      if(!isArenaAdmin()||clubDatabaseModalOpeningV1275||document.querySelector('.arena-clubdb-modal-v945'))return;
+      clubDatabaseModalOpeningV1275=true;
+      try{
+      // Open from the in-memory shared snapshot immediately after its first load.
+      // Only the very first open waits for the initial server fetch.
       const api=clubApiV1009();
-      if(api?.isReady?.()){
-        // A background refresh may already be running. The refresh function
-        // intentionally avoids duplicate requests, so wait for that request
-        // to finish before asking for the initial modal data.
-        const waitForRefresh=async()=>{
-          while(remoteClubDatabaseLoadingV1009)
-            await new Promise(resolve=>setTimeout(resolve,40));
-        };
-        await waitForRefresh();
-        await refreshRemoteClubDatabaseV1009(false);
-        await waitForRefresh();
-        // Retry once if the first background attempt failed before it could
-        // populate groups and leagues.
-        if(!remoteClubDatabaseLoadedV1009){
-          await refreshRemoteClubDatabaseV1009(false);
-          await waitForRefresh();
-        }
-        // Never open the editor over the legacy local fallback: it can show
-        // a club count with an empty list while the shared catalog is offline.
+      if(api?.isReady?.()&&!remoteClubDatabaseLoadedV1009){
+        while(remoteClubDatabaseLoadingV1009)
+          await new Promise(resolve=>setTimeout(resolve,40));
+        if(!remoteClubDatabaseLoadedV1009)await refreshRemoteClubDatabaseV1009(false);
         if(!remoteClubDatabaseLoadedV1009){
           window.showToast?.('Не вдалося завантажити спільну базу клубів. Перевір з’єднання та спробуй ще раз.');
           return;
         }
       }
+      }finally{clubDatabaseModalOpeningV1275=false;}
+      if(document.querySelector('.arena-clubdb-modal-v945'))return;
       loadClubDatabase();
       modal(`<div class="arena-clubdb-modal-v945">
         <div class="arena-clubdb-head-v945"><div><small>ADMIN · ARENA</small><h2>БАЗА КЛУБІВ</h2><p>Створи країну з прапором, додай всередині папки ліг і розподіли клуби. Цей каталог працює в профілях, товариських матчах і турнірах.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div>
@@ -4536,7 +4550,8 @@
       try{
         const api=clubApiV1009();if(!api?.upsertGroup)throw new Error('Не вдалося підключитися до бази');
         await api.upsertGroup({code,name,flag});
-        await refreshRemoteClubDatabaseV1009(false);
+        clubGroupsV123=clubGroupsV123.filter(g=>g.code!==code);
+        clubGroupsV123.push({code,name,flag});
         this.resetClubGroupV123();clubDbActiveCountryV122=code;
         this.renderClubDatabase();this.toggleClubDbEditorV127('group',false);
         window.showToast?.('Розділ збережено для всіх користувачів');
@@ -4604,7 +4619,8 @@
       try{
         const api=clubApiV1009();if(!api?.upsertLeague)throw new Error('Немає з’єднання з базою');
         await api.upsertLeague({code,country_code:country,name,icon,image_url:leagueEditorImageV1268});
-        await refreshRemoteClubDatabaseV1009(false);
+        clubLeaguesV125=clubLeaguesV125.filter(g=>g.code!==code);
+        clubLeaguesV125.push({code,country_code:country,name,icon,image_url:leagueEditorImageV1268});
         this.resetClubLeagueV125();clubDbActiveCountryV122=country;clubLeagueSelectedV125.database=code;
         this.renderClubDatabase();this.toggleClubDbEditorV127('league',false);
         window.showToast?.('Лігу збережено для всіх користувачів');
@@ -4860,22 +4876,27 @@
       const preview=document.getElementById("arenaClubDbPreviewV945");
       const existing=clubDbFind(oldName||name);
       const logo=String(preview?.dataset?.logo||existing?.logo||"").trim();
+      const entry={name,logo,country,league_code};
       upsertClubDatabase(name,logo,{renameFrom:oldName,country,league_code});
-      try{
-        const api=clubApiV1009();
-        if(api?.upsert)await api.upsert({name,logo,renameFrom:oldName,country,league_code});
-        await refreshRemoteClubDatabaseV1009(false);
-      }catch(err){
-        console.warn("Arena club save remote",err);
-        try{window.showToast?.("Локально збережено, але синхронізація емблеми не вдалася")}catch(_e){}
-        return;
-      }
+      applyClubToRemoteCacheV1280(entry,oldName);
       this.resetClubDatabaseEditor();
       clubDbActiveCountryV122=country;
       clubLeagueSelectedV125.database=league_code||LEAGUE_UNASSIGNED_V125;
       this.renderClubDatabase();
-      draw();
-      try{window.showToast?.("Клуб і його розділ синхронізовано для всіх акаунтів")}catch(_e){}
+      const api=clubApiV1009();
+      try{
+        if(api?.upsert){
+          const saved=await api.upsert({...entry,renameFrom:oldName});
+          applyClubToRemoteCacheV1280({...entry,...saved},oldName);
+          this.renderClubDatabase();
+        }
+        window.showToast?.("Клуб збережено");
+      }catch(err){
+        console.warn("Arena club save remote",err);
+        await refreshRemoteClubDatabaseV1009(false);
+        this.renderClubDatabase();
+        window.showToast?.("Не вдалося синхронізувати клуб. Перевір з’єднання та повтори");
+      }
     },
     deleteClubDatabaseEntry(name){
       if(!isArenaAdmin())return;
