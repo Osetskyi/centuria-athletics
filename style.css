@@ -36247,3 +36247,24 @@ body.light-theme #calendarMatchModal .mini-gold-btn{
   color:#493816;
 }
 
+/* v12.89 — Light previews while creating or editing a calendar match. */
+html[data-site-theme="light"] #calendarMatchModal .match-image-preview,
+html[data-site-theme="light"] #calendarMatchModal .match-team-preview,
+html.light-theme #calendarMatchModal .match-image-preview,
+html.light-theme #calendarMatchModal .match-team-preview,
+body.light-theme #calendarMatchModal .match-image-preview,
+body.light-theme #calendarMatchModal .match-team-preview{
+  background:#f5efe3;
+  border-color:rgba(125,96,42,.26);
+  box-shadow:inset 0 0 12px rgba(125,96,42,.05);
+}
+html[data-site-theme="light"] #calendarMatchModal .match-image-preview span,
+html[data-site-theme="light"] #calendarMatchModal .match-team-preview span,
+html.light-theme #calendarMatchModal .match-image-preview span,
+html.light-theme #calendarMatchModal .match-team-preview span,
+body.light-theme #calendarMatchModal .match-image-preview span,
+body.light-theme #calendarMatchModal .match-team-preview span{
+  color:#5b4a2c;
+  opacity:.55;
+}
+
