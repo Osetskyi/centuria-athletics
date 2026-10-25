@@ -6106,22 +6106,10 @@ function renderCalendarDayMatches(dateKey){
 function openCalendarDay(dateKey){
   document.querySelectorAll('.arena-clubdb-modal-v945').forEach(el=>el.closest('.arena-modal-v852')?.remove());
   calendarSelectedDate=dateKey;
-  const matches=calendarMatches.filter(v=>v.match_date===dateKey);
-  const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
-  const eventCount=matches.length+gathers.length;
-
-  if(eventCount===1 && matches.length===1){
-    $("calendarMatchModal").classList.remove("hidden");
-    showCalendarMatchView(matches[0]);
-    return;
-  }
-  // A single scheduled gathering opens the day action sheet first. The user
-  // can choose its row to open ratings, while the three day actions remain
-  // available for adding training, cup, or league events.
-  if(eventCount===0 && !canEditSite()){
-    showToast("На цей день подій немає");
-    return;
-  }
+  // Always start from the day action sheet, even when there is one match.
+  // This keeps training/cup/league creation available and makes existing
+  // events an explicit second step from the list below.
+  $("calendarMatchModal")?.classList.add("hidden");
   showDayActionModal(dateKey);
 }
 

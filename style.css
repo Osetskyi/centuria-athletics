@@ -36162,3 +36162,71 @@ body.light #screen-gatherings .gathering-history-lineup-toggle{
 #screen-home #homeNextEvent.home-next-split-v1278 .home-next-logo{width:40px!important;height:40px!important;border-width:1.5px!important}
 #screen-home #homeNextEvent.home-next-split-v1278 .home-next-logo img{width:36px!important;height:36px!important;max-width:100%!important;max-height:100%!important}
 #screen-home #homeNextEvent.home-next-split-v1278 .home-next-team small{font-size:7px!important}
+/* v12.85 — Keep match action buttons readable on narrow screens. */
+.calendar-match-view-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+}
+.calendar-match-view-actions > button{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:52px;
+  padding:12px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:normal;
+  font-size:clamp(12px,3.5vw,15px);
+  line-height:1.2;
+}
+.calendar-match-view-actions #editMatchScoreBtn,
+.calendar-match-view-actions #deleteCalendarMatchBtn{
+  grid-column:1 / -1;
+}
+.calendar-match-view-actions .secondary-btn{flex:initial}
+
+/* v12.86 — Keep the transfer date field and controls inside the card. */
+#calendarMatchModal .calendar-transfer-box{
+  box-sizing:border-box;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+#calendarMatchModal .calendar-transfer-box label{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+}
+#calendarMatchModal .calendar-transfer-box input{
+  box-sizing:border-box;
+  display:block;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  margin:0;
+}
+#calendarMatchModal .calendar-transfer-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  width:100%;
+  min-width:0;
+}
+#calendarMatchModal .calendar-transfer-actions > button{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:48px;
+  padding:10px 8px;
+  white-space:normal;
+  word-break:normal;
+  overflow-wrap:normal;
+  line-height:1.2;
+}
+
