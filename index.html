@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#120c05">
-  <meta name="centuria-build" content="12.57">
+  <meta name="centuria-build" content="12.61">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -26,9 +26,9 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=12.57">
+<link rel="stylesheet" href="style.css?v=12.79">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest?v=12.57">
+  <link rel="manifest" href="manifest.webmanifest?v=12.61">
 
 <script>
 (function(){
@@ -96,11 +96,70 @@
 })();
 </script>
 
-  <link rel="stylesheet" href="arena-league-add-v1231.css?v=12.57">
-  <link rel="stylesheet" href="arena-league-table-v1232.css?v=12.57">
-<link rel="stylesheet" href="position-tracker-v1250.css?v=12.57">
+  <link rel="stylesheet" href="arena-league-add-v1231.css?v=12.59">
+  <link rel="stylesheet" href="arena-league-table-v1232.css?v=12.59">
+<link rel="stylesheet" href="position-tracker-v1250.css?v=12.59">
 </head>
 <body>
+<div id="siteBackgroundVideoPool" aria-hidden="true">
+  <video class="site-bg-video" data-bg="overall-dark" muted playsinline webkit-playsinline loop preload="metadata" aria-hidden="true"><source src="centuria-bg-dark.mp4?v=12.59" type="video/mp4"></video>
+  <video class="site-bg-video" data-bg="overall-light" muted playsinline webkit-playsinline loop preload="metadata" aria-hidden="true"><source src="centuria-bg-light.mp4?v=12.59" type="video/mp4"></video>
+  <video class="site-bg-video" data-bg="arena-dark" muted playsinline webkit-playsinline loop preload="metadata" aria-hidden="true"><source src="arena-bg-dark.mp4?v=12.59" type="video/mp4"></video>
+  <video class="site-bg-video" data-bg="arena-light" muted playsinline webkit-playsinline loop preload="metadata" aria-hidden="true"><source src="arena-bg-light.mp4?v=12.59" type="video/mp4"></video>
+</div>
+<script>
+(function(){
+  var lastWanted="";
+  var lastHost=null;
+
+  function syncSiteBackgroundVideo(){
+    var activeScreen=document.querySelector("#app > .screen.active");
+    if(!activeScreen)return;
+
+    var light=document.documentElement.getAttribute("data-site-theme")==="light" ||
+      document.documentElement.classList.contains("light-theme");
+    var arena=activeScreen.id==="screen-arena";
+    var wanted=(arena?"arena-":"overall-")+(light?"light":"dark");
+    var host=activeScreen.id==="screen-home"
+      ? (activeScreen.querySelector(".home-v645-wrap")||activeScreen)
+      : activeScreen;
+
+    if(wanted===lastWanted && host===lastHost)return;
+    lastWanted=wanted;
+    lastHost=host;
+
+    document.querySelectorAll("video.site-bg-video").forEach(function(video){
+      var active=video.getAttribute("data-bg")===wanted;
+      video.classList.toggle("is-active",active);
+      if(active){
+        if(video.parentNode!==host)host.insertBefore(video,host.firstChild);
+        video.preload="auto";
+        var playback=video.play();
+        if(playback&&typeof playback.catch==="function")playback.catch(function(){});
+      }else{
+        video.pause();
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded",function(){
+    syncSiteBackgroundVideo();
+    var app=document.getElementById("app");
+    if(app&&window.MutationObserver){
+      new MutationObserver(syncSiteBackgroundVideo).observe(app,{
+        subtree:true,
+        attributes:true,
+        attributeFilter:["class"]
+      });
+    }
+    document.addEventListener("touchstart",syncSiteBackgroundVideo,{once:true,passive:true});
+  });
+  window.addEventListener("centuria-theme-change",function(){
+    lastWanted="";
+    syncSiteBackgroundVideo();
+  });
+})();
+</script>
 <div id="portraitOnlyGuard" class="portrait-only-guard" aria-hidden="true">
   <div class="portrait-only-guard__card">
     <div class="portrait-only-guard__mark">↻</div>
@@ -702,7 +761,7 @@
       <footer class="settings-about-v659">
         <span>CENTURIA ATHLETICS</span>
         <strong>Автор: Daniil Osetskyi</strong>
-        <div class="settings-version" data-viewer-allowed="true">Версія <strong>v12.57</strong></div>
+        <div class="settings-version" data-viewer-allowed="true">Версія <strong>v12.61</strong></div>
       </footer>
     </div>
   </section>
@@ -753,6 +812,7 @@
       </div>
       <div id="playerViewSlider" class="player-view-slider">
         <div id="playerInfoSlide" class="player-view-slide">
+          <section id="playerExperienceScaleV1263" class="player-experience-scale-v1263" aria-label="Досвід футболіста в команді"></section>
           <div class="player-view-layout">
         <div id="viewCardImage" class="view-card-image"></div>
 
@@ -1128,7 +1188,9 @@
     <h2 id="calendarDayActionTitle">ПОДІЯ</h2>
     <p id="calendarDayActionDate" class="calendar-day-action-date">—</p>
     <div class="calendar-day-action-buttons calendar-match-edit-only">
-      <button id="createMatchFromDayBtn" class="primary-btn" type="button">⚽ ДОДАТИ МАТЧ</button>
+      <button id="createTrainingFromDayBtn" class="primary-btn" type="button">🎮 ТРЕНУВАННЯ</button>
+      <button id="createCupMatchFromDayBtn" class="primary-btn" type="button">🏆 МАТЧ КУБКА</button>
+      <button id="createLeagueMatchFromDayBtn" class="primary-btn" type="button">⚽ МАТЧ ЛІГИ</button>
     </div>
     <div id="calendarDayExistingEvents" class="calendar-day-existing-events"></div>
   </div>
@@ -1183,6 +1245,7 @@
       </div>
 
       <div class="calendar-match-view-actions calendar-match-edit-only">
+        <button id="editMatchScoreBtn" class="primary-btn" type="button">ВНЕСТИ / ЗМІНИТИ РАХУНОК</button>
         <button id="editCalendarMatchBtn" class="secondary-btn" type="button">РЕДАГУВАТИ</button>
         <button id="transferCalendarMatchBtn" class="secondary-btn transfer-match-btn" type="button">ПЕРЕНЕСТИ МАТЧ</button>
         <button id="deleteCalendarMatchBtn" class="danger-btn" type="button">ВИДАЛИТИ</button>
@@ -1201,8 +1264,12 @@
     </div>
 
     <div id="calendarMatchEdit" class="calendar-match-edit hidden">
+      <input id="calendarMatchKind" type="hidden" value="league">
       <label>ЛІГА / ТУРНІР
         <input id="matchCompetitionName" type="text" maxlength="60" placeholder="Наприклад: UCFL">
+      </label>
+      <label>Обрати лігу з бази клубів
+        <select id="matchCompetitionCatalog"><option value="">— Обери лігу —</option></select>
       </label>
       <div class="match-image-picker competition-picker">
         <div id="matchCompetitionPreview" class="match-image-preview"><span>ЛОГО ЛІГИ</span></div>
@@ -1212,6 +1279,7 @@
 
       <div class="match-team-edit-grid">
         <div class="match-team-editor">
+          <label>Клуб із бази<select id="matchHomeClubCatalog"><option value="">— Обрати клуб —</option></select></label>
           <div id="matchHomePreview" class="match-team-preview"><span>КОМАНДА 1</span></div>
           <input id="matchHomeImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
           <button id="chooseMatchHomeImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
@@ -1219,6 +1287,7 @@
         </div>
         <div class="match-edit-vs">VS</div>
         <div class="match-team-editor">
+          <label>Клуб із бази<select id="matchAwayClubCatalog"><option value="">— Обрати клуб —</option></select></label>
           <div id="matchAwayPreview" class="match-team-preview"><span>КОМАНДА 2</span></div>
           <input id="matchAwayImageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
           <button id="chooseMatchAwayImage" class="secondary-btn" type="button">ЗОБРАЖЕННЯ</button>
@@ -1440,12 +1509,12 @@
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=12.57.1"></script>
-<script src="arena.js?v=12.57"></script>
-<script src="arena-league-add-v1231.js?v=12.57"></script>
-<script src="arena-league-table-v1232.js?v=12.57"></script>
-<script src="arena-active-event-v1233.js?v=12.57"></script>
-<script src="position-tracker-v1250.js?v=12.57"></script>
+<script src="app.js?v=12.78"></script>
+<script src="arena.js?v=12.76"></script>
+<script src="arena-league-add-v1231.js?v=12.59"></script>
+<script src="arena-league-table-v1232.js?v=12.59"></script>
+<script src="arena-active-event-v1233.js?v=12.59"></script>
+<script src="position-tracker-v1250.js?v=12.59"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">

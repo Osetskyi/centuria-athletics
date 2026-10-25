@@ -305,7 +305,24 @@ const FORMATIONS = {
 
 let db;
 let players = [];
-window.getCenturiaArenaPlayers=()=>Array.isArray(players)?players.map(p=>({id:p?.id||"",name:String(p?.name||"").trim(),cardImage:p?.cardImage||"",number:p?.number||"",primaryPos:p?.primaryPos||"",status:p?.status||""})).filter(p=>p.name):[];
+window.getCenturiaArenaPlayers=()=>Array.isArray(players)?players.map(p=>{const experience=getPlayerExperienceStateV1263(p);return {id:p?.id||"",name:String(p?.name||"").trim(),cardImage:p?.cardImage||"",number:p?.number||"",primaryPos:p?.primaryPos||"",status:p?.status||"",createdAt:p?.createdAt||p?.created_at||"",experienceKey:experience?.key||"",experienceColor:experience?.stages?.[experience.currentIndex]?.color||""}}).filter(p=>p.name):[];
+function applyArenaPlayerExperienceHighlightsV1263(root=document){
+  const arena=root.querySelector?.("#arenaApp")||root.querySelector?.("#screen-arena")||root;
+  if(!arena?.querySelectorAll)return;
+  const byImage=new Map((players||[]).filter(p=>p?.cardImage).map(p=>[p.cardImage,p]));
+  arena.querySelectorAll("img").forEach(img=>{
+    const player=byImage.get(img.getAttribute("src"))||byImage.get(img.src);
+    if(!player)return;
+    const state=getPlayerExperienceStateV1263(player);
+    const card=img.closest('[class*="player"],[class*="card"],[class*="tile"],[class*="member"],button');
+    if(!state||!card)return;
+    card.classList.add("arena-experience-card",`experience-${state.key}`);
+  });
+}
+const arenaExperienceObserverV1263=new MutationObserver(()=>applyArenaPlayerExperienceHighlightsV1263());
+const arenaExperienceRootV1263=document.getElementById("arenaApp");
+if(arenaExperienceRootV1263)arenaExperienceObserverV1263.observe(arenaExperienceRootV1263,{subtree:true,childList:true,attributes:true,attributeFilter:["src"]});
+applyArenaPlayerExperienceHighlightsV1263();
 let squads = [];
 
 const LOCAL_SQUADS_FALLBACK_KEY="ca_saved_squads_fallback_v780";
@@ -575,6 +592,7 @@ let gatheringLineupSlots=[];
 let gatheringLineupPickerState=null;
 let gatheringVotes=[];
 let gatheringsMode="active";
+let expandedGatheringHistoryId=null;
 let gatheringsPollTimer=null;
 
 
@@ -613,7 +631,7 @@ function canEditSite(){
 
 function applyPermissions(){
   const editable = canEditSite();
-  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn","saveCalendarMatchBtn","editCalendarMatchBtn","transferCalendarMatchBtn","confirmTransferMatchBtn","cancelTransferMatchBtn","deleteCalendarMatchBtn","addAnotherCalendarMatchBtn","chooseMatchCompetitionImage","chooseMatchHomeImage","chooseMatchAwayImage","saveTrainingDayBtn","editTrainingDayBtn","deleteTrainingDayBtn","createTrainingFromDayBtn","createMatchFromDayBtn","editOfficialStatsBtn"].forEach(id=>{
+  ["addPlayerBtn","addPlayerBig","saveLineupBtn","newLineupBtn","clearPlayersBtn","clearSquadsBtn","editPlayerBtn","viewDeletePlayerBtn","deletePlayerBtn","tbSaveBtn","tbNewBtn","tbAddOwnBtn","tbAddOpponentBtn","tbBallBtn","tbArrowBtn","tbUndoBtn","tbDeleteSelectedBtn","tbClearBtn","saveCalendarMatchBtn","editCalendarMatchBtn","editMatchScoreBtn","transferCalendarMatchBtn","confirmTransferMatchBtn","cancelTransferMatchBtn","deleteCalendarMatchBtn","addAnotherCalendarMatchBtn","chooseMatchCompetitionImage","chooseMatchHomeImage","chooseMatchAwayImage","saveTrainingDayBtn","editTrainingDayBtn","deleteTrainingDayBtn","createTrainingFromDayBtn","createCupMatchFromDayBtn","createLeagueMatchFromDayBtn","editOfficialStatsBtn"].forEach(id=>{
     const el=$(id);
     if(el) el.classList.toggle("permission-hidden", !editable);
   });
@@ -1076,6 +1094,7 @@ function playerFromDb(p){
     status:decoded.status,
     note:decoded.note,
     cardImage:p.card_image_url || "",
+    createdAt:p.created_at || null,
     updatedAt:p.updated_at ? new Date(p.updated_at).getTime() : Date.now()
   };
 }
@@ -1516,7 +1535,8 @@ function renderPlayers(){
   grid.innerHTML="";
   arr.forEach(p=>{
     const isPom=isCurrentPlayerOfMonthV754(p.id);
-    const card=document.createElement("article");card.className=`player-card${isPom?" current-player-of-month":""}`;
+    const experience=getPlayerExperienceStateV1263(p);
+    const card=document.createElement("article");card.className=`player-card${isPom?" current-player-of-month":""}${experience?` experience-${experience.key}`:""}`;
     card.innerHTML=`
       <div class="img-wrap"><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">${isPom?`<span class="player-of-month-badge">👑 ГРАВЕЦЬ МІСЯЦЯ</span>`:""}</div>
       <button class="edit-mini" aria-label="Редагувати">✎</button>
@@ -1797,7 +1817,10 @@ function fillViewMode(p){
   $("playerEditMode").classList.add("hidden");
 
   const isPom=isCurrentPlayerOfMonthV754(p.id);
+  const experience=getPlayerExperienceStateV1263(p);
   $("viewCardImage").classList.toggle("current-player-of-month",isPom);
+  $("viewCardImage").classList.remove("experience-novice","experience-regular","experience-authority","experience-legend");
+  if(experience)$("viewCardImage").classList.add(`experience-${experience.key}`);
   $("viewCardImage").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">${isPom?`<span class="player-of-month-badge modal-badge">👑 ГРАВЕЦЬ МІСЯЦЯ</span>`:""}`;
   $("statsPlayerMiniCard").innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`;
   $("statsPlayerName").textContent=p.name||"—";
@@ -1812,11 +1835,87 @@ function fillViewMode(p){
   $("viewArchetype").innerHTML=renderArchetypeLevelsProfileV1239(p.archetypes||[]);
   $("viewStatus").textContent=p.status||"—";
   $("viewNote").textContent=p.note||"—";
+  $("playerExperienceScaleV1263").innerHTML=renderPlayerExperienceScaleV1263(p);
 
   const extras=(p.extraPositions||[]);
   $("viewExtraPositions").innerHTML=extras.length
     ? extras.map(pos=>`<span class="view-pos-chip">${POS_LABEL[pos]||pos}</span>`).join("")
     : `<span class="view-pos-empty">Немає</span>`;
+}
+
+function renderPlayerExperienceScaleV1263(player){
+  const state=getPlayerExperienceStateV1263(player);
+  if(!state){
+    return `<div class="player-experience-empty-v1263">Немає дати вступу до команди</div>`;
+  }
+  const segments=state.stages.map((stage,index)=>{
+    const fill=index<state.currentIndex?100:index===state.currentIndex?Math.round(state.progress*100):0;
+    return `<div class="player-experience-stage-v1263 ${index===state.currentIndex?"current":""} ${index<state.currentIndex?"complete":""}">
+      <div class="player-experience-track-v1263"><i style="width:${fill}%;--stage-color:${stage.color}"></i></div>
+      <span>${esc(stage.name)}</span>
+    </div>`;
+  }).join("");
+  return `<div class="player-experience-head-v1263"><span>ДОСВІД У КОМАНДІ</span><strong class="experience-${state.key}">${state.stages[state.currentIndex].name}</strong></div>
+    <div class="player-experience-bar-v1263">${segments}</div>
+    <div class="player-experience-foot-v1263"><span>${state.tenure}</span><small>З ${state.joined}</small></div>`;
+}
+
+function getPlayerExperienceClassV1263(player){
+  const state=getPlayerExperienceStateV1263(player);
+  return state?`experience-${state.key}`:"";
+}
+
+function getPlayerExperienceStateV1263(player){
+  const joinedAt=player?.createdAt||player?.created_at;
+  const startedAt=joinedAt ? new Date(joinedAt) : null;
+  if(!startedAt || Number.isNaN(startedAt.getTime()))return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  const startDate=new Date(startedAt);startDate.setHours(0,0,0,0);
+  if(startDate>today)startDate.setTime(today.getTime());
+  const days=Math.max(0,Math.floor((Date.UTC(today.getFullYear(),today.getMonth(),today.getDate())-Date.UTC(startDate.getFullYear(),startDate.getMonth(),startDate.getDate()))/86400000));
+  const stages=[
+    {name:"Новачок",key:"novice",color:"#4da8ff"},
+    {name:"Постійний",key:"regular",color:"#42c878"},
+    {name:"Авторитет",key:"authority",color:"#f1c644"},
+    {name:"Легенда",key:"legend",color:"#ef5350"}
+  ];
+  const currentIndex=days>=90?3:days>=60?2:days>=30?1:0;
+  const progress=currentIndex===3?1:Math.min(1,Math.max(0,(days-currentIndex*30)/30));
+  const tenureParts=getPlayerTenurePartsV1263(startDate,today);
+  const tenureText=[];
+  if(tenureParts.years)tenureText.push(`${tenureParts.years} ${getUkPluralV1263(tenureParts.years,"рік","роки","років")}`);
+  if(tenureParts.months)tenureText.push(`${tenureParts.months} ${getUkPluralV1263(tenureParts.months,"місяць","місяці","місяців")}`);
+  if(tenureParts.days)tenureText.push(`${tenureParts.days} ${getUkPluralV1263(tenureParts.days,"день","дні","днів")}`);
+  return {
+    stages,
+    currentIndex,
+    progress,
+    key:stages[currentIndex].key,
+    tenure:`У клубі: ${tenureText.join(" ")||"менше дня"}`,
+    joined:startedAt.toLocaleDateString("uk-UA",{day:"2-digit",month:"long",year:"numeric"})
+  };
+}
+
+function getUkPluralV1263(value,one,few,many){
+  const form=new Intl.PluralRules("uk").select(value);
+  return form==="one"?one:form==="few"?few:many;
+}
+
+function getPlayerTenurePartsV1263(start,end){
+  const addMonths=(date,count)=>{
+    const result=new Date(date);
+    const day=result.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth()+count);
+    const lastDay=new Date(result.getFullYear(),result.getMonth()+1,0).getDate();
+    result.setDate(Math.min(day,lastDay));
+    return result;
+  };
+  let cursor=new Date(start),years=0,months=0;
+  while(addMonths(cursor,12)<=end){cursor=addMonths(cursor,12);years++;}
+  while(addMonths(cursor,1)<=end){cursor=addMonths(cursor,1);months++;}
+  const days=Math.max(0,Math.floor((Date.UTC(end.getFullYear(),end.getMonth(),end.getDate())-Date.UTC(cursor.getFullYear(),cursor.getMonth(),cursor.getDate()))/86400000));
+  return {years,months,days};
 }
 
 function fillEditMode(p){
@@ -2077,7 +2176,7 @@ function openPicker(key,pos){
     sorted.forEach(p=>{
       const c=compatibility(p,pos);
       const label=c==="good"?"ОСНОВНА":c==="alt"?"ДОДАТКОВА":"НЕ РІДНА";
-      const btn=document.createElement("button");btn.className="picker-item";
+      const btn=document.createElement("button");btn.className=`picker-item ${getPlayerExperienceClassV1263(p)}`;
       btn.innerHTML=`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><div><strong>${esc(p.name)}</strong><small>${POS_LABEL[p.primaryPos]}${p.archetype?" • "+esc(p.archetype):""}</small></div><span class="compat ${c}">${label}</span>`;
       btn.addEventListener("click",()=>{lineup[key]=p.id;saveLineupState();$("pickerDialog").close();renderPitch()});
       list.appendChild(btn);
@@ -3043,8 +3142,8 @@ function gatheringLineupSlotHtml(g,formationKey,slot,index){
   const editable=canEditSite()&&!gatheringIsPast(g);
   return `<div class="gathering-lineup-slot" style="left:${slot[1]}%;top:${slot[2]}%">
     ${p&&p.status?`<div class="slot-status gathering-slot-status slot-status-${p.status==="Капітан"?"captain":p.status==="Віце-капітан"?"vice":p.status==="Головний скаут"?"scout":"trial"}">${esc(p.status)}</div>`:""}
-    <button type="button" class="gathering-lineup-card ${p?"filled live-player-card":""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
-      ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}">`:"<span>＋</span>"}
+    <button type="button" class="gathering-lineup-card ${p?`filled live-player-card ${getPlayerExperienceClassV1263(p)}`:""}" ${editable?`data-gathering-lineup-slot="${g.id}|${key}|${slot[0]}"`:"disabled"}>
+      ${p?`<img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(p.name)}" loading="lazy" decoding="async">`:"<span>＋</span>"}
     </button>
     <div class="gathering-lineup-name">${p?esc(p.name):"Порожньо"}</div>
     <div class="gathering-lineup-pos">${POS_LABEL[slot[0]]||slot[0]}</div>
@@ -3091,7 +3190,7 @@ async function openGatheringLineupPickerV599(gatheringId,slotKey,position){
     ${available.length?available.map(p=>{
       const comp=p.primaryPos===position?"good":(p.extraPositions||[]).includes(position)?"alt":"bad";
       const label=comp==="good"?"ОСНОВНА":comp==="alt"?"ДОДАТКОВА":"НЕ РІДНА";
-      return `<button type="button" class="gathering-picker-player" data-gathering-player="${p.id}">
+      return `<button type="button" class="gathering-picker-player ${getPlayerExperienceClassV1263(p)}" data-gathering-player="${p.id}">
         <img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt="">
         <div><strong>${esc(p.name)}</strong><small>${POS_LABEL[p.primaryPos]||p.primaryPos}${p.archetype?" • "+esc(p.archetype):""}</small></div>
         <span class="compat ${comp}">${label}</span>
@@ -3207,17 +3306,22 @@ function renderGatherings(){
   });
 
   list.innerHTML=sorted.map(g=>{
-    const votes=votesForGathering(g.id);
-    const yes=votes.filter(v=>v.vote==="yes").length;
-    const no=votes.filter(v=>v.vote==="no").length;
-    const maybe=votes.filter(v=>v.vote==="maybe").length;
-    const mine=votes.find(v=>v.user_id===authUser?.id)?.vote||"";
-    const closed=gatheringIsPast(g);
+    try{
+      const votes=votesForGathering(g.id);
+      const yes=votes.filter(v=>v.vote==="yes").length;
+      const no=votes.filter(v=>v.vote==="no").length;
+      const maybe=votes.filter(v=>v.vote==="maybe").length;
+      const mine=votes.find(v=>v.user_id===authUser?.id)?.vote||"";
+      const closed=gatheringIsPast(g);
+      const historyMode=gatheringsMode==="history";
+      const historyId=String(g.id||"");
+      const historyLineupOpen=historyMode && expandedGatheringHistoryId===historyId;
+      const shortTime=typeof g.gathering_time==="string" ? g.gathering_time.slice(0,5) : "";
 
-    return `<article class="gathering-card ${closed?"closed":""}" data-gathering-id="${g.id}">
+      return `<article class="gathering-card ${closed?"closed":""}" data-gathering-id="${esc(historyId)}">
       <div class="gathering-card-head">
         <div>
-          <div class="gathering-date">${esc(formatGatheringDate(g.gathering_date))}${g.gathering_time?` · ${esc(g.gathering_time.slice(0,5))}`:""}</div>
+          <div class="gathering-date">${esc(formatGatheringDate(g.gathering_date))}${shortTime?` · ${esc(shortTime)}`:""}</div>
           <h3>${esc(g.title)}</h3>
         </div>
         <div class="gathering-head-actions">
@@ -3256,9 +3360,33 @@ function renderGatherings(){
         </div>
       </div>
 
-      ${gatheringLineupHtml(g)}
+      ${historyMode?`<div class="gathering-history-lineup-shell">
+        <button type="button" class="dark-btn gathering-history-lineup-toggle" data-history-lineup-toggle="${esc(historyId)}" aria-expanded="${historyLineupOpen?"true":"false"}">
+          ${historyLineupOpen?"СХОВАТИ СКЛАД":"ПОКАЗАТИ СКЛАД"}
+        </button>
+        ${historyLineupOpen?gatheringLineupHtml(g):""}
+      </div>`:gatheringLineupHtml(g)}
     </article>`;
+    }catch(err){
+      console.error("Gathering history item render",g?.id,err);
+      return `<article class="gathering-card closed gathering-card-error">
+        <div class="gathering-date">АРХІВ ЗБОРІВ</div>
+        <h3>${esc(g?.title||"Збір")}</h3>
+        <div class="gatherings-empty">Цей старий запис не вдалося відобразити.</div>
+      </article>`;
+    }
   }).join("");
+
+  list.querySelectorAll("[data-history-lineup-toggle]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const id=String(btn.dataset.historyLineupToggle||"");
+      expandedGatheringHistoryId=expandedGatheringHistoryId===id ? null : id;
+      renderGatherings();
+      requestAnimationFrame(()=>{
+        document.querySelector(`[data-gathering-id="${CSS.escape(id)}"]`)?.scrollIntoView({block:"nearest"});
+      });
+    });
+  });
 
   list.querySelectorAll("[data-vote]").forEach(btn=>{
     btn.addEventListener("click",()=>voteGathering(btn.dataset.gathering,btn.dataset.vote));
@@ -3309,7 +3437,7 @@ async function voteGathering(gatheringId,vote){
   await loadGatherings();
 }
 
-function openGatheringModal(){
+function openGatheringModal(dateKey=null){
   if(!canEditSite())return;
   const now=new Date();
   const tomorrow=new Date(now.getTime()+86400000);
@@ -3317,7 +3445,7 @@ function openGatheringModal(){
   const m=String(tomorrow.getMonth()+1).padStart(2,"0");
   const d=String(tomorrow.getDate()).padStart(2,"0");
   $("gatheringTitleInput").value="Тренування";
-  $("gatheringDateInput").value=`${y}-${m}-${d}`;
+  $("gatheringDateInput").value=dateKey||`${y}-${m}-${d}`;
   $("gatheringTimeInput").value="21:00";
   $("gatheringNoteInput").value="";
   $("gatheringModalStatus").textContent="";
@@ -3386,6 +3514,7 @@ async function deleteGathering(id){
 
 function setGatheringsMode(mode){
   gatheringsMode=mode;
+  if(mode!=="history")expandedGatheringHistoryId=null;
   $("activeGatheringsTab")?.classList.toggle("active",mode==="active");
   $("historyGatheringsTab")?.classList.toggle("active",mode==="history");
   renderGatherings();
@@ -3548,11 +3677,14 @@ function chatRoleClassV803(profile){
 function parseChatStoredTextV803(raw){
   const text=String(raw||"");
   if(text.startsWith("↪ ")){
-    const split=text.indexOf("\\n\\n");
+    const realNewlineSplit=text.indexOf("\n\n");
+    const escapedNewlineSplit=text.indexOf("\\n\\n");
+    const useEscapedSeparator=escapedNewlineSplit>=0 && (realNewlineSplit<0 || escapedNewlineSplit<realNewlineSplit);
+    const split=useEscapedSeparator ? escapedNewlineSplit : realNewlineSplit;
     if(split>2){
       return {
         replyLine:text.slice(2,split).trim(),
-        body:text.slice(split+2)
+        body:text.slice(split+(useEscapedSeparator?4:2)).replace(/^\n+/,"")
       };
     }
   }
@@ -3562,7 +3694,7 @@ function parseChatStoredTextV803(raw){
 function buildChatStoredTextV803(body,replyLine=""){
   const cleanBody=String(body||"").trim();
   const cleanReply=String(replyLine||"").trim();
-  return cleanReply ? `↪ ${cleanReply}\\n\\n${cleanBody}` : cleanBody;
+  return cleanReply ? `↪ ${cleanReply}\n\n${cleanBody}` : cleanBody;
 }
 
 function chatMessagePreviewV803(message,max=92){
@@ -5241,31 +5373,29 @@ function setHomeEventLogo(id,src,name){
 }
 
 function renderHomeNextEvent(){
-  const empty=$("homeNextEmpty");
-  const gatheringBox=$("homeNextGathering");
-  const matchBox=$("homeNextMatch");
-  if(!empty||!gatheringBox||!matchBox)return;
-
+  const empty=$("homeNextEmpty"),gatheringBox=$("homeNextGathering"),matchBox=$("homeNextMatch"),button=$("homeNextEvent");
+  if(!empty||!gatheringBox||!matchBox||!button)return;
   const event=homeNextEventData;
-  empty.classList.toggle("hidden",!!event);
-  gatheringBox.classList.add("hidden");
-  matchBox.classList.add("hidden");
-
-  if(!event)return;
-
-  if(event.type==="gathering"){
-    gatheringBox.classList.remove("hidden");
-    $("homeNextGatheringTitle").textContent=event.title||"Збір команди";
-    $("homeNextGatheringDate").textContent=homeEventDateLabel(event.date,event.time);
-    $("homeNextGatheringCountdown").textContent=homeCountdownLabel(event.when);
-  }else{
-    matchBox.classList.remove("hidden");
-    $("homeNextHomeName").textContent=homeShortTeamName(event.homeName||"Centuria Athletics");
-    $("homeNextAwayName").textContent=homeShortTeamName(event.awayName||"Суперник");
-    $("homeNextMatchDate").textContent=homeEventDateLabel(event.date,event.time);
-    $("homeNextMatchCountdown").textContent=homeCountdownLabel(event.when);
-    setHomeEventLogo("homeNextHomeLogo",event.homeImage,event.homeName);
-    setHomeEventLogo("homeNextAwayLogo",event.awayImage,event.awayName);
+  const gathering=event?.type==="gathering"?event:null;
+  const match=gathering?(event.match||null):(event?.type==="match"?event:null);
+  empty.classList.toggle("hidden",Boolean(gathering||match));
+  gatheringBox.classList.toggle("hidden",!gathering);
+  matchBox.classList.toggle("hidden",!match);
+  button.classList.toggle("home-next-split-v1278",Boolean(gathering&&match));
+  if(gathering){
+    $("homeNextGatheringTitle").textContent=gathering.title||"Збір команди";
+    $("homeNextGatheringDate").textContent=homeEventDateLabel(gathering.date,gathering.time);
+    $("homeNextGatheringCountdown").textContent=homeCountdownLabel(gathering.when);
+  }
+  if(match){
+    const matchType=matchBox.querySelector('.home-next-type');
+    if(matchType)matchType.textContent=match.matchKind==='cup'?'КУБОК':'ЛІГА';
+    $("homeNextHomeName").textContent=homeShortTeamName(match.homeName||"Centuria Athletics");
+    $("homeNextAwayName").textContent=homeShortTeamName(match.awayName||"Суперник");
+    $("homeNextMatchDate").textContent=homeEventDateLabel(match.date,match.time);
+    $("homeNextMatchCountdown").textContent=homeCountdownLabel(match.when);
+    setHomeEventLogo("homeNextHomeLogo",match.homeImage,match.homeName);
+    setHomeEventLogo("homeNextAwayLogo",match.awayImage,match.awayName);
   }
 }
 
@@ -5277,7 +5407,7 @@ async function loadHomeNextEvent(){
   }
 
   const matchPromise=sb.from("calendar_matches")
-    .select("id,match_date,match_time,home_team_name,home_team_image,away_team_name,away_team_image,competition_name")
+    .select("id,match_date,match_time,match_kind,home_team_name,home_team_image,away_team_name,away_team_image,competition_name")
     .order("match_date",{ascending:true});
 
   const gatheringPromise=authUser
@@ -5293,41 +5423,18 @@ async function loadHomeNextEvent(){
     if(gErr)console.warn("Home next gathering load failed",gErr);
 
     const now=Date.now();
-    const candidates=[];
-
-    (matches||[]).forEach(m=>{
+    const upcomingMatches=(matches||[]).map(m=>{
       const when=homeEventDate(m.match_date,m.match_time);
-      if(when && when.getTime()>=now-60000){
-        candidates.push({
-          type:"match",
-          id:m.id,
-          date:m.match_date,
-          time:m.match_time,
-          when,
-          homeName:m.home_team_name||"Centuria Athletics",
-          homeImage:m.home_team_image||null,
-          awayName:m.away_team_name||"Суперник",
-          awayImage:m.away_team_image||null
-        });
-      }
-    });
-
-    (gathers||[]).forEach(g=>{
+      return when&&when.getTime()>=now-60000?{type:"match",id:m.id,date:m.match_date,time:m.match_time,when,
+        matchKind:m.match_kind||"league",homeName:m.home_team_name||"Centuria Athletics",homeImage:m.home_team_image||null,
+        awayName:m.away_team_name||"Суперник",awayImage:m.away_team_image||null}:null;
+    }).filter(Boolean).sort((a,b)=>a.when-b.when);
+    const upcomingGatherings=(gathers||[]).map(g=>{
       const when=homeEventDate(g.gathering_date,g.gathering_time);
-      if(when && when.getTime()>=now-60000){
-        candidates.push({
-          type:"gathering",
-          id:g.id,
-          title:g.title||"Збір команди",
-          date:g.gathering_date,
-          time:g.gathering_time,
-          when
-        });
-      }
-    });
-
-    candidates.sort((a,b)=>a.when-b.when);
-    homeNextEventData=candidates[0]||null;
+      return when&&when.getTime()>=now-60000?{type:"gathering",id:g.id,title:g.title||"Збір команди",date:g.gathering_date,time:g.gathering_time,when}:null;
+    }).filter(Boolean).sort((a,b)=>a.when-b.when);
+    const nextMatch=upcomingMatches[0]||null,nextGathering=upcomingGatherings[0]||null;
+    homeNextEventData=nextGathering?{...nextGathering,match:nextMatch}:nextMatch;
     renderHomeNextEvent();
   }catch(err){
     console.warn("Home next event error",err);
@@ -5337,7 +5444,8 @@ async function loadHomeNextEvent(){
 
   if(!homeNextEventTimer){
     homeNextEventTimer=setInterval(()=>{
-      if(homeNextEventData && homeNextEventData.when.getTime()<Date.now()-60000){
+      const eventTimes=[homeNextEventData?.when,homeNextEventData?.match?.when].filter(Boolean);
+      if(eventTimes.some(when=>when.getTime()<Date.now()-60000)){
         loadHomeNextEvent();
       }else{
         renderHomeNextEvent();
@@ -5488,7 +5596,7 @@ function showDayActionModal(dateKey){
   const matches=calendarMatches.filter(m=>m.match_date===dateKey);
   const gathers=calendarGatherings.filter(g=>g.gathering_date===dateKey);
   const items=[];
-  matches.forEach(m=>items.push(`<button type="button" class="day-existing-event match" data-open-match="${m.id}">⚽ ${esc(m.home_team_name||"Centuria")} — ${esc(m.away_team_name||"Суперник")} <b>${m.match_time?m.match_time.slice(0,5):""}</b></button>`));
+  matches.forEach(m=>{const kind=m.match_kind==="cup"?"КУБОК":"ЛІГА";const result=m.home_score!=null&&m.away_score!=null?` · ${m.home_score}:${m.away_score}`:"";items.push(`<button type="button" class="day-existing-event match" data-open-match="${m.id}">⚽ ${kind} · ${esc(m.home_team_name||"Centuria")} — ${esc(m.away_team_name||"Суперник")} <b>${m.match_time?m.match_time.slice(0,5):""}${result}</b></button>`)});
   gathers.forEach(g=>{
     const day=trainingForGathering(g.id);
     items.push(`<button type="button" class="day-existing-event gathering" data-open-gathering-stats="${g.id}">✓ ${esc(g.title||"Збір")} <b>${day?"📊":"＋ СТАТА"}</b></button>`);
@@ -5759,16 +5867,23 @@ function renderCalendar(){
     const key=calendarDateKey(cy,cm,day);
     const dayMatches=calendarMatches.filter(v=>v.match_date===key);
     const gathers=calendarGatherings.filter(v=>v.gathering_date===key && !v.is_closed);
+    const matchMarks=dayMatches.slice(0,2).map(match=>`<span class="calendar-event-badge match calendar-match-crests-v1277" title="${esc(match.match_kind==='cup'?'Кубок':'Ліга')}: ${esc(match.home_team_name||'Centuria Athletics')} — ${esc(match.away_team_name||'Суперник')}"><span class="calendar-match-kind-v1277">${match.match_kind==='cup'?'КУБ':'ЛІГ'}</span>${calendarMiniCrestV1277(match.home_team_image,match.home_team_name)}<span class="calendar-match-vs-v1277">·</span>${calendarMiniCrestV1277(match.away_team_image,match.away_team_name)}</span>`).join('');
+    const extraMatches=dayMatches.length>2?`<span class="calendar-match-extra-v1277">+${dayMatches.length-2}</span>`:'';
     cells.push(`<button type="button" class="calendar-day ${outside?"outside":""} ${key===today?"today":""} ${dayMatches.length?"has-match":""}" data-calendar-date="${key}" data-viewer-allowed="true">
       <span class="calendar-day-number">${day}</span>
       <span class="calendar-day-events">
-        ${dayMatches.length?`<span class="calendar-event-badge match">⚽ <b>${dayMatches.length>1?`МАТЧІ ${dayMatches.length}`:"МАТЧ"}</b></span>`:""}
+        ${matchMarks}${extraMatches}
         ${gathers.length?`<span class="calendar-event-badge gathering">✓ <b>${gathers.length>1?`ЗБОРИ ${gathers.length}`:"ЗБІР"}</b></span>`:""}
       </span>
     </button>`);
   }
   grid.innerHTML=cells.join("");
   grid.querySelectorAll("[data-calendar-date]").forEach(btn=>btn.addEventListener("click",()=>openCalendarDay(btn.dataset.calendarDate)));
+}
+
+function calendarMiniCrestV1277(src,name){
+  const initials=String(name||'?').trim().split(/\s+/).slice(0,2).map(part=>part[0]||'').join('').toUpperCase();
+  return src?`<img class="calendar-mini-crest-v1277" src="${esc(src)}" alt="${esc(name||'Емблема клубу')}" loading="lazy">`:`<span class="calendar-mini-crest-v1277 calendar-mini-crest-fallback-v1277">${esc(initials||'?')}</span>`;
 }
 
 async function openCalendarScreen(){
@@ -5794,7 +5909,7 @@ function showCalendarMatchView(match){
   $("matchViewAwayName").textContent=match.away_team_name||"Суперник";
   $("matchViewTime").textContent=match.match_time?match.match_time.slice(0,5):"ЧАС НЕ ВКАЗАНО";
   $("matchViewDate").textContent=formatCalendarDate(match.match_date);
-  $("calendarMatchTitle").textContent="МАТЧ";
+  $("calendarMatchTitle").textContent=match.match_kind==="cup"?"МАТЧ КУБКА":"МАТЧ ЛІГИ";
   loadOfficialStatsForMatch(match);
   refreshCalendarPermissions();
 }
@@ -5810,17 +5925,98 @@ function setMatchPreview(id,src,label){
   box.innerHTML=src?`<img src="${src}" alt="">`:`<span>${label}</span>`;
 }
 
+let calendarClubCatalogV1268={leagues:[],clubs:[]};
+let calendarAutoLogoClubV1268={home:"",away:""};
+const calendarClubNameKeyV1268=value=>String(value||"").normalize("NFKD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9а-яіїєґ]+/gi," ").trim().replace(/\s+/g," ");
+const calendarClubNameSimilarityV1268=(a,b)=>{
+  if(!a||!b)return 0;if(a===b)return 1;
+  let previous=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i++){
+    const next=[i];
+    for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,previous[j]+1,previous[j-1]+(a[i-1]===b[j-1]?0:1));
+    previous=next;
+  }
+  return 1-previous[b.length]/Math.max(a.length,b.length,1);
+};
+function findCalendarClubMatchV1268(value){
+  const key=calendarClubNameKeyV1268(value);if(key.length<4)return null;
+  const exact=calendarClubCatalogV1268.clubs.find(item=>calendarClubNameKeyV1268(item?.name)===key);
+  if(exact)return exact;
+  const ranked=calendarClubCatalogV1268.clubs.map(item=>({item,score:calendarClubNameSimilarityV1268(key,calendarClubNameKeyV1268(item?.name))})).sort((a,b)=>b.score-a.score);
+  return ranked[0]?.score>=.80&&(!ranked[1]||ranked[0].score-ranked[1].score>=.08)?ranked[0].item:null;
+}
+function syncCalendarClubEmblemV1268(type){
+  if(type!=="home"&&type!=="away")return;
+  const home=type==="home",nameEl=$(home?"matchHomeName":"matchAwayName"),select=$(home?"matchHomeClubCatalog":"matchAwayClubCatalog");
+  const previewId=home?"matchHomePreview":"matchAwayPreview",label=home?"КОМАНДА 1":"КОМАНДА 2";
+  const key=calendarClubNameKeyV1268(nameEl?.value);
+  const club=key?findCalendarClubMatchV1268(key):null;
+  if(club){
+    const wasAutoMatched=Boolean(calendarAutoLogoClubV1268[type]);
+    if(select)select.value=club.name;
+    calendarAutoLogoClubV1268[type]=club.name;
+    if(String(club.logo||"").trim())calendarDraftImages[type]=club.logo;
+    else if(wasAutoMatched)calendarDraftImages[type]=null;
+    setMatchPreview(previewId,calendarDraftImages[type],label);
+    return;
+  }
+  if(select)select.value="";
+  if(calendarAutoLogoClubV1268[type]){
+    calendarAutoLogoClubV1268[type]="";
+    calendarDraftImages[type]=null;
+    setMatchPreview(previewId,null,label);
+  }
+}
+async function populateCalendarClubCatalogV1268(match=null){
+  const leagueSelect=$('matchCompetitionCatalog'),homeSelect=$('matchHomeClubCatalog'),awaySelect=$('matchAwayClubCatalog');
+  if(!leagueSelect||!homeSelect||!awaySelect)return;
+  try{
+    const api=window.CenturiaArenaClubApi;
+    const [groups,leagues,clubs]=await Promise.all([api?.listGroups?.()||[],api?.listLeagues?.()||[],api?.list?.()||[]]);
+    calendarClubCatalogV1268={groups,leagues,clubs};
+    leagueSelect.innerHTML='<option value="">— Обрати лігу —</option>'+leagues.map(x=>`<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('');
+    const countryName=code=>groups.find(x=>String(x.code||'').toUpperCase()===String(code||'').toUpperCase())?.name||'Без країни';
+    const leagueName=code=>leagues.find(x=>String(x.code||'').toUpperCase()===String(code||'').toUpperCase())?.name||'Без ліги';
+    const buckets=new Map();
+    clubs.forEach(club=>{
+      const country=String(club.country||'').trim(),league=String(club.league_code||'').trim();
+      const label=`${countryName(country)} · ${leagueName(league)}`;
+      if(!buckets.has(label))buckets.set(label,[]);buckets.get(label).push(club);
+    });
+    const clubOptions='<option value="">— Обрати клуб за лігою —</option>'+[...buckets.entries()].sort((a,b)=>a[0].localeCompare(b[0],'uk')).map(([label,items])=>`<optgroup label="${esc(label)}">${items.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'uk')).map(x=>`<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
+    homeSelect.innerHTML=clubOptions;awaySelect.innerHTML=clubOptions;
+    leagueSelect.value=leagues.find(x=>x.name===(match?.competition_name||''))?.code||'';
+    homeSelect.value=clubs.find(x=>x.name===(match?.home_team_name||''))?.name||'';
+    awaySelect.value=clubs.find(x=>x.name===(match?.away_team_name||''))?.name||'';
+    syncCalendarClubEmblemV1268('home');
+    syncCalendarClubEmblemV1268('away');
+  }catch(err){console.warn('Calendar club catalog load',err);}
+}
+function applyCalendarCatalogChoiceV1268(type,code){
+  if(type==='competition'){
+    const item=calendarClubCatalogV1268.leagues.find(x=>x.code===code);if(!item)return;
+    $('matchCompetitionName').value=item.name;calendarDraftImages.competition=item.image_url||null;
+    setMatchPreview('matchCompetitionPreview',calendarDraftImages.competition,'ЛОГО ЛІГИ');return;
+  }
+  const item=calendarClubCatalogV1268.clubs.find(x=>x.name===code);if(!item)return;
+  const home=type==='home';$(home?'matchHomeName':'matchAwayName').value=item.name;calendarAutoLogoClubV1268[type]=item.name;
+  calendarDraftImages[type]=item.logo||null;setMatchPreview(home?'matchHomePreview':'matchAwayPreview',calendarDraftImages[type],home?'КОМАНДА 1':'КОМАНДА 2');
+}
+
 function showCalendarMatchEdit(match,dateKey){
   if(!canEditSite()){if(match)showCalendarMatchView(match);return;}
+  document.querySelectorAll('.arena-clubdb-modal-v945').forEach(el=>el.closest('.arena-modal-v852')?.remove());
   $("calendarDayMatchesPane")?.classList.add("hidden");
   $("calendarTransferBox")?.classList.add("hidden");
   calendarSelectedMatch=match||null;
   calendarSelectedDate=dateKey || match?.match_date || calendarTodayKey();
   calendarDraftImages={competition:match?.competition_image||null,home:match?.home_team_image||null,away:match?.away_team_image||null};
+  calendarAutoLogoClubV1268={home:"",away:""};
   $("calendarMatchView").classList.add("hidden");
   $("calendarMatchEdit").classList.remove("hidden");
   $("calendarMatchTitle").textContent=match?"РЕДАГУВАННЯ МАТЧУ":"НОВИЙ МАТЧ";
   $("matchCompetitionName").value=match?.competition_name||"";
+  $("calendarMatchKind").value=match?.match_kind||"league";
   $("matchHomeName").value=match?.home_team_name||"Centuria Athletics";
   $("matchAwayName").value=match?.away_team_name||"";
   $("matchDateInput").value=calendarSelectedDate;
@@ -5829,6 +6025,7 @@ function showCalendarMatchEdit(match,dateKey){
   setMatchPreview("matchCompetitionPreview",calendarDraftImages.competition,"ЛОГО ЛІГИ");
   setMatchPreview("matchHomePreview",calendarDraftImages.home,"КОМАНДА 1");
   setMatchPreview("matchAwayPreview",calendarDraftImages.away,"КОМАНДА 2");
+  populateCalendarClubCatalogV1268(match);
   renderOfficialInputs(match);
   refreshCalendarPermissions();
 }
@@ -5877,6 +6074,7 @@ function renderCalendarDayMatches(dateKey){
 }
 
 function openCalendarDay(dateKey){
+  document.querySelectorAll('.arena-clubdb-modal-v945').forEach(el=>el.closest('.arena-modal-v852')?.remove());
   calendarSelectedDate=dateKey;
   const matches=calendarMatches.filter(v=>v.match_date===dateKey);
   const gathers=calendarGatherings.filter(v=>v.gathering_date===dateKey && !v.is_closed);
@@ -5887,10 +6085,9 @@ function openCalendarDay(dateKey){
     showCalendarMatchView(matches[0]);
     return;
   }
-  if(eventCount===1 && gathers.length===1){
-    openGatheringStats(gathers[0]);
-    return;
-  }
+  // A single scheduled gathering opens the day action sheet first. The user
+  // can choose its row to open ratings, while the three day actions remain
+  // available for adding training, cup, or league events.
   if(eventCount===0 && !canEditSite()){
     showToast("На цей день подій немає");
     return;
@@ -5913,6 +6110,7 @@ async function chooseCalendarImage(inputId,kind,previewId,label){
     if(!["image/jpeg","image/png","image/webp"].includes(file.type)){showToast("Потрібне JPG, PNG або WEBP");return;}
     try{
       const data=await resizeImage(file,420,420,.9);
+      if(kind==='home'||kind==='away')calendarAutoLogoClubV1268[kind]='';
       calendarDraftImages[kind]=data;
       setMatchPreview(previewId,data,label);
     }catch(err){console.error(err);showToast("Не вдалося завантажити зображення");}
@@ -5986,7 +6184,10 @@ async function saveCalendarMatch(){
   if(!date||!away){$("calendarMatchStatus").textContent="Вкажи дату та назву суперника.";return;}
   const payload={
     match_date:date,
+    match_kind:$('calendarMatchKind').value==='cup'?'cup':'league',
     match_time:$("matchTimeInput").value||null,
+    home_score:$('officialHomeScoreInput').value===''?null:Number($('officialHomeScoreInput').value),
+    away_score:$('officialAwayScoreInput').value===''?null:Number($('officialAwayScoreInput').value),
     competition_name:$("matchCompetitionName").value.trim()||null,
     competition_image:calendarDraftImages.competition,
     home_team_name:home,
@@ -6039,6 +6240,7 @@ $("calendarNextBtn")?.addEventListener("click",()=>{calendarCursor=new Date(cale
 $("closeCalendarMatchModal")?.addEventListener("click",closeCalendarMatchModal);
 document.querySelectorAll("[data-close-calendar-match]").forEach(el=>el.addEventListener("click",closeCalendarMatchModal));
 $("editCalendarMatchBtn")?.addEventListener("click",()=>showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate));
+$("editMatchScoreBtn")?.addEventListener("click",()=>{if(!calendarSelectedMatch)return;showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate);setTimeout(()=>$('officialHomeScoreInput')?.scrollIntoView({behavior:'smooth',block:'center'}),50);});
 $("editOfficialStatsBtn")?.addEventListener("click",()=>{
   if(!calendarSelectedMatch||!canEditSite())return;
   showCalendarMatchEdit(calendarSelectedMatch,calendarSelectedDate);
@@ -6054,6 +6256,11 @@ $("saveCalendarMatchBtn")?.addEventListener("click",saveCalendarMatch);
 $("chooseMatchCompetitionImage")?.addEventListener("click",()=>chooseCalendarImage("matchCompetitionImageInput","competition","matchCompetitionPreview","ЛОГО ЛІГИ"));
 $("chooseMatchHomeImage")?.addEventListener("click",()=>chooseCalendarImage("matchHomeImageInput","home","matchHomePreview","КОМАНДА 1"));
 $("chooseMatchAwayImage")?.addEventListener("click",()=>chooseCalendarImage("matchAwayImageInput","away","matchAwayPreview","КОМАНДА 2"));
+$("matchCompetitionCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("competition",e.target.value));
+$("matchHomeClubCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("home",e.target.value));
+$("matchAwayClubCatalog")?.addEventListener("change",e=>applyCalendarCatalogChoiceV1268("away",e.target.value));
+$("matchHomeName")?.addEventListener("input",()=>syncCalendarClubEmblemV1268("home"));
+$("matchAwayName")?.addEventListener("input",()=>syncCalendarClubEmblemV1268("away"));
 
 
 /* Tactical board */
@@ -6652,7 +6859,10 @@ $("tb2Pitch")?.addEventListener("pointercancel",e=>{
 
 $("closeCalendarDayActionModal")?.addEventListener("click",closeDayActionModal);
 document.querySelectorAll("[data-close-calendar-day-action]").forEach(el=>el.addEventListener("click",closeDayActionModal));
-$("createMatchFromDayBtn")?.addEventListener("click",()=>{closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchEdit(null,calendarSelectedDate);});
+$("createTrainingFromDayBtn")?.addEventListener("click",()=>{const date=calendarSelectedDate;closeDayActionModal();openGatheringModal(date);});
+const startCalendarMatchFromDayV1269=kind=>{closeDayActionModal();$("calendarMatchModal").classList.remove("hidden");showCalendarMatchEdit(null,calendarSelectedDate);$("calendarMatchKind").value=kind;$("calendarMatchTitle").textContent=kind==="cup"?"НОВИЙ МАТЧ КУБКА":"НОВИЙ МАТЧ ЛІГИ";if(!$('matchCompetitionName').value)$('matchCompetitionName').value=kind==="cup"?"Кубок":"Ліга";};
+$("createCupMatchFromDayBtn")?.addEventListener("click",()=>startCalendarMatchFromDayV1269("cup"));
+$("createLeagueMatchFromDayBtn")?.addEventListener("click",()=>startCalendarMatchFromDayV1269("league"));
 
 $("closeTrainingDayModal")?.addEventListener("click",closeTrainingDayModal);
 document.querySelectorAll("[data-close-training-day]").forEach(el=>el.addEventListener("click",closeTrainingDayModal));
@@ -8982,20 +9192,21 @@ window.CenturiaArenaClubApi={
   },
   async listLeagues(){
     if(!sb||!authUser)return [];
-    const {data,error}=await sb.from('arena_club_leagues').select('code,country_code,name,icon,sort_order')
+    const {data,error}=await sb.from('arena_club_leagues').select('code,country_code,name,icon,image_url,sort_order')
       .order('sort_order',{ascending:true}).order('name',{ascending:true});
     if(error)throw error;
     return Array.isArray(data)?data:[];
   },
-  async upsertLeague({code,country_code,name,icon='🏆'}){
+  async upsertLeague({code,country_code,name,icon='🏆',image_url=''}){
     if(!sb||!authUser||!this.canWrite())throw new Error('Тільки ADMIN');
     const key=String(code||'').trim().toUpperCase();
     const country=String(country_code||'').trim().toUpperCase();
     if(!/^[A-Z0-9_-]{2,70}$/.test(key)||!country||!String(name||'').trim())throw new Error('Невірна папка ліги');
     const {data:old,error:readError}=await sb.from('arena_club_leagues').select('country_code').eq('code',key).maybeSingle();
     if(readError)throw readError;
+    const leagueImage=image_url&&String(image_url).startsWith('data:')?await uploadDataImage(`arena-leagues/${key}.webp`,image_url):String(image_url||'');
     const {error}=await sb.from('arena_club_leagues').upsert({code:key,country_code:country,name:String(name).trim(),
-      icon:String(icon||'🏆').trim()||'🏆',updated_at:new Date().toISOString(),updated_by:authUser.id},{onConflict:'code'});
+      icon:String(icon||'🏆').trim()||'🏆',image_url:leagueImage,updated_at:new Date().toISOString(),updated_by:authUser.id},{onConflict:'code'});
     if(error)throw error;
     if(old&&old.country_code!==country){
       // Clubs follow a league moved to another country.
@@ -9082,6 +9293,23 @@ window.CenturiaArenaClubApi={
       .select('normalized_name,name,logo,country,league_code,updated_at');
     if(error) throw error;
     return Array.isArray(data)?data:[];
+  },
+  async restoreMissingLogos(clubs=[]){
+    if(!sb || !authUser || !this.canWrite()) return 0;
+    let restored=0;
+    for(const club of (Array.isArray(clubs)?clubs:[])){
+      const key=normalizeArenaClubNameV1009(club?.name);
+      const logo=String(club?.logo||'').trim();
+      if(!key||!logo)continue;
+      const {data,error}=await sb.from('arena_clubs')
+        .update({logo,updated_at:new Date().toISOString(),updated_by:authUser.id})
+        .eq('normalized_name',key)
+        .or('logo.is.null,logo.eq.""')
+        .select('normalized_name');
+      if(error)throw error;
+      restored+=(Array.isArray(data)?data.length:0);
+    }
+    return restored;
   },
   async remove(name){
     if(!sb || !authUser) throw new Error('Потрібно увійти в акаунт');
@@ -10468,6 +10696,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   document.getElementById("settingsClubDatabaseBtn")?.addEventListener("click",()=>{
     if(authRole!=="admin")return;
+    closeCalendarMatchModal();
     if(window.ArenaV852?.openClubDatabase) window.ArenaV852.openClubDatabase();
     else showToast("База клубів ще завантажується");
   });
