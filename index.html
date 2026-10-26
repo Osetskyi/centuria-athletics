@@ -26,7 +26,7 @@
   }catch(e){}
 })();
 </script>
-<link rel="stylesheet" href="style.css?v=12.89">
+<link rel="stylesheet" href="style.css?v=12.93">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest?v=12.61">
 
@@ -98,7 +98,7 @@
 
   <link rel="stylesheet" href="arena-league-add-v1231.css?v=12.59">
   <link rel="stylesheet" href="arena-league-table-v1232.css?v=12.59">
-<link rel="stylesheet" href="position-tracker-v1250.css?v=12.59">
+<link rel="stylesheet" href="position-tracker-v1250.css?v=12.93">
 </head>
 <body>
 <div id="siteBackgroundVideoPool" aria-hidden="true">
@@ -935,6 +935,10 @@
         <!-- v12.57: четвертий екран — 20 позицій, помісячні оцінки, без ручної форми -->
         <div id="playerPositionsSlide" class="player-view-slide player-positions-slide">
           <div class="pt-header"><strong>Позиції</strong><span id="positionPlayerLabelV1250">—</span></div>
+          <div class="pt-mode-switch-v1291" role="group" aria-label="Тип позиційної статистики">
+            <button type="button" id="showOfficialPositionsBtnV1291" data-position-mode="official" aria-pressed="false">⚽ ОФІЦІЙНІ МАТЧІ</button>
+            <button type="button" id="showTrainingPositionsBtnV1291" data-position-mode="training" class="active" aria-pressed="true">🏋 ТРЕНУВАННЯ</button>
+          </div>
           <div id="positionPitchV1250" class="pt-field" role="group" aria-label="Позиції на футбольному полі"></div>
           <div class="pt-color-legend" aria-label="Кольори за часткою матчів на позиції">
             <span><i class="pt-key-idle"></i> 0%</span>
@@ -953,7 +957,7 @@
               <div class="pt-summary-cell"><strong id="position-attack-total">0</strong><span>Атака</span></div>
             </div>
           </div>
-          <p class="pt-caption">Враховано лише матчі з визначеною позицією на фінальному скріншоті FC27. Позиції та оцінки додаються під час обробки скріншотів; старі матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.</p>
+          <p id="positionCaptionV1291" class="pt-caption">Тренування: враховано лише матчі зборів із визначеною позицією на фінальному скріншоті FC27. Старі матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.</p>
           <section id="positionDetailsV1250" class="pt-details" aria-live="polite" hidden>
             <div class="pt-details-title" id="positionDetailsTitleV1250">—</div>
             <div class="pt-details-grid">
@@ -1511,12 +1515,12 @@
 <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="app.js?v=12.89"></script>
-<script src="arena.js?v=12.89"></script>
+<script src="app.js?v=12.93"></script>
+<script src="arena.js?v=12.93"></script>
 <script src="arena-league-add-v1231.js?v=12.59"></script>
 <script src="arena-league-table-v1232.js?v=12.59"></script>
 <script src="arena-active-event-v1233.js?v=12.59"></script>
-<script src="position-tracker-v1250.js?v=12.59"></script>
+<script src="position-tracker-v1250.js?v=12.93"></script>
 
 <!-- v5.76 — Universal fullscreen image viewer -->
 <div id="fullscreenImageViewer" class="fullscreen-image-viewer hidden" aria-hidden="true">

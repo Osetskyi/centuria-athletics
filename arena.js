@@ -663,10 +663,35 @@
   const matchPendingHtmlV1067=m=>matchProposalV1067(m)?`<span class="arena-match-pending-v1067">⏳ РЕЗУЛЬТАТ ОЧІКУЄ ПІДТВЕРДЖЕННЯ${canConfirmMatchV1067(m)?' · ТВОЯ ДІЯ':''}</span>`:(m?.proposalStatus==='rejected'?'<span class="arena-match-pending-v1067 is-rejected">❌ РАХУНОК ВІДХИЛЕНО · МОЖНА НАДІСЛАТИ НОВИЙ</span>':'');
   const matchActionTextV1067=m=>matchProposalV1067(m)?(canConfirmMatchV1067(m)?'ПІДТВЕРДИТИ':'ОЧІКУЄ ПІДТВЕРДЖЕННЯ'):(testCompetition?.kind==='cup'&&cupLegCount(testCompetition)===2&&isScored(m)?'ВНЕСТИ МАТЧ 2':'ВНЕСТИ РЕЗУЛЬТАТ');
   const matchActionButtonV1067=(m,small=false)=>canPlayerActV1067(m)?`<button type="button" class="${small?'arena-mini-result-v927':'arena-primary-v852 arena-cup-btn-v969'}" onclick="ArenaV852.modalResult('${jsq(m.id)}')">${matchActionTextV1067(m)}</button>`:'';
+  const matchRescheduleProposalV1290=m=>m?.rescheduleProposal?.status==='pending'?m.rescheduleProposal:null;
+  const matchBaseRoundV1290=m=>Math.max(1,Number(m?.originalRound??m?.round)||1);
+  const matchEffectiveRoundV1290=m=>Math.max(1,Number(m?.scheduledRound??m?.round)||1);
+  const currentArenaUserIdV1290=()=>String(window.CenturiaArenaFriendlyApi?.me?.()?.user_id||'');
+  const canConfirmRescheduleV1290=m=>{
+    const proposal=matchRescheduleProposalV1290(m);
+    return !!proposal&&(isArenaAdmin()||(canPlayerActV1067(m)&&String(proposal.proposedBy||'')!==currentArenaUserIdV1290()));
+  };
+  const rescheduleRoundLabelV1290=(round,kind=testCompetition?.kind)=>kind==='cup'?`РАУНД ${Number(round)||1}`:`ТУР ${Number(round)||1}`;
+  const matchRescheduleStatusHtmlV1290=m=>{
+    const proposal=matchRescheduleProposalV1290(m);
+    if(proposal)return `<span class="arena-reschedule-status-v1290 pending">⏳ ПЕРЕНЕСЕННЯ НА ${esc(rescheduleRoundLabelV1290(proposal.targetRound))} ОЧІКУЄ ПІДТВЕРДЖЕННЯ${canConfirmRescheduleV1290(m)?' · ТВОЯ ДІЯ':''}</span>`;
+    if(m?.rescheduleStatus==='rejected')return `<span class="arena-reschedule-status-v1290 rejected">❌ ПЕРЕНЕСЕННЯ ВІДХИЛЕНО · МОЖНА ОБРАТИ ІНШИЙ ТУР</span>`;
+    if(Number(m?.scheduledRound)&&matchEffectiveRoundV1290(m)!==matchBaseRoundV1290(m))return `<span class="arena-reschedule-status-v1290 confirmed">↪ ПЕРЕНЕСЕНО: ${esc(rescheduleRoundLabelV1290(matchBaseRoundV1290(m)))} → ${esc(rescheduleRoundLabelV1290(matchEffectiveRoundV1290(m)))}</span>`;
+    return '';
+  };
+  const matchFinishedForRescheduleV1290=m=>testCompetition?.kind==='cup'?cupMatchFinished(m,testCompetition):isScored(m);
+  const matchRescheduleButtonV1290=(m,small=false)=>{
+    if(!m||matchFinishedForRescheduleV1290(m)||!canPlayerActV1067(m))return '';
+    const proposal=matchRescheduleProposalV1290(m);
+    const cls=small?'arena-mini-result-v927 arena-reschedule-btn-v1290':'arena-secondary-v852 arena-reschedule-btn-v1290';
+    if(proposal)return canConfirmRescheduleV1290(m)?`<button type="button" class="${cls}" onclick="ArenaV852.openRescheduleConfirmV1290('${jsq(m.id)}')">ПІДТВЕРДИТИ ПЕРЕНОС</button>`:'';
+    return `<button type="button" class="${cls}" onclick="ArenaV852.openRescheduleModalV1290('${jsq(m.id)}')">↪ ПЕРЕНЕСТИ ТУР</button>`;
+  };
+  const matchControlsV1290=(m,small=false)=>`${matchPendingHtmlV1067(m)}${matchRescheduleStatusHtmlV1290(m)}<div class="arena-match-controls-v1290">${matchActionButtonV1067(m,small)}${matchRescheduleButtonV1290(m,small)}</div>`;
   const leagueActionCountV1016=()=>{
     if(testCompetition?.kind!=="league")return 0;
     const me=linkedArenaPlayerName();if(!me)return 0;
-    return (currentLeagueRound()?.matches||[]).filter(m=>!isScored(m)&&(sameArenaPlayer(me,m.home)||sameArenaPlayer(me,m.away))).length;
+    return activeLeagueMatchesV1290(me).length;
   };
   // v10.86 — Cup badge is personal, NOT an administrator's pending-results queue.
   // Only show the badge for the logged-in player's own assigned, unfinished matches.
@@ -674,7 +699,7 @@
     if(testCompetition?.kind!=="cup" || testCompetition?.champion)return 0;
     const viewer=linkedArenaPlayerName();
     if(!viewer || !(testCompetition.participants||[]).some(name=>sameArenaPlayer(name,viewer)))return 0;
-    return (currentCupRound()?.matches||[]).filter(m=>
+    return allMatches().filter(m=>
       (sameArenaPlayer(m?.home,viewer)||sameArenaPlayer(m?.away,viewer)) &&
       !cupMatchFinished(m,testCompetition)
     ).length;
@@ -1825,7 +1850,7 @@
     if(m.homeScore<m.awayScore)return m.away;
     return [m.home,m.away].some(n=>sameArenaPlayer(n,m.tiebreakWinner))?m.tiebreakWinner:null;
   };
-  const leagueRoundDoneV1093=r=>(r?.matches||[]).every(m=>isScored(m)&&(!r?.playoff||!!leaguePlayoffWinnerV1093(m)));
+  const leagueRoundDoneV1093=r=>leagueMatchesForRoundV1290(r).every(m=>isScored(m)&&(!r?.playoff||!!leaguePlayoffWinnerV1093(m)));
   const leagueCanAdvanceV1093=comp=>{
     if(comp?.kind!=='league')return false;
     const rounds=comp.rounds||[],last=rounds.at(-1);
@@ -1863,11 +1888,48 @@
     return (testCompetition.rounds||[]).flatMap(r=>r.matches||[]);
   };
   const isScored=m=>Number.isFinite(m?.homeScore)&&Number.isFinite(m?.awayScore);
+  const cupMaxRoundV1290=()=>{
+    let remaining=Math.max(2,Number(testCompetition?.participants?.length)||2),rounds=0;
+    while(remaining>1){remaining=Math.ceil(remaining/2);rounds++;}
+    return Math.max(Number(currentCupRound()?.round)||1,rounds);
+  };
+  const rescheduleTargetOptionsV1290=m=>{
+    const from=matchEffectiveRoundV1290(m);
+    if(testCompetition?.kind==='league'){
+      const max=testCompetition.leagueFormat==='swiss'
+        ? Math.max((testCompetition.rounds||[]).length,Number(testCompetition.swissRounds)||1)
+        : Math.max(...(testCompetition.rounds||[]).filter(r=>!r?.playoff).map(r=>Number(r.round)||0),from);
+      return Array.from({length:Math.max(0,max)},(_,i)=>i+1).filter(round=>round!==from);
+    }
+    const max=cupMaxRoundV1290();
+    return Array.from({length:Math.max(0,max)},(_,i)=>i+1).filter(round=>round!==from);
+  };
+  const leagueMatchesForRoundV1290=r=>{
+    if(!r)return [];
+    const target=Number(r.round)||0;
+    return allMatches().filter(m=>matchEffectiveRoundV1290(m)===target && (!!r.playoff===String(m.id||'').startsWith('LP_')));
+  };
   const currentLeagueRound=()=>{
     if(!testCompetition||testCompetition.kind!=="league")return null;
-    return (testCompetition.rounds||[]).find(r=>(r.matches||[]).some(m=>!isScored(m)||(r.playoff&&!leaguePlayoffWinnerV1093(m)))) || (testCompetition.rounds||[]).at(-1) || null;
+    const rounds=testCompetition.rounds||[];
+    // A match deliberately moved to an earlier round stays active, but must not
+    // roll the whole League UI/progression back to that historical round.
+    return rounds.find(r=>leagueMatchesForRoundV1290(r).some(m=>
+      matchEffectiveRoundV1290(m)>=matchBaseRoundV1290(m) &&
+      (!isScored(m)||(r.playoff&&!leaguePlayoffWinnerV1093(m)))
+    )) || rounds.at(-1) || null;
   };
   const currentCupRound=()=>testCompetition?.kind==="cup"?(testCompetition.rounds||[]).at(-1)||null:null;
+  const activeLeagueMatchesV1290=viewer=>{
+    if(!viewer||testCompetition?.kind!=='league')return [];
+    const current=currentLeagueRound();
+    const currentNo=Number(current?.round)||1;
+    return allMatches().filter(m=>
+      !isScored(m) &&
+      (sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away)) &&
+      (matchEffectiveRoundV1290(m)===currentNo || Number(m?.scheduledRound)>0 || !!matchRescheduleProposalV1290(m))
+    ).sort((a,b)=>matchEffectiveRoundV1290(a)-matchEffectiveRoundV1290(b));
+  };
   // v11.00: the same ranking rules for the live table and each completed round.
   // A round cutoff only limits which results are counted; no snapshot or client
   // storage is needed, so all viewers derive identical movement from shared scores.
@@ -2320,7 +2382,8 @@
 
   const leagueCalendarRoundKeyV1115=r=>`${testCompetition?.id||'league'}::${r?.playoff||'round'}::${r?.round||0}`;
   const leagueCalendarRoundStatusV1115=(r,currentRound)=>{
-    const done=(r?.matches||[]).every(isScored);
+    const matches=leagueMatchesForRoundV1290(r);
+    const done=matches.every(isScored);
     if(done)return '✓ Завершено';
     if(r?.playoff && currentRound?.playoff===r.playoff && currentRound?.round===r.round)return '🟢 Поточний';
     if(!r?.playoff && !currentRound?.playoff && currentRound?.round===r.round)return '🟢 Поточний';
@@ -2345,9 +2408,11 @@
       // v12.35: “МОЇ МАТЧІ” is always personal, including ADMIN accounts.
       // Previously ADMIN matched the first unfinished fixture of the round,
       // so after rebuilding the calendar an admin could see somebody else’s game.
-      const viewerMatch=viewer?(round?.matches||[]).find(m=>sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away)):null;
+      const roundMatches=leagueMatchesForRoundV1290(round);
+      const viewerMatch=viewer?roundMatches.find(m=>sameArenaPlayer(viewer,m.home)||sameArenaPlayer(viewer,m.away)):null;
       const pending=viewerMatch&&!isScored(viewerMatch)?viewerMatch:null;
       const ownCompleted=viewerMatch&&isScored(viewerMatch)?viewerMatch:null;
+      const activeMine=activeLeagueMatchesV1290(viewer);
       const standings=leagueStandings();
       const leaguePlaceChanges=leaguePlaceChangesV1100(standings);
       const playoffRounds=leaguePlayoffRoundsV1108(testCompetition);
@@ -2356,25 +2421,26 @@
       const leagueStandingsMatches=(testCompetition.rounds||[]).flatMap(r=>r.matches||[]).filter(m=>!String(m.id||'').startsWith('LP_'));
       const completedLeagueMatches=leagueStandingsMatches.filter(isScored).length;
       const totalLeagueMatches=leagueStandingsMatches.length;
-      const leagueCardV1067=m=>`<div class="arena-card-v852 arena-league-card-v920"><div class="arena-gold-v852">${m.id.startsWith('LP_SEMI')?'1/2 ФІНАЛУ':m.id==='LP_FINAL'?'ФІНАЛ':`ТУР ${m.round}`}</div><div class="arena-league-result-row-v1067"><span>${esc(m.home)}</span><strong>${isScored(m)?`${m.homeScore} : ${m.awayScore}`:'VS'}</strong><span>${esc(m.away)}</span></div>${swissFixturePointsHtmlV1137(m)}${matchPendingHtmlV1067(m)}${!isScored(m)?matchActionButtonV1067(m,true):(isArenaAdmin()?`<button class="arena-mini-result-v927" onclick="ArenaV852.modalResult('${jsq(m.id)}')">ВИПРАВИТИ РАХУНОК</button>`:'')}</div>`;
+      const leagueCardV1067=m=>`<div class="arena-card-v852 arena-league-card-v920"><div class="arena-gold-v852">${m.id.startsWith('LP_SEMI')?'1/2 ФІНАЛУ':m.id==='LP_FINAL'?'ФІНАЛ':`ТУР ${matchEffectiveRoundV1290(m)}`}</div><div class="arena-league-result-row-v1067"><span>${esc(m.home)}</span><strong>${isScored(m)?`${m.homeScore} : ${m.awayScore}`:'VS'}</strong><span>${esc(m.away)}</span></div>${swissFixturePointsHtmlV1137(m)}${!isScored(m)?matchControlsV1290(m,true):`${matchRescheduleStatusHtmlV1290(m)}${isArenaAdmin()?`<button class="arena-mini-result-v927" onclick="ArenaV852.modalResult('${jsq(m.id)}')">ВИПРАВИТИ РАХУНОК</button>`:''}`}</div>`;
       const leaguePlayoffViewHtmlV1108=()=>playoffAvailable
         ? `${leagueLivePlayoffBracketBoardV1109(testCompetition)}${leagueTableViewSwitchV1108('playoff')}`
         : '';
       const leagueStandingsViewHtmlV1108=()=>`<div class="arena-card-v852 arena-league-card-v920 arena-league-standings-card-v1096"><div class="arena-league-standings-head-v1097"><div><small>ОФІЦІЙНА ТУРНІРНА ТАБЛИЦЯ</small><strong>${esc(testCompetition.title||'CENTURIA LEAGUE')}</strong></div><span>${completedLeagueMatches}/${totalLeagueMatches} матчів</span></div><div class="arena-league-standings-wrap-v1096"><table class="arena-table-v852 arena-league-standings-table-v1096"><thead><tr><th>#</th><th>ГРАВЕЦЬ / КЛУБ</th><th>І</th><th>В</th><th>Н</th><th>П</th><th>ЗГ</th><th>ПГ</th><th>РГ</th><th>О</th></tr></thead><tbody>${standings.map((p,i)=>`<tr class="arena-league-place-row-v1097 ${i===0?'place-1':i===1?'place-2':i===2?'place-3':'place-rest'}"><td><span class="arena-league-rank-v1096"><span class="arena-league-rank-num-v1128">${i+1}</span>${leaguePlaceArrowV1100(leaguePlaceChanges.get(p.name))}</span></td><td class="arena-league-player-cell-v1096"><strong>${esc(p.name)}</strong><small>${esc(competitionClubFor(p.name))}</small></td><td>${p.p}</td><td>${p.w}</td><td>${p.d}</td><td>${p.l}</td><td>${p.gf}</td><td>${p.ga}</td><td><span class="arena-league-gd-v1096 ${(p.gf-p.ga)>0?'plus':(p.gf-p.ga)<0?'minus':'zero'}">${(p.gf-p.ga)>0?'+':''}${p.gf-p.ga}</span></td><td><b class="arena-league-points-v1096">${p.pts}</b></td></tr>`).join("")}</tbody></table><div class="arena-league-mobile-grid-v1099" role="table" aria-label="Турнірна таблиця Ліги"><div class="arena-league-mobile-row-v1099 mobile-head" role="row"><span role="columnheader">#</span><span role="columnheader">ГРАВЕЦЬ</span><span role="columnheader" title="Ігри">І</span><span role="columnheader" title="Перемоги">В</span><span role="columnheader" title="Нічиї">Н</span><span role="columnheader" title="Поразки">П</span><span role="columnheader" title="Забиті голи">ЗГ</span><span role="columnheader" title="Пропущені голи">ПГ</span><span role="columnheader" title="Різниця голів">РГ</span><span role="columnheader" title="Очки">О</span></div>${standings.map((p,i)=>`<div class="arena-league-mobile-row-v1099 ${i===0?'place-1':i===1?'place-2':i===2?'place-3':'place-rest'}" role="row"><span class="mobile-place" role="cell">${i+1}${leaguePlaceArrowV1100(leaguePlaceChanges.get(p.name),true)}</span><span class="mobile-player" role="cell" title="${esc(p.name)} · ${esc(competitionClubFor(p.name))}"><b>${esc(p.name)}</b><small>${esc(competitionClubFor(p.name))}</small></span><span role="cell" aria-label="Ігри: ${p.p}">${p.p}</span><span role="cell" aria-label="Перемоги: ${p.w}">${p.w}</span><span role="cell" aria-label="Нічиї: ${p.d}">${p.d}</span><span role="cell" aria-label="Поразки: ${p.l}">${p.l}</span><span role="cell" aria-label="Забиті голи: ${p.gf}">${p.gf}</span><span role="cell" aria-label="Пропущені голи: ${p.ga}">${p.ga}</span><span role="cell" aria-label="Різниця голів: ${p.gf-p.ga}">${p.gf-p.ga>0?'+':''}${p.gf-p.ga}</span><span class="mobile-points" role="cell" aria-label="Очки: ${p.pts}"><b>${p.pts}</b></span></div>`).join('')}</div></div><div class="arena-league-standings-legend-v1097"><span><i class="top1"></i>1 місце</span><span><i class="top2"></i>2 місце</span><span><i class="top3"></i>3 місце</span></div></div>${playoffAvailable?leagueTableViewSwitchV1108('table'):''}`;
       let body=tab==="mine"
-        ? (pending?`<div class="arena-card-v852 arena-league-card-v920"><div class="arena-gold-v852">ТВІЙ МАТЧ • ТУР ${pending.round}</div><div class="arena-match-v852 arena-league-match-v920"><div><h3>${esc(pending.home)}</h3><span class="arena-muted-v852">${esc(competitionClubFor(pending.home))}</span></div><div class="arena-score-v852">VS</div><div class="arena-right-v852"><h3>${esc(pending.away)}</h3><span class="arena-muted-v852">${esc(competitionClubFor(pending.away))}</span></div></div>${matchPendingHtmlV1067(pending)}${matchActionButtonV1067(pending)}</div>`
+        ? (activeMine.length?activeMine.map(m=>`<div class="arena-card-v852 arena-league-card-v920"><div class="arena-gold-v852">ТВІЙ АКТИВНИЙ МАТЧ • ТУР ${matchEffectiveRoundV1290(m)}</div><div class="arena-match-v852 arena-league-match-v920"><div><h3>${esc(m.home)}</h3><span class="arena-muted-v852">${esc(competitionClubFor(m.home))}</span></div><div class="arena-score-v852">VS</div><div class="arena-right-v852"><h3>${esc(m.away)}</h3><span class="arena-muted-v852">${esc(competitionClubFor(m.away))}</span></div></div>${matchControlsV1290(m)}</div>`).join('')
           : ownCompleted?leagueCardV1067(ownCompleted)
           : `<div class="arena-card-v852"><b>${isArenaAdmin()?(isCompetitionCompleted(testCompetition)?'ЛІГУ ЗАВЕРШЕНО':'УСІ МАТЧІ ТУРУ ЗІГРАНО'):'У ЦЬОМУ ТУРІ НЕМАЄ ТВОГО МАТЧУ'}</b><p class="arena-muted-v852">${isArenaAdmin()?'Усі результати внесено.':'Перевір вкладку «ТУР» або «КАЛЕНДАР». '}</p>${isArenaAdmin()&&isCompetitionCompleted(testCompetition)?`<button class="arena-primary-v852 arena-finish-tournament-v996" onclick="ArenaV852.finishCurrentTournament()">ЗАКРИТИ ЛІГУ</button>`:''}</div>`)
         : tab==="round"
-          ? `<div class="arena-swiss-note-v1137" ${testCompetition.leagueFormat==='swiss'?'':'hidden'}>Пари формуються насамперед за очками. Повторні зустрічі дозволені; за рівноцінних пар перевага новим суперникам.</div>${(round?.matches||[]).map(leagueCardV1067).join('')}${swissByeHtmlV1137(round)}`
+          ? `<div class="arena-swiss-note-v1137" ${testCompetition.leagueFormat==='swiss'?'':'hidden'}>Пари формуються насамперед за очками. Повторні зустрічі дозволені; за рівноцінних пар перевага новим суперникам.</div>${roundMatches.map(leagueCardV1067).join('')}${swissByeHtmlV1137(round)}`
           : tab==="table"
             ? (leagueTableViewV1108==='playoff'&&playoffAvailable?leaguePlayoffViewHtmlV1108():leagueStandingsViewHtmlV1108())
             : (testCompetition.rounds||[]).map(r=>{
+                const displayMatches=leagueMatchesForRoundV1290(r);
                 const label=r.playoff?leaguePlayoffLabelV1108(r):`ТУР ${r.round}`;
                 const key=leagueCalendarRoundKeyV1115(r);
                 const isOpen=leagueCalendarRoundOpenV1115(r,round);
                 const status=leagueCalendarRoundStatusV1115(r,round);
-                return `<div class="arena-card-v852 arena-league-card-v920 arena-league-calendar-round-v1115 ${isOpen?'is-open':''}"><button type="button" class="arena-league-calendar-toggle-v1115" onclick="ArenaV852.toggleLeagueCalendarRoundV1115('${jsq(key)}')" aria-expanded="${isOpen?'true':'false'}"><span class="arena-league-calendar-toggle-main-v1115"><b>${esc(label)}</b><small>${esc(status)}</small></span><span class="arena-league-calendar-toggle-side-v1115"><i>${(r.matches||[]).length} ${(r.matches||[]).length===1?'матч':'матчі'}</i><em>${isOpen?'▴':'▾'}</em></span></button><div class="arena-league-calendar-panel-v1115" ${isOpen?'':'hidden'}><div class="arena-league-calendar-matches-v1067">${(r.matches||[]).map(leagueCardV1067).join('')}</div></div></div>`;
+                return `<div class="arena-card-v852 arena-league-card-v920 arena-league-calendar-round-v1115 ${isOpen?'is-open':''}"><button type="button" class="arena-league-calendar-toggle-v1115" onclick="ArenaV852.toggleLeagueCalendarRoundV1115('${jsq(key)}')" aria-expanded="${isOpen?'true':'false'}"><span class="arena-league-calendar-toggle-main-v1115"><b>${esc(label)}</b><small>${esc(status)}</small></span><span class="arena-league-calendar-toggle-side-v1115"><i>${displayMatches.length} ${displayMatches.length===1?'матч':'матчі'}</i><em>${isOpen?'▴':'▾'}</em></span></button><div class="arena-league-calendar-panel-v1115" ${isOpen?'':'hidden'}><div class="arena-league-calendar-matches-v1067">${displayMatches.map(leagueCardV1067).join('')||'<div class="arena-muted-v852 arena-reschedule-empty-v1290">Матчі цього туру перенесено</div>'}</div></div></div>`;
               }).join('');
       const advanceButton=isArenaAdmin()&&leagueCanAdvanceV1093(testCompetition)
         ? `<button class="arena-primary-v852 arena-league-next-round-v1093" type="button" onclick="ArenaV852.advanceLeagueRoundV1093()">${testCompetition.leagueFormat==='swiss'?'▶ НАСТУПНИЙ ТУР':testCompetition.rounds.at(-1)?.playoff==='final'?'🏆 ВИЗНАЧИТИ ЧЕМПІОНА':'▶ НАСТУПНИЙ ЕТАП ПЛЕЙ-ОФ'}</button>`:'';
@@ -2417,27 +2483,28 @@
   function cup(){
     const t=[["mine","МІЙ МАТЧ"],["bracket","СІТКА"],["round","РАУНД"],["old","ІСТОРІЯ"]];
     const cupHero=(title,meta,kicker="ТУРНІР КУБКА")=>`<div class="arena-route-head-v920 arena-cup-hero-v969"><div class="arena-cup-kicker-v969">🏆 ${kicker}</div><h2>${title}</h2><p>${meta}</p></div>`;
-    const resultBtn=id=>{const m=allMatches().find(x=>x.id===id);return m?`${matchPendingHtmlV1067(m)}${matchActionButtonV1067(m)}`:'';};
+    const resultBtn=id=>{const m=allMatches().find(x=>x.id===id);return m?matchControlsV1290(m):'';};
     const matchCard=(home,away,label,action)=>`<div class="arena-card-v852 arena-cup-match-card-v969"><div class="arena-gold-v852 arena-cup-stage-v969">${label}</div><div class="arena-cup-match-v969"><div class="arena-cup-side-v969">${crestBadge(competitionClubFor(home),teamPhotoFor(home))}<h3>${esc(home)}</h3><span>${esc(competitionClubFor(home))}</span></div><div class="arena-cup-vs-v969">VS</div><div class="arena-cup-side-v969">${crestBadge(competitionClubFor(away),teamPhotoFor(away))}<h3>${esc(away)}</h3><span>${esc(competitionClubFor(away))}</span></div></div>${action}</div>`;
-    const pairCard=(home,away,scoreHtml,kicker,match=null)=>`<div class="arena-card-v852 arena-cup-pair-v969"><div class="arena-cup-pair-kicker-v969">${kicker}</div><div class="arena-cup-pair-line-v969"><div class="arena-cup-pair-side-v1058">${crestBadge(competitionClubFor(home),teamPhotoFor(home))}<span class="arena-cup-pair-copy-v1058"><b>${esc(home)}</b><span class="arena-muted-v852">${esc(competitionClubFor(home))}</span></span></div><div class="arena-cup-pair-score-v969">${scoreHtml}</div><div class="arena-cup-pair-side-v1058 arena-cup-pair-side-right-v1058">${crestBadge(competitionClubFor(away),teamPhotoFor(away))}<span class="arena-cup-pair-copy-v1058"><b>${esc(away)}</b><span class="arena-muted-v852">${esc(competitionClubFor(away))}</span></span></div></div>${match?matchPendingHtmlV1067(match):''}</div>`;
+    const pairCard=(home,away,scoreHtml,kicker,match=null)=>`<div class="arena-card-v852 arena-cup-pair-v969"><div class="arena-cup-pair-kicker-v969">${kicker}</div><div class="arena-cup-pair-line-v969"><div class="arena-cup-pair-side-v1058">${crestBadge(competitionClubFor(home),teamPhotoFor(home))}<span class="arena-cup-pair-copy-v1058"><b>${esc(home)}</b><span class="arena-muted-v852">${esc(competitionClubFor(home))}</span></span></div><div class="arena-cup-pair-score-v969">${scoreHtml}</div><div class="arena-cup-pair-side-v1058 arena-cup-pair-side-right-v1058">${crestBadge(competitionClubFor(away),teamPhotoFor(away))}<span class="arena-cup-pair-copy-v1058"><b>${esc(away)}</b><span class="arena-muted-v852">${esc(competitionClubFor(away))}</span></span></div></div></div>`;
     if(testCompetition?.kind==="cup"){
       const r=currentCupRound();
       const viewer=currentArenaViewerName();
-      const viewerMatch=viewer?(r?.matches||[]).find(m=>sameArenaPlayer(m.home,viewer)||sameArenaPlayer(m.away,viewer)):null;
+      const viewerMatch=viewer?allMatches().find(m=>!cupMatchFinished(m,testCompetition)&&(sameArenaPlayer(m.home,viewer)||sameArenaPlayer(m.away,viewer))):null;
       const viewerBye=viewer?(r?.byes||[]).find(n=>sameArenaPlayer(n,viewer)):null;
-      const pending=(viewerMatch&&!cupMatchFinished(viewerMatch,testCompetition))?viewerMatch:(isArenaAdmin()?(r?.matches||[]).find(m=>!cupMatchFinished(m,testCompetition)):null);
+      const pending=(viewerMatch&&!cupMatchFinished(viewerMatch,testCompetition))?viewerMatch:(isArenaAdmin()?allMatches().find(m=>!cupMatchFinished(m,testCompetition)):null);
+      const visibleRoundMatches=(r?.matches||[]).filter(m=>matchEffectiveRoundV1290(m)===(Number(r?.round)||1));
       let body=tab==="mine"
         ? (testCompetition.champion
             ? `<div class="arena-card-v852 arena-cup-win-v969"><div class="arena-cup-win-icon-v969">🏆</div><div class="arena-gold-v852">КУБОК ЗАВЕРШЕНО</div><p>Переможця визначено. Святковий блок залишатиметься зверху, доки ADMIN не закриє турнір.</p></div>`
             : viewerBye
               ? `<div class="arena-card-v852 arena-cup-bye-v1032"><div class="arena-cup-draw-icon-v1032">🎟️</div><div class="arena-gold-v852">ТВІЙ ЖЕРЕБ</div><h3>${esc(viewerBye)}</h3><p>Команда: <b>${esc(competitionClubFor(viewerBye))}</b></p><strong>BYE — ПРОХІД У НАСТУПНИЙ РАУНД</strong></div>`
               : pending
-                ? matchCard(pending.home,pending.away,`${r?.label||"КУБОК"} • ${cupLegCount(testCompetition)===2?'ДВА МАТЧІ':'ОДИН МАТЧ'} • ${cupMatchScore(pending,testCompetition)}`,resultBtn(pending.id))
+                ? matchCard(pending.home,pending.away,`${rescheduleRoundLabelV1290(matchEffectiveRoundV1290(pending),'cup')} • ${cupLegCount(testCompetition)===2?'ДВА МАТЧІ':'ОДИН МАТЧ'} • ${cupMatchScore(pending,testCompetition)}`,resultBtn(pending.id))
                 : `<div class="arena-card-v852 arena-cup-empty-v969"><b>ОЧІКУЄМО НАСТУПНИЙ РАУНД</b><p class="arena-muted-v852">Як тільки з’явиться нова пара, вона відобразиться тут.</p></div>`)
         : tab==="bracket"
           ? cupLiveBracketBoardV1036()
           : tab==="round"
-            ? ((r?.matches||[]).map(m=>pairCard(m.home,m.away,cupMatchFinished(m,testCompetition)?`${cupMatchScore(m,testCompetition)}${isArenaAdmin()?`<button class="arena-mini-result-v927" onclick="ArenaV852.modalResult('${jsq(m.id)}')">ВИПРАВИТИ</button>`:''}`:(matchActionButtonV1067(m,true)||cupMatchScore(m,testCompetition)),r?.label||"ПОТОЧНИЙ РАУНД",m)).join("") || `<div class="arena-card-v852 arena-cup-empty-v969">Матчів поки немає</div>`)
+            ? (visibleRoundMatches.map(m=>pairCard(m.home,m.away,cupMatchFinished(m,testCompetition)?`${cupMatchScore(m,testCompetition)}${isArenaAdmin()?`<button class="arena-mini-result-v927" onclick="ArenaV852.modalResult('${jsq(m.id)}')">ВИПРАВИТИ</button>`:''}`:(matchControlsV1290(m,true)||cupMatchScore(m,testCompetition)),r?.label||"ПОТОЧНИЙ РАУНД",m)).join("") || `<div class="arena-card-v852 arena-cup-empty-v969">Усі матчі цього раунду перенесено. Вони залишаються у вкладці «МІЙ МАТЧ».</div>`)
             : (allMatches().filter(m=>cupMatchFinished(m,testCompetition)).map(m=>pairCard(m.home,m.away,cupMatchScore(m,testCompetition),"ЗАВЕРШЕНА ПАРА")).join("")||`<div class="arena-card-v852 arena-cup-empty-v969">Історії ще немає</div>`);
       const draw=testCompetition.draw||null;
       const drawRows=draw?((draw.pairs||[]).map(pair=>`<div class="arena-cup-draw-pair-v1032"><div>${crestBadge(pair.homeClub,'')}<span><strong>${esc(pair.home)}</strong><small>${esc(pair.homeClub)}</small></span></div><b>VS</b><div>${crestBadge(pair.awayClub,'')}<span><strong>${esc(pair.away)}</strong><small>${esc(pair.awayClub)}</small></span></div></div>`).join('')+(draw.byes||[]).map(x=>`<div class="arena-cup-draw-pair-v1032 bye"><div>${crestBadge(x.club,'')}<span><strong>${esc(x.player)}</strong><small>${esc(x.club)}</small></span></div><b>BYE</b><div><span><strong>Без суперника</strong><small>Прохід далі</small></span></div></div>`).join('')):'';
@@ -5346,6 +5413,50 @@
         await refreshRemoteFriendliesV1007(false);draw();
         window.showToast?.(accept?'Результат підтверджено ADMIN':'Результат відхилено ADMIN');
       }catch(err){window.showToast?.(err.message||'Не вдалося змінити результат');}
+    },
+    openRescheduleModalV1290(matchId){
+      const match=allMatches().find(m=>String(m.id)===String(matchId));
+      if(!match||!canPlayerActV1067(match)||matchFinishedForRescheduleV1290(match))return;
+      const rounds=rescheduleTargetOptionsV1290(match);
+      if(!rounds.length){window.showToast?.('Немає іншого доступного туру для перенесення');return;}
+      const options=rounds.map(round=>`<option value="${round}">${esc(rescheduleRoundLabelV1290(round))}</option>`).join('');
+      const adminDirect=isArenaAdmin();
+      modal(`<div class="arena-info-modal-v919 arena-reschedule-modal-v1290"><div class="arena-reschedule-head-v1292"><small>ARENA · ПЕРЕНЕСЕННЯ</small><h2>ПЕРЕНЕСТИ МАТЧ</h2><p>${esc(match.home)} — ${esc(match.away)}</p></div><div class="arena-reschedule-route-v1290"><span><small>ЗАРАЗ</small>${esc(rescheduleRoundLabelV1290(matchEffectiveRoundV1290(match)))}</span><b>→</b><label><small>ОБРАТИ ТУР</small><select id="arenaRescheduleTargetV1290">${options}</select></label></div><p class="arena-reschedule-note-v1292">${adminDirect?'ADMIN переносить матч одразу — підтвердження суперника не потрібне.':'Можна обрати попередній або наступний тур. Після підтвердження суперником матч з’явиться в обраному турі, але залишиться активним і його можна буде зіграти раніше.'}</p><div class="arena-reschedule-actions-v1290"><button type="button" class="arena-secondary-v852 arena-reschedule-cancel-v1292" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button type="button" class="arena-primary-v852 arena-reschedule-submit-v1292" onclick="ArenaV852.proposeRescheduleV1290('${jsq(match.id)}')">${adminDirect?'ПЕРЕНЕСТИ':'НАДІСЛАТИ'}</button></div></div>`);
+    },
+    async competitionRescheduleActionV1290(payload){
+      const api=arenaStateApiV1012();
+      if(!api?.isReady?.()||!api?.rescheduleAction)throw new Error('Функція перенесення ще не підключена до Supabase');
+      clearTimeout(remoteArenaStateSaveTimerV1012);
+      await remoteArenaStateSaveInFlightV1061;
+      const row=await api.rescheduleAction({competitionId:testCompetition?.id,...payload});
+      if(!row||row.state_key!=='global')throw new Error('Сервер не підтвердив перенесення');
+      applyRemoteArenaStateV1012(row,false);
+      return row;
+    },
+    async proposeRescheduleV1290(matchId){
+      const match=allMatches().find(m=>String(m.id)===String(matchId));
+      const target=Number(document.getElementById('arenaRescheduleTargetV1290')?.value);
+      if(!match||!rescheduleTargetOptionsV1290(match).includes(target)){window.showToast?.('Обери інший доступний тур');return;}
+      try{
+        await this.competitionRescheduleActionV1290({action:'propose',matchId,targetRound:target});
+        document.querySelector('.arena-modal-v852')?.remove();draw();
+        window.showToast?.(isArenaAdmin()?'Матч перенесено без підтвердження':'Запит на перенесення надіслано супернику');
+      }catch(err){window.showToast?.(err.message||'Не вдалося надіслати перенесення');}
+    },
+    openRescheduleConfirmV1290(matchId){
+      const match=allMatches().find(m=>String(m.id)===String(matchId));
+      const proposal=matchRescheduleProposalV1290(match);
+      if(!match||!proposal||!canConfirmRescheduleV1290(match))return;
+      modal(`<div class="arena-info-modal-v919 arena-reschedule-modal-v1290"><div class="arena-reschedule-head-v1292"><small>ARENA · ЗАПИТ СУПЕРНИКА</small><h2>ПІДТВЕРДИТИ ПЕРЕНЕСЕННЯ?</h2><p>${esc(proposal.proposedByName||'Суперник')} пропонує перенести матч ${esc(match.home)} — ${esc(match.away)}</p></div><div class="arena-reschedule-route-v1290"><span><small>ЗАРАЗ</small>${esc(rescheduleRoundLabelV1290(matchEffectiveRoundV1290(match)))}</span><b>→</b><strong><small>НОВИЙ ТУР</small>${esc(rescheduleRoundLabelV1290(proposal.targetRound))}</strong></div><div class="arena-reschedule-actions-v1290"><button type="button" class="arena-secondary-v852 arena-reschedule-cancel-v1292" onclick="ArenaV852.resolveRescheduleV1290('${jsq(match.id)}',false)">ВІДХИЛИТИ</button><button type="button" class="arena-primary-v852 arena-reschedule-submit-v1292" onclick="ArenaV852.resolveRescheduleV1290('${jsq(match.id)}',true)">ПІДТВЕРДИТИ</button></div></div>`);
+    },
+    async resolveRescheduleV1290(matchId,accept){
+      const match=allMatches().find(m=>String(m.id)===String(matchId));
+      if(!match||!canConfirmRescheduleV1290(match))return;
+      try{
+        await this.competitionRescheduleActionV1290({action:accept?'confirm':'reject',matchId,targetRound:Number(match.rescheduleProposal?.targetRound)||null});
+        document.querySelector('.arena-modal-v852')?.remove();draw();
+        window.showToast?.(accept?'Матч перенесено в обраний тур':'Запит на перенесення відхилено');
+      }catch(err){window.showToast?.(err.message||'Не вдалося підтвердити перенесення');}
     },
     modalResult(matchId="",mode=""){
       const match=allMatches().find(m=>m.id===matchId);

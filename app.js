@@ -5784,9 +5784,11 @@ async function loadOfficialStatsForMatch(match){
   const list=$("officialMatchStatsList");
   list.innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
+    const position=(window.CenturiaPositionMatchesV1250||[]).find(x=>x.match_type==='official'&&x.official_match_id===match.id&&x.player_id===r.player_id);
+    const positionLabel=window.CenturiaPositionsV1250?.positions?.find(x=>x[0]===position?.position_code)?.[1]||position?.position_code||'';
     return `<div class="official-stat-row ${i===0?"mvp":""}">
       <span>${i===0?"🏆 ":""}${esc(p?.name||"Гравець")}</span>
-      <small>${r.goals?`⚽ ${r.goals}`:""} ${r.assists?`🅰 ${r.assists}`:""}</small>
+      <small>${positionLabel?`📍 ${esc(positionLabel)} · `:''}${r.goals?`⚽ ${r.goals}`:""} ${r.assists?`🅰 ${r.assists}`:""}</small>
       <b>${r.rating!=null?fmtRating(Number(r.rating)):"—"}</b>
     </div>`;
   }).join(""):`<span class="muted">Статистику ще не внесено.</span>`;
@@ -5796,10 +5798,15 @@ function renderOfficialInputs(match){
   $("officialHomeScoreInput").value=match?.home_score??"";
   $("officialAwayScoreInput").value=match?.away_score??"";
   const existing=match?statsForMatch(match.id):[];
+  const existingPositions=match?(window.CenturiaPositionMatchesV1250||[]).filter(x=>x.match_type==='official'&&x.official_match_id===match.id):[];
+  const positionRows=window.CenturiaPositionsV1250?.positions||[];
   $("officialPlayerInputs").innerHTML=players.map(p=>{
     const r=existing.find(x=>x.player_id===p.id)||{};
+    const savedPosition=existingPositions.find(x=>x.player_id===p.id)?.position_code||'';
+    const positionOptions=positionRows.map(pos=>`<option value="${pos[0]}" ${savedPosition===pos[0]?'selected':''}>${pos[1]}</option>`).join('');
     return `<div class="official-player-row">
       <span><img src="${p.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p.name)}</b></span>
+      <select data-official-position="${p.id}" aria-label="Позиція ${esc(p.name)}"><option value="">позиція</option>${positionOptions}</select>
       <input data-official-rating="${p.id}" type="number" step="0.1" min="0" max="10" placeholder="оцінка" value="${r.rating??""}">
       <input data-official-goals="${p.id}" type="number" min="0" max="20" placeholder="голи" value="${r.goals||""}">
       <input data-official-assists="${p.id}" type="number" min="0" max="20" placeholder="асисти" value="${r.assists||""}">
@@ -5809,7 +5816,7 @@ function renderOfficialInputs(match){
 
 async function saveOfficialStats(matchId){
   if(!matchId||!canEditSite())return;
-  const match=calendarMatches.find(m=>m.id===matchId);if(!match)return;
+  const match=calendarMatches.find(m=>m.id===matchId)||calendarSelectedMatch;if(!match)return;
   const homeScore=$("officialHomeScoreInput").value===""?null:Number($("officialHomeScoreInput").value);
   const awayScore=$("officialAwayScoreInput").value===""?null:Number($("officialAwayScoreInput").value);
   const {error:matchErr}=await sb.from("calendar_matches").update({home_score:homeScore,away_score:awayScore}).eq("id",matchId);
@@ -5829,6 +5836,26 @@ async function saveOfficialStats(matchId){
   if(rows.length){
     const {error}=await sb.from("official_match_player_stats").insert(rows);
     if(error)throw error;
+  }
+  const positionRows=players.map(p=>{
+    const positionCode=document.querySelector(`[data-official-position="${p.id}"]`)?.value||'';
+    const ratingValue=document.querySelector(`[data-official-rating="${p.id}"]`)?.value||'';
+    return positionCode?{
+      player_id:p.id,
+      match_type:'official',
+      training_day_id:null,
+      official_match_id:matchId,
+      match_number:1,
+      match_date:match.match_date,
+      position_code:positionCode,
+      rating:ratingValue===''?null:Number(ratingValue)
+    }:null;
+  }).filter(Boolean);
+  const {error:positionDeleteError}=await sb.from('player_position_matches').delete().eq('official_match_id',matchId);
+  if(positionDeleteError)throw positionDeleteError;
+  if(positionRows.length){
+    const {error:positionInsertError}=await sb.from('player_position_matches').insert(positionRows);
+    if(positionInsertError)throw positionInsertError;
   }
   await Promise.all([loadCalendarData(),loadStatisticsData()]);
 }
@@ -9568,7 +9595,7 @@ window.CenturiaArenaStateApi={
   },
   async matchAction({action,competitionId,matchId,leg=1,homeScore=null,awayScore=null,tiebreakWinner=null}={}){
     if(!sb||!authUser)throw new Error('Увійди в акаунт');
-    const {data,error}=await sb.rpc('centuria_arena_match_action_v1246',{
+    const {data,error}=await sb.rpc('centuria_arena_match_action_v1290',{
       p_action:String(action||''),p_competition_id:String(competitionId||''),
       p_match_id:String(matchId||''),p_leg:Number(leg)||1,
       p_home_score:homeScore==null?null:Number(homeScore),
@@ -9576,6 +9603,17 @@ window.CenturiaArenaStateApi={
       p_tiebreak_winner:tiebreakWinner||null
     });
     if(error)throw new Error(error.message||'Не вдалося зберегти результат');
+    return Array.isArray(data)?data[0]:data;
+  },
+  async rescheduleAction({action,competitionId,matchId,targetRound=null}={}){
+    if(!sb||!authUser)throw new Error('Увійди в акаунт');
+    const {data,error}=await sb.rpc('centuria_arena_reschedule_action_v1290',{
+      p_action:String(action||''),
+      p_competition_id:String(competitionId||''),
+      p_match_id:String(matchId||''),
+      p_target_round:targetRound==null?null:Number(targetRound)
+    });
+    if(error)throw new Error(error.message||'Не вдалося перенести матч');
     return Array.isArray(data)?data[0]:data;
   },
   async clearKind(kind){

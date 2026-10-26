@@ -1,4 +1,4 @@
-/* Centuria v12.57 — position history from match screenshots; read-only player UI. */
+/* Centuria v12.91 — separate training and official position history. */
 (function(){
   'use strict';
   // Russian position names match the game's score screen. The rest of the UI is Ukrainian.
@@ -48,7 +48,9 @@
     const label=d.toLocaleDateString('uk-UA',{month:'long',year:'numeric'});
     return label.charAt(0).toLocaleUpperCase('uk-UA')+label.slice(1);
   };
-  const byPlayer = pid => data().filter(r=>r.player_id===pid && usable(r));
+  const recordMode = record => String(record?.match_type||'training').toLowerCase()==='official'?'official':'training';
+  let positionMode='training';
+  const byPlayer = (pid,mode=positionMode) => data().filter(r=>r.player_id===pid && usable(r) && recordMode(r)===mode);
 
   // The 50% threshold is per team calendar month, not per player's total apps.
   // A candidate's positional average must include a valid rating for EVERY such match.
@@ -57,7 +59,7 @@
     const minimum=Math.ceil(teamMatches/2);
     const key=month && typeof month.getMonth==='function'
       ? `${month.getFullYear()}-${String(month.getMonth()+1).padStart(2,'0')}` : dateKey(month);
-    const rows=data().filter(r=>r.match_type===mode && dateKey(r.match_date)===key && usable(r)?.[5]===category);
+    const rows=data().filter(r=>recordMode(r)===mode && dateKey(r.match_date)===key && usable(r)?.[5]===category);
     const groups=new Map();
     rows.forEach(r=>{if(!groups.has(r.player_id))groups.set(r.player_id,[]);groups.get(r.player_id).push(r);});
     const eligible=[];
@@ -81,6 +83,29 @@
     const slider=$('playerViewSlider'),slide=$('playerPositionsSlide');
     if(!slider||!slide||!$('playerPositionsTab')?.classList.contains('active'))return;
     requestAnimationFrame(()=>{slider.style.height=`${slide.clientHeight}px`;});
+  }
+
+  function syncModeUi(){
+    const official=positionMode==='official';
+    const officialBtn=$('showOfficialPositionsBtnV1291');
+    const trainingBtn=$('showTrainingPositionsBtnV1291');
+    officialBtn?.classList.toggle('active',official);
+    trainingBtn?.classList.toggle('active',!official);
+    officialBtn?.setAttribute('aria-pressed',String(official));
+    trainingBtn?.setAttribute('aria-pressed',String(!official));
+    const caption=$('positionCaptionV1291');
+    if(caption)caption.textContent=official
+      ? 'Офіційні матчі: окремо враховано позиції з матчів Ліги та Кубка. Матчі без зазначеної позиції не розподіляються автоматично. ФРВ / ST → ЦФД.'
+      : 'Тренування: враховано лише матчі зборів із визначеною позицією на фінальному скріншоті FC27. Старі матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.';
+  }
+
+  function setMode(mode){
+    const next=mode==='official'?'official':'training';
+    if(positionMode===next){syncModeUi();return;}
+    positionMode=next;
+    selectedCode=null;
+    syncModeUi();
+    render(selectedPlayer||current());
   }
 
   function showPositionDetails(code,pid,moveToDetails=false){
@@ -128,6 +153,7 @@
     if(selectedPlayer!==pid){selectedPlayer=pid;selectedCode=null;}
     if(!loaded&&!loading && typeof sb!=='undefined' && typeof authUser!=='undefined' && authUser)void refresh();
     const root=$('playerPositionsSlide');if(!root)return;
+    syncModeUi();
     const p=(typeof players!=='undefined'?players:[]).find(x=>x.id===pid);
     const rows=byPlayer(pid);
     const counts=Object.fromEntries(POS.map(pos=>[pos[0],0]));
@@ -178,7 +204,9 @@
       // Always recheck server data when users revisit the read-only positions tab.
       void refresh();
     });
+    $('showOfficialPositionsBtnV1291')?.addEventListener('click',()=>setMode('official'));
+    $('showTrainingPositionsBtnV1291')?.addEventListener('click',()=>setMode('training'));
   });
-  window.CenturiaPositionsV1250={normalize,positions:POS,render,refresh,monthWinner};
+  window.CenturiaPositionsV1250={normalize,positions:POS,render,refresh,monthWinner,setMode,getMode:()=>positionMode};
   if(!Array.isArray(window.CenturiaPositionMatchesV1250))window.CenturiaPositionMatchesV1250=[];
 })();
