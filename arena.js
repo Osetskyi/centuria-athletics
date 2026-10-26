@@ -684,7 +684,7 @@
     if(!m||matchFinishedForRescheduleV1290(m)||!canPlayerActV1067(m))return '';
     const proposal=matchRescheduleProposalV1290(m);
     const cls=small?'arena-mini-result-v927 arena-reschedule-btn-v1290':'arena-secondary-v852 arena-reschedule-btn-v1290';
-    if(proposal)return canConfirmRescheduleV1290(m)?`<button type="button" class="${cls}" onclick="ArenaV852.openRescheduleConfirmV1290('${jsq(m.id)}')">ПІДТВЕРДИТИ ПЕРЕНОС</button>`:'';
+    if(proposal)return canConfirmRescheduleV1290(m)?`<button type="button" class="${cls}" onclick="ArenaV852.openRescheduleConfirmV1290('${jsq(m.id)}')">ПІДТВЕРДИТИ ПЕРЕНЕСЕННЯ</button>`:'';
     return `<button type="button" class="${cls}" onclick="ArenaV852.openRescheduleModalV1290('${jsq(m.id)}')">↪ ПЕРЕНЕСТИ ТУР</button>`;
   };
   const matchControlsV1290=(m,small=false)=>`${matchPendingHtmlV1067(m)}${matchRescheduleStatusHtmlV1290(m)}<div class="arena-match-controls-v1290">${matchActionButtonV1067(m,small)}${matchRescheduleButtonV1290(m,small)}</div>`;

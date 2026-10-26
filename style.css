@@ -36425,3 +36425,28 @@ body.light-theme .arena-reschedule-actions-v1290 .arena-reschedule-submit-v1292{
   .arena-reschedule-route-v1290 > span{font-size:16px}
 }
 
+/* v12.94 — match action buttons must not collide on phone cards. */
+@media(max-width:600px){
+  #screen-arena .arena-match-controls-v1290{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:9px!important;
+  }
+  #screen-arena .arena-match-controls-v1290 > button{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    min-height:48px!important;
+    margin:0!important;
+    padding:10px 12px!important;
+    box-sizing:border-box!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    text-align:center!important;
+    font-size:12px!important;
+    line-height:1.2!important;
+  }
+}
+
