@@ -306,6 +306,10 @@ const FORMATIONS = {
 let db;
 let players = [];
 window.getCenturiaArenaPlayers=()=>Array.isArray(players)?players.map(p=>{const experience=getPlayerExperienceStateV1263(p);return {id:p?.id||"",name:String(p?.name||"").trim(),cardImage:p?.cardImage||"",number:p?.number||"",primaryPos:p?.primaryPos||"",status:p?.status||"",createdAt:p?.createdAt||p?.created_at||"",experienceKey:experience?.key||"",experienceColor:experience?.stages?.[experience.currentIndex]?.color||""}}).filter(p=>p.name):[];
+function notifyArenaRosterChangedV1295(){
+  try{window.ArenaV852?.refreshRoster?.();}catch(err){console.warn("Arena roster refresh",err);}
+  try{window.dispatchEvent(new CustomEvent("centuria-arena-roster-change",{detail:{players:window.getCenturiaArenaPlayers()}}));}catch(_e){}
+}
 function applyArenaPlayerExperienceHighlightsV1263(root=document){
   const arena=root.querySelector?.("#arenaApp")||root.querySelector?.("#screen-arena")||root;
   if(!arena?.querySelectorAll)return;
@@ -1274,9 +1278,24 @@ async function del(store,id){
   if(!canEditSite()) throw new Error("Потрібні права редактора");
 
   if(store==="players"){
-    const {error}=await sb.from("players").delete().eq("id",id);
+    const existing=players.find(p=>p.id===id)||null;
+    const {data,error}=await sb.from("players").delete().eq("id",id).select("id");
     if(error) throw error;
-    await sb.storage.from("centuria-assets").remove([`players/${id}.png`,`players/${id}.jpg`]);
+    if(!(data||[]).some(row=>row.id===id)){
+      const check=await sb.from("players").select("id").eq("id",id).maybeSingle();
+      if(check.error)throw check.error;
+      if(check.data?.id)throw new Error("База не підтвердила видалення гравця");
+    }
+
+    const storagePaths=new Set([`players/${id}.png`,`players/${id}.jpg`]);
+    const currentUrl=String(existing?.cardImage||"");
+    const marker="/storage/v1/object/public/centuria-assets/";
+    if(currentUrl.includes(marker)){
+      const storedPath=decodeURIComponent(currentUrl.split(marker)[1]?.split("?")[0]||"");
+      if(storedPath)storagePaths.add(storedPath);
+    }
+    const removed=await sb.storage.from("centuria-assets").remove([...storagePaths]);
+    if(removed.error)console.warn("Player card cleanup",removed.error);
     return;
   }
   if(store==="squads"){
@@ -2023,17 +2042,33 @@ $("editPlayerBtn").addEventListener("click",()=>{
   const p=players.find(x=>x.id===editPlayerId);
   if(p)fillEditMode(p);
 });
-$("viewDeletePlayerBtn").addEventListener("click",async()=>{
-  if(!editPlayerId)return;
-  if(!confirm("Видалити цього гравця?"))return;
-  await del("players",editPlayerId);
-  Object.keys(lineup).forEach(k=>{if(lineup[k]===editPlayerId)delete lineup[k]});
+async function deletePlayerFromRosterV1295(playerId){
+  const player=players.find(p=>p.id===playerId);
+  if(!player)return;
+  const warning=`Видалити ${player.name}?\n\nГравець зникне з карток, EVO, товариських матчів і майбутніх турнірів. У вже активній лізі його нік, клуб і створені матчі залишаться.`;
+  if(!confirm(warning))return;
+  await del("players",playerId);
+  Object.keys(lineup).forEach(k=>{if(lineup[k]===playerId)delete lineup[k]});
   localStorage.setItem("ca_lineup",JSON.stringify(lineup));
+  // Remove locally first, then confirm against Supabase. This prevents a stale
+  // Arena frame from keeping the former player visible in EVO.
+  players=players.filter(p=>p.id!==playerId);
+  notifyArenaRosterChangedV1295();
   players=await getAll("players");
+  notifyArenaRosterChangedV1295();
   $("playerDialog").close();
   renderPlayers();
   renderPitch();
-  showToast("Гравця видалено");
+  showToast("Гравця видалено з карток та EVO");
+}
+
+$("viewDeletePlayerBtn").addEventListener("click",async()=>{
+  if(!editPlayerId)return;
+  try{await deletePlayerFromRosterV1295(editPlayerId);}catch(err){
+    console.error(err);
+    showToast("Не вдалося видалити гравця");
+    alert(`Не вдалося видалити гравця.\n\n${err?.message||"Невідома помилка"}`);
+  }
 });
 
 $("cardImageInput").addEventListener("change",async e=>{
@@ -2104,12 +2139,11 @@ $("savePlayerBtn").addEventListener("click",async()=>{
 });
 $("deletePlayerBtn").addEventListener("click",async()=>{
   if(!editPlayerId)return;
-  if(!confirm("Видалити цього гравця?"))return;
-  await del("players",editPlayerId);
-  Object.keys(lineup).forEach(k=>{if(lineup[k]===editPlayerId)delete lineup[k]});
-  localStorage.setItem("ca_lineup",JSON.stringify(lineup));
-  players=await getAll("players");
-  $("playerDialog").close();renderPlayers();renderPitch();showToast("Гравця видалено");
+  try{await deletePlayerFromRosterV1295(editPlayerId);}catch(err){
+    console.error(err);
+    showToast("Не вдалося видалити гравця");
+    alert(`Не вдалося видалити гравця.\n\n${err?.message||"Невідома помилка"}`);
+  }
 });
 
 function compatibility(p,slotPos){
@@ -7974,6 +8008,7 @@ if(sb){
       players=await getAll("players");
       renderPlayers();
       renderPitch();
+      notifyArenaRosterChangedV1295();
     })
     .on("postgres_changes",{event:"*",schema:"public",table:"saved_lineups"},async()=>{
       squads=await getAll("squads");

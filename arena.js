@@ -246,8 +246,15 @@
       });
     }catch(_e){return [];}
   };
+  // v12.95: the live roster and the active competition roster are different
+  // things. A removed player must disappear from EVO, Players, friendlies and
+  // every future tournament, while their immutable nickname/fixtures remain
+  // inside a competition that has already started.
+  const livePlayerPoolV1295=()=>activeArenaPlayersV1249()
+    .map(p=>String(p.name).trim())
+    .filter(Boolean);
   const playerPool=()=>{
-    const live=activeArenaPlayersV1249().map(p=>String(p.name).trim());
+    const live=livePlayerPoolV1295();
     // An ongoing competition retains its original opponents even if one leaves
     // the club; it does not grant ex-members a place in EVO/Players rankings.
     const activeParticipants=Array.isArray(testCompetition?.participants)?testCompetition.participants:[];
@@ -1150,7 +1157,7 @@
       // v9.88: a club rename is global. Every player profile that currently
       // points to the old club name must immediately follow the new name,
       // including players that were still using a fallback/default value.
-      playerPool().forEach(player=>{
+      livePlayerPoolV1295().forEach(player=>{
         if(normalizeTeamName(clubFor(player))===oldKey){
           playerArenaPrefs[player]={
             ...(playerArenaPrefs[player]||{}),
@@ -3900,6 +3907,13 @@
   };
 
   window.ArenaV852={
+    refreshRoster(){
+      // Player deletion is delivered independently from Arena tournament
+      // state. Repaint immediately so an ex-player cannot remain in EVO until
+      // the next page reload. The active competition JSON is intentionally
+      // untouched, therefore its nickname, fixtures and table row stay put.
+      if(document.getElementById("screen-arena")?.classList.contains("active"))draw();
+    },
     open(){
       testBackTarget="arena";
       route="home";
@@ -4025,7 +4039,7 @@
       tournamentCountryV122="";
       tournamentDraftCover="";
       tournamentDraftVoteHours=24;
-      const pool=playerPool().slice().sort((a,b)=>String(a).localeCompare(String(b),'uk'));
+      const pool=livePlayerPoolV1295().slice().sort((a,b)=>String(a).localeCompare(String(b),'uk'));
       const cupClubs=clubDbNames().slice().sort((a,b)=>String(a).localeCompare(String(b),'uk'));
       const title=tournamentDefaultTitle(tournamentDraftKind);
       if(tournamentDraftKind==="cup"){
@@ -5152,7 +5166,7 @@
     },
     modalMatch(){
       const me=currentArenaPlayerName();
-      const opponents=playerPool().filter(n=>n&&n!==me).sort((a,b)=>String(a).localeCompare(String(b), 'uk'));
+      const opponents=livePlayerPoolV1295().filter(n=>n&&!sameArenaPlayer(n,me)).sort((a,b)=>String(a).localeCompare(String(b), 'uk'));
       const playerOptions=(opponents.length?opponents:["Volkovson","Romeo_130901","Mitsuki_one_love"]);
       const options=playerOptions.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
       const clubs=clubDbNames();

@@ -1,5 +1,5 @@
-// v12.57 — live-only EVO roster, correct settings version, plus v12.48 arrow recovery
-const CACHE_VERSION="centuria-pwa-v1257-player-month-50-version-fix";
+// v12.95 — deleted players leave EVO but remain in an already active competition
+const CACHE_VERSION="centuria-pwa-v1295-live-roster-active-league-history";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";
