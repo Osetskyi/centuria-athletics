@@ -7337,6 +7337,44 @@ function generalAwardComposite(x,maxima,weights){
     +generalAwardMetricPart(x.stats.mvp,maxima.mvp,weights.mvp||0);
 }
 
+/* Unified monthly trophies v12.96: training and official matches are distinct
+   in statistics, but every award is selected from their combined results. */
+function combinedAwardTeamMatchesV1296(monthDate){
+  const keep=generalStatsMode;
+  try{
+    generalStatsMode="training";
+    const training=generalTeamMatches(monthDate);
+    generalStatsMode="official";
+    const official=generalTeamMatches(monthDate);
+    return training+official;
+  }finally{generalStatsMode=keep;}
+}
+function combinedAwardMonthAggregateV1296(player,date){
+  const keep=generalStatsMode;
+  let training,official;
+  try{
+    generalStatsMode="training";
+    training=generalMonthAggregate(player,date);
+    generalStatsMode="official";
+    official=generalMonthAggregate(player,date);
+  }finally{generalStatsMode=keep;}
+  const matches=training.matches+official.matches;
+  // Monthly training ratings are per gathering, so weight each day's
+  // average by the number of actual matches rather than one gathering.
+  const weighted=training.average*training.matches+official.average*official.matches;
+  return {
+    events:training.events+official.events,
+    matches,
+    goals:training.goals+official.goals,
+    assists:training.assists+official.assists,
+    average:matches>0?weighted/matches:0,
+    mvp:training.mvp+official.mvp
+  };
+}
+function combinedPositionMonthWinnerV1296(monthDate,category,teamMatches){
+  return window.CenturiaPositionsV1250?.monthWinner?.(monthDate,"combined",category,teamMatches)||null;
+}
+
 function generalPickByScore(arr,scoreFn){
   if(!arr.length)return null;
   return arr.map(x=>({...x,awardScore:scoreFn(x)}))
@@ -7393,15 +7431,15 @@ function renderGeneralAwards(){
   $("generalAwardsMonth").textContent=generalAwardsMonthCursor.toLocaleDateString("uk-UA",{month:"long",year:"numeric"}).toUpperCase();
   const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
 
-  const teamMatches=generalTeamMatches(generalAwardsMonthCursor);
+  const teamMatches=combinedAwardTeamMatchesV1296(generalAwardsMonthCursor);
   const minMatches=generalMinMatches(teamMatches); // Unchanged for goals, assists and MVP.
   const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
   // No single minimum describes every monthly award; show thresholds on each
   // positional/pending card instead of the misleading shared 30% heading.
-  $("generalAwardsState").textContent=current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ";
+  $("generalAwardsState").textContent=(current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ")+" • УСІ МАТЧІ";
 
   const data=players.map(player=>{
-    const stats=generalMonthAggregate(player,generalAwardsMonthCursor);
+    const stats=combinedAwardMonthAggregateV1296(player,generalAwardsMonthCursor);
     return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
   }).filter(x=>x.stats.events>0||x.stats.matches>0);
   const eligible=data.filter(x=>x.stats.matches>=minMatches);
@@ -7415,14 +7453,14 @@ function renderGeneralAwards(){
     mvp:Math.max(0,...playerMonthEligible.map(x=>x.stats.mvp||0))
   };
 
-  const playerOfMonth=generalPickByScore(playerMonthEligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+  const playerOfMonth=generalPickByScore(playerMonthEligible,x=>x.stats.average);
   const scorer=generalPickCountingAward(eligible,"goals");
   const assistant=generalPickCountingAward(eligible,"assists");
 
-  const attackerOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"attack",teamMatches)||null;
-  const midfielderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"midfield",teamMatches)||null;
-  const defenderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"defense",teamMatches)||null;
-  const goalkeeperOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(generalAwardsMonthCursor,generalStatsMode,"keeper",teamMatches)||null;
+  const attackerOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"attack",teamMatches);
+  const midfielderOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"midfield",teamMatches);
+  const defenderOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"defense",teamMatches);
+  const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"keeper",teamMatches);
 
   const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
   generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
@@ -7519,7 +7557,7 @@ function syncCurrentPlayerOfMonthV754(){
     /* When both modes eventually exist, the training title is the visual
        reigning card by default because that is the team's continuous monthly
        competition. If there is no training award, use the official one. */
-    chosen=newest.find(a=>String(a.note||"").startsWith("Тренування"))||newest[0];
+    chosen=newest[0];
   }
 
   const next={
@@ -7536,15 +7574,15 @@ function syncCurrentPlayerOfMonthV754(){
 
 function calculateMonthlyAwardsV754(monthDate,mode){
   const previousMode=generalStatsMode;
-  generalStatsMode=mode;
+  generalStatsMode="training";
   try{
-    const teamMatches=generalTeamMatches(monthDate);
+    const teamMatches=combinedAwardTeamMatchesV1296(monthDate);
     const minMatches=generalMinMatches(teamMatches);
     const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
     if(!teamMatches)return {teamMatches,minMatches,awards:[]};
 
     const data=players.map(player=>{
-      const stats=generalMonthAggregate(player,monthDate);
+      const stats=combinedAwardMonthAggregateV1296(player,monthDate);
       return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
     }).filter(x=>x.stats.events>0||x.stats.matches>0);
     const eligible=data.filter(x=>x.stats.matches>=minMatches);
@@ -7558,22 +7596,22 @@ function calculateMonthlyAwardsV754(monthDate,mode){
       assists:Math.max(0,...playerMonthEligible.map(x=>x.stats.assists||0)),
       mvp:Math.max(0,...playerMonthEligible.map(x=>x.stats.mvp||0))
     };
-    const playerOfMonth=generalPickByScore(playerMonthEligible,x=>generalAwardComposite(x,maxima,{rating:60,goals:15,assists:15,mvp:10}));
+    const playerOfMonth=generalPickByScore(playerMonthEligible,x=>x.stats.average);
     const scorer=generalPickCountingAward(eligible,"goals");
     const assistant=generalPickCountingAward(eligible,"assists");
 
-    const attackerOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"attack",teamMatches)||null;
-    const midfielderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"midfield",teamMatches)||null;
-    const defenderOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"defense",teamMatches)||null;
-    const goalkeeperOfMonth=window.CenturiaPositionsV1250?.monthWinner?.(monthDate,mode,"keeper",teamMatches)||null;
+    const attackerOfMonth=combinedPositionMonthWinnerV1296(monthDate,"attack",teamMatches);
+    const midfielderOfMonth=combinedPositionMonthWinnerV1296(monthDate,"midfield",teamMatches);
+    const defenderOfMonth=combinedPositionMonthWinnerV1296(monthDate,"defense",teamMatches);
+    const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(monthDate,"keeper",teamMatches);
 
     const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
     const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
-    const modeLabel=awardModeLabelV754(mode);
+    const modeLabel="Усі матчі";
     const awards=[];
     const push=(x,title,icon,note)=>{if(x?.player?.id)awards.push({player_id:x.player.id,title,icon,note});};
 
-    push(playerOfMonth,"Гравець місяця","👑",`${modeLabel} • ${Number(playerOfMonth?.awardScore||0).toFixed(1)} бала`);
+    push(playerOfMonth,"Гравець місяця","👑",`${modeLabel} • ${Number(playerOfMonth?.stats?.average||0).toFixed(2)} середня`);
     push(scorer,"Бомбардир місяця","⚽",`${modeLabel} • ${scorer?.stats?.goals||0} голів`);
     push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
     push(attackerOfMonth,"Нападник місяця","⚡",`${modeLabel} • середня ${Number(attackerOfMonth?.stats?.average||0).toFixed(2)} за матчі в нападі`);
@@ -7597,13 +7635,13 @@ function completedAwardMonthsV754(){
     if(!d?.training_date)return;
     const date=new Date(`${d.training_date}T12:00:00`);
     const key=generalMonthKey(date);
-    if(key<currentKey)found.set(`training:${key}`,{mode:"training",date:new Date(date.getFullYear(),date.getMonth(),1)});
+    if(key<currentKey)found.set(key,{mode:"combined",date:new Date(date.getFullYear(),date.getMonth(),1)});
   });
   calendarMatches.forEach(m=>{
     if(!m?.match_date)return;
     const date=new Date(`${m.match_date}T12:00:00`);
     const key=generalMonthKey(date);
-    if(key<currentKey)found.set(`official:${key}`,{mode:"official",date:new Date(date.getFullYear(),date.getMonth(),1)});
+    if(key<currentKey)found.set(key,{mode:"combined",date:new Date(date.getFullYear(),date.getMonth(),1)});
   });
   return [...found.values()].sort((a,b)=>a.date-b.date||a.mode.localeCompare(b.mode));
 }
@@ -7629,18 +7667,17 @@ async function autoIssueCompletedMonthlyAwardsV754(){
     const inserts=[];
 
     months.forEach(({mode,date})=>{
+      const awardDate=awardMonthLastDateV754(date);
+      if(known.some(x=>x.award_date===awardDate))return;
       const calculated=calculateMonthlyAwardsV754(date,mode);
       if(!calculated.awards.length)return;
-      const awardDate=awardMonthLastDateV754(date);
-      const modeLabel=awardModeLabelV754(mode);
+      const modeLabel="Усі матчі";
       calculated.awards.forEach(a=>{
         const exists=known.some(x=>
-          x.player_id===a.player_id &&
           String(x.title||"").trim().toLowerCase()===String(a.title||"").trim().toLowerCase() &&
-          x.award_date===awardDate &&
-          String(x.note||"").startsWith(modeLabel)
+          x.award_date===awardDate
         );
-        if(exists)return;
+        if(exists || inserts.some(x=>x.title===a.title && x.award_date===awardDate))return;
         inserts.push({...a,award_date:awardDate,created_by:authUser.id});
       });
     });
