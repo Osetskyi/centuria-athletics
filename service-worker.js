@@ -1,5 +1,5 @@
-// v12.95 — deleted players leave EVO but remain in an already active competition
-const CACHE_VERSION="centuria-pwa-v1296-combined-awards";
+// v13.00 — Hide mode switch only on unified monthly awards screen
+const CACHE_VERSION="centuria-pwa-v1300-unified-awards-no-toggle";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";

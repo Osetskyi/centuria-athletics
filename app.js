@@ -411,7 +411,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=12.57.1",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=13.00",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -1775,33 +1775,15 @@ async function loadPlayerStatistics(playerId){
     return sum+(Number.isFinite(personal) ? personal : (Number(r.training_days?.matches_played)||0));
   },0);
 
-  // MVP count = how many events this player's rating equals the best rating for that event.
-  let officialMvp=0, trainingMvp=0;
+  // One daily MVP award across all games on a date. The separate training and
+  // official panels must not each invent their own MVP award.
   const officialIds=[...new Set(official.map(r=>r.match_id))];
-  const trainingIds=[...new Set(training.map(r=>r.training_day_id))];
-
-  if(officialIds.length){
-    const {data}=await sb.from("official_match_player_stats").select("match_id,player_id,rating").in("match_id",officialIds);
-    const grouped={};
-    (data||[]).forEach(r=>(grouped[r.match_id]??=[]).push(r));
-    officialIds.forEach(id=>{
-      const mine=grouped[id]?.find(r=>r.player_id===playerId);
-      const max=Math.max(...(grouped[id]||[]).map(r=>Number(r.rating)).filter(Number.isFinite),-1);
-      if(mine && Number(mine.rating)===max)officialMvp++;
-    });
-  }
-  if(trainingIds.length){
-    const {data}=await sb.from("training_player_stats").select("training_day_id,player_id,rating,matches_played").in("training_day_id",trainingIds);
-    const grouped={};
-    (data||[]).forEach(r=>(grouped[r.training_day_id]??=[]).push(r));
-    trainingIds.forEach(id=>{
-      const dayTotal=Number(training.find(r=>r.training_day_id===id)?.training_days?.matches_played)||0;
-      const eligible=trainingMvpEligibleRows({id,matches_played:dayTotal},grouped[id]||[]);
-      const mine=eligible.find(r=>r.player_id===playerId);
-      const max=Math.max(...eligible.map(r=>Number(r.rating)).filter(Number.isFinite),-1);
-      if(mine && Number(mine.rating)===max)trainingMvp++;
-    });
-  }
+  const dayKeys=new Set([
+    ...training.map(r=>r.training_days?.training_date).filter(Boolean),
+    ...official.map(r=>r.calendar_matches?.match_date).filter(Boolean)
+  ]);
+  const combinedMvpDays=[...dayKeys].filter(d=>
+    combinedDayMvpV1297(d)?.winners?.some(w=>w.player_id===playerId)).length;
 
   $("statOfficialMatches").textContent=officialIds.length;
   $("statOfficialGoals").textContent=official.reduce((s,r)=>s+(Number(r.goals)||0),0);
@@ -1809,7 +1791,7 @@ async function loadPlayerStatistics(playerId){
   $("statOfficialAvg").textContent=fmtRating(offAvg);
   $("statOfficialBest").textContent=fmtRating(offBest);
   $("statOfficialWorst").textContent=fmtRating(offWorst);
-  $("statOfficialMvp").innerHTML=`<em>MVP</em> ${officialMvp}`;
+  $("statOfficialMvp").innerHTML=`<em>MVP ДНЯ</em> ${combinedMvpDays}`;
   $("statOfficialForm").innerHTML=officialRatingChartHtml(official);
   bindOfficialRatingChart();
 
@@ -1819,7 +1801,7 @@ async function loadPlayerStatistics(playerId){
   $("statTrainingAvg").textContent=fmtRating(trAvg);
   $("statTrainingBest").textContent=fmtRating(trBest);
   $("statTrainingWorst").textContent=fmtRating(trWorst);
-  $("statTrainingMvp").innerHTML=`<em>MVP</em> ${trainingMvp}`;
+  $("statTrainingMvp").innerHTML=`<em>MVP ДНЯ</em> ${combinedMvpDays}`;
   $("statTrainingForm").innerHTML=trainingRatingChartHtml(training);
   bindTrainingRatingChart();
 }
@@ -5710,26 +5692,28 @@ function renderTrainingView(day){
 
   const rows=statsForTraining(day.id).sort((a,b)=>Number(b.rating)-Number(a.rating));
   const avg=averageRating(rows);
-  const eligibleMvpRows=trainingMvpEligibleRows(day,rows);
-  const topRating=eligibleMvpRows.length?Math.max(...eligibleMvpRows.map(r=>Number(r.rating)).filter(Number.isFinite)):null;
-  const mvpRows=topRating==null?[]:eligibleMvpRows.filter(r=>Math.abs(Number(r.rating)-topRating)<0.000001);
-  const mvpNames=mvpRows.map(r=>players.find(p=>p.id===r.player_id)?.name).filter(Boolean);
+  const dayMvp=combinedDayMvpV1297(day.training_date);
+  const mvpIds=new Set((dayMvp?.winners||[]).map(r=>r.player_id));
+  const topRating=dayMvp?.winners?.[0]?.rating??null;
+  const mvpNames=(dayMvp?.winners||[])
+    .map(r=>players.find(p=>p.id===r.player_id)?.name).filter(Boolean);
   $("trainingViewMvp").textContent=mvpNames.length?mvpNames.join(" • "):"—";
   $("trainingViewMvpRating").textContent=topRating!=null?fmtRating(topRating):"—";
   $("trainingViewTeamAvg").textContent=fmtRating(avg);
 
-  const totalMatches=Math.max(0,Number(day.matches_played)||0);
+  const totalMatches=dayMvp?.totalMatches||Math.max(0,Number(day.matches_played)||0);
   const minimumMvpMatches=totalMatches?Math.ceil(totalMatches/2):0;
   const fairMvpRule=fairTrainingMvpRuleApplies(day);
   $("trainingViewRanking").innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
     const rawPlayed=r?.matches_played;
     const played=(rawPlayed===null||rawPlayed===undefined||rawPlayed==='')?totalMatches:Number(rawPlayed);
-    const mvpEligible=!fairMvpRule || !totalMatches || (Number.isFinite(played)&&played>=minimumMvpMatches);
-    const isMvp=topRating!=null && mvpEligible && Math.abs(Number(r.rating)-topRating)<0.000001;
+    const combinedPlayed=dayMvp?.participants?.find(x=>x.player_id===r.player_id)?.played??played;
+    const mvpEligible=!fairMvpRule || !totalMatches || (Number.isFinite(combinedPlayed)&&combinedPlayed>=minimumMvpMatches);
+    const isMvp=mvpEligible && mvpIds.has(r.player_id);
     const eligibilityNote=fairMvpRule&&!mvpEligible
-      ?`<small class="mvp-ineligible-note">⏱️ Недостатньо матчів · ${Number.isFinite(played)?played:0}/${totalMatches} · мін. ${minimumMvpMatches}</small>`
-      :(isMvp?`<small class="mvp-eligible-note">🏆 MVP</small>`:"");
+      ?`<small class="mvp-ineligible-note">⏱️ Недостатньо матчів · ${Number.isFinite(combinedPlayed)?combinedPlayed:0}/${totalMatches} · мін. ${minimumMvpMatches}</small>`
+      :(isMvp?`<small class="mvp-eligible-note">🏆 MVP дня · усі матчі · ${fmtRating(topRating)}</small>`:"");
     return `<div class="training-rank-row ${isMvp?"mvp":""} ${!mvpEligible?"mvp-ineligible":""}">
       <span class="rank-place">${i+1}</span>
       <span class="rank-player"><img src="${p?.cardImage||PLAYER_PLACEHOLDER}" alt=""><b>${esc(p?.name||"Гравець")}</b>${eligibilityNote}</span>
@@ -5816,13 +5800,15 @@ async function loadOfficialStatsForMatch(match){
   }else score.classList.add("hidden");
 
   const list=$("officialMatchStatsList");
+  const dayWinners=new Set((combinedDayMvpV1297(match.match_date)?.winners||[]).map(w=>w.player_id));
   list.innerHTML=rows.length?rows.map((r,i)=>{
     const p=players.find(x=>x.id===r.player_id);
     const position=(window.CenturiaPositionMatchesV1250||[]).find(x=>x.match_type==='official'&&x.official_match_id===match.id&&x.player_id===r.player_id);
     const positionLabel=window.CenturiaPositionsV1250?.positions?.find(x=>x[0]===position?.position_code)?.[1]||position?.position_code||'';
-    return `<div class="official-stat-row ${i===0?"mvp":""}">
-      <span>${i===0?"🏆 ":""}${esc(p?.name||"Гравець")}</span>
-      <small>${positionLabel?`📍 ${esc(positionLabel)} · `:''}${r.goals?`⚽ ${r.goals}`:""} ${r.assists?`🅰 ${r.assists}`:""}</small>
+    const isDayMvp=dayWinners.has(r.player_id);
+    return `<div class="official-stat-row ${isDayMvp?"mvp":""}">
+      <span>${isDayMvp?"🏆 ":""}${esc(p?.name||"Гравець")}</span>
+      <small>${isDayMvp?'MVP дня · усі матчі · ':''}${positionLabel?`📍 ${esc(positionLabel)} · `:''}${r.goals?`⚽ ${r.goals}`:""} ${r.assists?`🅰 ${r.assists}`:""}</small>
       <b>${r.rating!=null?fmtRating(Number(r.rating)):"—"}</b>
     </div>`;
   }).join(""):`<span class="muted">Статистику ще не внесено.</span>`;
@@ -7062,6 +7048,14 @@ function setGeneralStatsSlide(index){
   $("generalStatsTrack").style.transform=`translateX(-${generalStatsSlide*20}%)`;
   $("generalStatsSlideTitle").textContent=GENERAL_TITLES[generalStatsSlide];
   document.querySelectorAll("#generalStatsDots i").forEach((d,i)=>d.classList.toggle("active",i===generalStatsSlide));
+  // v13.00: Monthly awards always combine official games and trainings.
+  // Their tab has no source selector; keep it available on every other slide.
+  const modeSwitch=$("generalStatsModeSwitch");
+  if(modeSwitch){
+    const hideForUnifiedAwards=generalStatsSlide===3;
+    modeSwitch.style.display=hideForUnifiedAwards?"none":"";
+    modeSwitch.setAttribute("aria-hidden",String(hideForUnifiedAwards));
+  }
   renderGeneralStats();
 }
 
@@ -7115,11 +7109,10 @@ function generalAdjustedRating(stats,teamMatches){
   return Math.max(0,avg-(.20*(1-participation)));
 }
 
-/* v12.57: lifetime rating eligibility is relative to each player's FIRST
-   recorded match in the selected mode, not the club's lifetime total.
-   A minimum of ten personal matches avoids one-gathering top rankings.
-   Monthly awards intentionally keep their existing separate rule. */
-const GENERAL_LIFETIME_MIN_PERSONAL_MATCHES_V1254=10;
+/* v12.99: Ratings in both independent statistic modes use 40% of the
+   team's matches since the player's first recorded match IN THAT MODE.
+   No fixed 10-match floor: after the team's first official match, a player
+   with one appearance must qualify. Monthly awards keep their own rules. */
 const GENERAL_LIFETIME_PARTICIPATION_V1254=.40;
 function generalLifetimeEligibilityV1254(player,stats){
   const firstDate=generalPlayerRows(player.id)
@@ -7128,7 +7121,7 @@ function generalLifetimeEligibilityV1254(player,stats){
     .sort()[0]||null;
   // Include the whole first calendar day; training sessions can include several games.
   const teamSinceJoined=firstDate?generalTeamMatches(null,firstDate):0;
-  const minMatches=Math.max(GENERAL_LIFETIME_MIN_PERSONAL_MATCHES_V1254,
+  const minMatches=Math.max(1,
     Math.ceil(teamSinceJoined*GENERAL_LIFETIME_PARTICIPATION_V1254));
   return {
     teamSinceJoined,minMatches,firstDate,
@@ -7155,7 +7148,7 @@ function renderGeneralPlayers(){
   });
 
   $("generalPlayersSummary").textContent=teamMatches
-    ?`Гравців: ${players.length} • Матчів: ${teamMatches} • Допуск: 40% від першого матчу (мін. 10)`
+    ?`Гравців: ${players.length} • Матчів: ${teamMatches} • Допуск: 40% матчів команди після дебюту (мін. 1)`
     :`Гравців: ${players.length}`;
 
   let ratedPlace=0;
@@ -7269,7 +7262,7 @@ function renderGeneralRecords(){
     ["🏆","НАЙБІЛЬШЕ MVP",perPlayer,x=>x.stats.mvp,x=>`${x.stats.mvp}`],
     ["⚽","НАЙБІЛЬШЕ ГОЛІВ",perPlayer,x=>x.stats.goals,x=>`${x.stats.goals}`],
     ["🎯","НАЙБІЛЬШЕ АСИСТІВ",perPlayer,x=>x.stats.assists,x=>`${x.stats.assists}`],
-    ["👑","НАЙВИЩА СЕРЕДНЯ",perPlayer.filter(x=>x.stats.eventCount>=10),x=>x.stats.average,x=>x.stats.average.toFixed(2)]
+    ["👑","НАЙВИЩА СЕРЕДНЯ",perPlayer.filter(x=>generalLifetimeEligibilityV1254(x.player,x.stats).eligible),x=>x.stats.average,x=>x.stats.average.toFixed(2)]
   );
 
   const cards=[];
@@ -7337,39 +7330,81 @@ function generalAwardComposite(x,maxima,weights){
     +generalAwardMetricPart(x.stats.mvp,maxima.mvp,weights.mvp||0);
 }
 
-/* Unified monthly trophies v12.96: training and official matches are distinct
-   in statistics, but every award is selected from their combined results. */
+/* v12.98 — ONE awards source for training + league + cup.
+   Rating-based trophies always use an appearance-weighted average. When all
+   per-match position records are available, use their unrounded FC ratings;
+   otherwise use the training-day average times appearances. We never count
+   an official match twice when it also appears on the gathering date. */
+function allAwardsTrainingMatchCountV1298(day){
+  const n=Number(day?.matches_played);
+  return Number.isFinite(n)&&n>0?n:0;
+}
+function allAwardsTrainingAppearancesV1298(row,day){
+  const explicit=row?.matches_played;
+  const fallback=allAwardsTrainingMatchCountV1298(day);
+  const n=(explicit===null||explicit===undefined||explicit==='')?fallback:Number(explicit);
+  return Number.isFinite(n)&&n>0?n:0;
+}
+function allAwardsMatchRatingsV1298(row,day){
+  const appearances=allAwardsTrainingAppearancesV1298(row,day);
+  if(!appearances)return {points:0,count:0};
+  // Per-match ratings are preferred only when a COMPLETE rated set is present.
+  // Partial position history must not lower the average or duplicate games.
+  const positions=Array.isArray(window.CenturiaPositionMatchesV1250)?window.CenturiaPositionMatchesV1250:[];
+  const records=positions.filter(x=>x.match_type==='training'&&x.training_day_id===day?.id&&x.player_id===row.player_id);
+  const complete=records.length===appearances && records.every(x=>x.rating!==null&&x.rating!==undefined&&x.rating!==''&&Number.isFinite(Number(x.rating)));
+  if(complete){return {points:records.reduce((sum,x)=>sum+Number(x.rating),0),count:appearances};}
+  const mean=Number(row?.rating);
+  return row?.rating!==null&&row?.rating!==undefined&&row?.rating!==''&&Number.isFinite(mean)
+    ?{points:mean*appearances,count:appearances}:{points:0,count:0};
+}
+function allAwardsOfficialEventsV1298(monthKey=null,date=null){
+  return calendarMatches.filter(m=>m?.match_date &&
+    (!monthKey||String(m.match_date).slice(0,7)===monthKey) &&
+    (!date||m.match_date===date) &&
+    officialMatchStats.some(x=>x.match_id===m.id));
+}
 function combinedAwardTeamMatchesV1296(monthDate){
-  const keep=generalStatsMode;
-  try{
-    generalStatsMode="training";
-    const training=generalTeamMatches(monthDate);
-    generalStatsMode="official";
-    const official=generalTeamMatches(monthDate);
-    return training+official;
-  }finally{generalStatsMode=keep;}
+  const monthKey=generalMonthKey(monthDate);
+  const training=trainingDays
+    .filter(d=>String(d?.training_date||'').slice(0,7)===monthKey&&trainingStats.some(s=>s.training_day_id===d.id))
+    .reduce((sum,d)=>sum+allAwardsTrainingMatchCountV1298(d),0);
+  return training+allAwardsOfficialEventsV1298(monthKey).length;
 }
 function combinedAwardMonthAggregateV1296(player,date){
-  const keep=generalStatsMode;
-  let training,official;
-  try{
-    generalStatsMode="training";
-    training=generalMonthAggregate(player,date);
-    generalStatsMode="official";
-    official=generalMonthAggregate(player,date);
-  }finally{generalStatsMode=keep;}
-  const matches=training.matches+official.matches;
-  // Monthly training ratings are per gathering, so weight each day's
-  // average by the number of actual matches rather than one gathering.
-  const weighted=training.average*training.matches+official.average*official.matches;
-  return {
-    events:training.events+official.events,
-    matches,
-    goals:training.goals+official.goals,
-    assists:training.assists+official.assists,
-    average:matches>0?weighted/matches:0,
-    mvp:training.mvp+official.mvp
-  };
+  const monthKey=generalMonthKey(date);
+  let matches=0,goals=0,assists=0,ratingPoints=0,ratedMatches=0,events=0;
+  trainingDays.forEach(day=>{
+    if(String(day?.training_date||'').slice(0,7)!==monthKey)return;
+    const row=trainingStats.find(s=>s.training_day_id===day.id&&s.player_id===player.id);
+    if(!row)return;
+    const n=allAwardsTrainingAppearancesV1298(row,day);
+    if(!n)return;
+    const rated=allAwardsMatchRatingsV1298(row,day);
+    matches+=n;events++;
+    goals+=Number(row.goals)||0;
+    assists+=Number(row.assists)||0;
+    ratingPoints+=rated.points;ratedMatches+=rated.count;
+  });
+  const officialIds=new Set(allAwardsOfficialEventsV1298(monthKey).map(m=>m.id));
+  officialMatchStats.forEach(row=>{
+    if(row.player_id!==player.id||!officialIds.has(row.match_id))return;
+    matches++;events++;
+    goals+=Number(row.goals)||0;
+    assists+=Number(row.assists)||0;
+    if(row.rating!==null&&row.rating!==undefined&&row.rating!==''&&Number.isFinite(Number(row.rating))){
+      ratingPoints+=Number(row.rating);ratedMatches++;
+    }
+  });
+  const dates=new Set([
+    ...trainingDays.map(d=>d.training_date),
+    ...allAwardsOfficialEventsV1298(monthKey).map(m=>m.match_date)
+  ]);
+  const mvp=[...dates].filter(d=>d&&String(d).slice(0,7)===monthKey)
+    .reduce((sum,d)=>sum+(combinedDayMvpV1297(d)?.winners?.some(w=>w.player_id===player.id)?1:0),0);
+  return {events,matches,goals,assists,
+    average:ratedMatches>0?ratingPoints/ratedMatches:0,
+    ratedMatches,mvp};
 }
 function combinedPositionMonthWinnerV1296(monthDate,category,teamMatches){
   return window.CenturiaPositionsV1250?.monthWinner?.(monthDate,"combined",category,teamMatches)||null;
@@ -7432,7 +7467,7 @@ function renderGeneralAwards(){
   const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
 
   const teamMatches=combinedAwardTeamMatchesV1296(generalAwardsMonthCursor);
-  const minMatches=generalMinMatches(teamMatches); // Unchanged for goals, assists and MVP.
+  const minMatches=generalMinMatches(teamMatches); // Goals and assists keep their 30% threshold.
   const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
   // No single minimum describes every monthly award; show thresholds on each
   // positional/pending card instead of the misleading shared 30% heading.
@@ -7446,7 +7481,7 @@ function renderGeneralAwards(){
   // v12.57: Player of Month requires 50% of all team matches this month.
   // Other counting awards still use their existing separate 30% requirement.
   const playerMonthEligible=teamMatches>0
-    ?data.filter(x=>x.stats.matches>=minPlayerMonthMatches):[];
+    ?data.filter(x=>x.stats.matches>=minPlayerMonthMatches&&x.stats.ratedMatches===x.stats.matches):[];
   const maxima={
     goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
     assists:Math.max(0,...playerMonthEligible.map(x=>x.stats.assists||0)),
@@ -7462,8 +7497,9 @@ function renderGeneralAwards(){
   const defenderOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"defense",teamMatches);
   const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"keeper",teamMatches);
 
-  const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
-  generalMonthlyMvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+  const mvpEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
+  const maxMvp=Math.max(0,...mvpEligible.map(x=>x.stats.mvp||0));
+  generalMonthlyMvpWinners=maxMvp>0?mvpEligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
   generalMonthlyMvpIndex=0;
   clearInterval(generalMonthlyMvpTimer);
 
@@ -7489,7 +7525,7 @@ function renderGeneralAwards(){
   const awardCards=[];
   // Make the stricter Player-of-Month requirement visible when nobody qualifies.
   if(playerOfMonth){
-    awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.adjusted.toFixed(2),true));
+    awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.stats.average.toFixed(2),true));
   }else{
     awardCards.push(`<div class="general-award-card general-award-pending main" data-player-month-pending="true">
       <small>👑 ГРАВЕЦЬ МІСЯЦЯ</small>
@@ -7554,9 +7590,8 @@ function syncCurrentPlayerOfMonthV754(){
   if(rows.length){
     const newestDate=rows[0].award_date;
     const newest=rows.filter(a=>a.award_date===newestDate);
-    /* When both modes eventually exist, the training title is the visual
-       reigning card by default because that is the team's continuous monthly
-       competition. If there is no training award, use the official one. */
+    /* Only one combined player-of-month title is issued per month going forward.
+       Historical stored awards are preserved unchanged. */
     chosen=newest[0];
   }
 
@@ -7590,7 +7625,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
 
     // Keep completed-month auto-issued awards consistent with the on-screen
     // Player-of-Month rule. Do not change scorer, assist or MVP eligibility.
-    const playerMonthEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
+    const playerMonthEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches&&x.stats.ratedMatches===x.stats.matches);
     const maxima={
       goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
       assists:Math.max(0,...playerMonthEligible.map(x=>x.stats.assists||0)),
@@ -7605,8 +7640,9 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     const defenderOfMonth=combinedPositionMonthWinnerV1296(monthDate,"defense",teamMatches);
     const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(monthDate,"keeper",teamMatches);
 
-    const maxMvp=Math.max(0,...eligible.map(x=>x.stats.mvp||0));
-    const mvpWinners=maxMvp>0?eligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+    const mvpEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
+    const maxMvp=Math.max(0,...mvpEligible.map(x=>x.stats.mvp||0));
+    const mvpWinners=maxMvp>0?mvpEligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
     const modeLabel="Усі матчі";
     const awards=[];
     const push=(x,title,icon,note)=>{if(x?.player?.id)awards.push({player_id:x.player.id,title,icon,note});};
@@ -7616,8 +7652,8 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     push(assistant,"Асистент місяця","🎯",`${modeLabel} • ${assistant?.stats?.assists||0} асистів`);
     push(attackerOfMonth,"Нападник місяця","⚡",`${modeLabel} • середня ${Number(attackerOfMonth?.stats?.average||0).toFixed(2)} за матчі в нападі`);
     push(midfielderOfMonth,"Півзахисник місяця","🎮",`${modeLabel} • середня ${Number(midfielderOfMonth?.stats?.average||0).toFixed(2)} за матчі в півзахисті`);
-    push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • ${Number(defenderOfMonth?.awardScore||0).toFixed(1)} бала`);
-    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • ${Number(goalkeeperOfMonth?.awardScore||0).toFixed(1)} бала`);
+    push(defenderOfMonth,"Захисник місяця","🛡️",`${modeLabel} • середня ${Number(defenderOfMonth?.stats?.average||0).toFixed(2)} в захисті`);
+    push(goalkeeperOfMonth,"Воротар місяця","🧤",`${modeLabel} • середня ${Number(goalkeeperOfMonth?.stats?.average||0).toFixed(2)} у воротах`);
     mvpWinners.forEach(x=>push(x,"MVP місяця","🏆",`${modeLabel} • ${x.stats.mvp||0} MVP`));
 
     return {teamMatches,minMatches,awards};
@@ -10574,20 +10610,58 @@ let homeVipIndex=0;
 let homeVipTimer=null;
 let homeVipTouchX=null;
 
+/* v12.97 — one MVP for each calendar day, combining practice and official games.
+   This calculation is read-only and never merges underlying match statistics. */
+function combinedDayMvpV1297(date){
+  if(!date)return null;
+  const day=trainingDays.find(d=>d.training_date===date);
+  const dayStats=day?trainingStats.filter(s=>s.training_day_id===day.id && s.rating!=null):[];
+  const dayMatches=calendarMatches.filter(m=>m.match_date===date &&
+    officialMatchStats.some(s=>s.match_id===m.id && s.rating!=null));
+  const trainingCount=dayStats.length?Math.max(0,Number(day?.matches_played)||0):0;
+  const totalMatches=trainingCount+dayMatches.length;
+  if(!totalMatches)return null;
+  const grouped=new Map();
+  const include=(playerId,rating,played)=>{
+    const id=String(playerId||'');
+    const n=Number(played),r=Number(rating);
+    if(!id||!Number.isFinite(n)||n<=0||!Number.isFinite(r))return;
+    const prev=grouped.get(id)||{player_id:id,played:0,ratingPoints:0};
+    prev.played+=n;
+    prev.ratingPoints+=r*n;
+    grouped.set(id,prev);
+  };
+  dayStats.forEach(s=>{
+    const declared=s.matches_played;
+    const played=(declared===null||declared===undefined||declared==='')
+      ?trainingCount:Number(declared);
+    const rated=allAwardsMatchRatingsV1298(s,day);
+    if(played>0&&rated.count===played)include(s.player_id,rated.points/played,played);
+  });
+  dayMatches.forEach(m=>{
+    officialMatchStats.filter(s=>s.match_id===m.id && s.rating!=null)
+      .forEach(s=>include(s.player_id,s.rating,1));
+  });
+  const minimum=Math.ceil(totalMatches*.5);
+  const participants=[...grouped.values()].map(s=>({
+    player_id:s.player_id,played:s.played,rating:s.ratingPoints/s.played
+  }));
+  const eligible=participants.filter(s=>s.played>=minimum);
+  if(!eligible.length)return {date,totalMatches,minimum,participants,winners:[]};
+  const high=Math.max(...eligible.map(s=>s.rating));
+  const winners=eligible.filter(s=>Math.abs(s.rating-high)<.000001);
+  return {date,totalMatches,minimum,participants,winners};
+}
+
 function latestVipEventV642(){
-  const events=[];
-  (trainingDays||[]).forEach(day=>{
-    const rows=trainingMvpEligibleRows(day,(trainingStats||[]).filter(r=>r.training_day_id===day.id && Number.isFinite(Number(r.rating))));
-    if(!rows.length)return;
-    const max=Math.max(...rows.map(r=>Number(r.rating)));
-    events.push({date:day.training_date||"",type:"training",rating:max,winners:rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001)});
-  });
-  (calendarMatches||[]).forEach(match=>{
-    const rows=(officialMatchStats||[]).filter(r=>r.match_id===match.id && Number.isFinite(Number(r.rating)));
-    if(!rows.length)return;
-    const max=Math.max(...rows.map(r=>Number(r.rating)));
-    events.push({date:match.match_date||"",type:"match",rating:max,winners:rows.filter(r=>Math.abs(Number(r.rating)-max)<0.000001)});
-  });
+  const dates=new Set([
+    ...(trainingDays||[]).map(d=>d.training_date).filter(Boolean),
+    ...(calendarMatches||[]).map(m=>m.match_date).filter(Boolean)
+  ]);
+  const events=[...dates].map(date=>combinedDayMvpV1297(date))
+    .filter(d=>d?.winners?.length)
+    .map(d=>({date:d.date,type:"day",rating:d.winners[0].rating,
+      winners:d.winners,totalMatches:d.totalMatches}));
   events.sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   return events[0]||null;
 }
@@ -10600,7 +10674,7 @@ function paintHomeVipV642(){
   card.classList.remove("hidden");
   $("homeMvpName").textContent=p.name||"VIP ДНЯ";
   $("homeMvpRating").textContent=Number(item.rating).toFixed(2);
-  $("homeMvpMeta").textContent=`${String(item.date).split("-").reverse().join(".")} • ${item.type==="training"?"збір":"матч"}`;
+  $("homeMvpMeta").textContent=`${String(item.date).split("-").reverse().join(".")} • усі матчі дня`;
   const img=$("homeMvpPhoto"); if(img){img.src=p.cardImage||PLAYER_PLACEHOLDER;img.classList.remove("hidden");}
   card.dataset.playerId=p.id||"";
   let dots=card.querySelector(".home-vip-dots");
