@@ -7427,7 +7427,7 @@ function paintGeneralMonthlyMvp(){
   if(!card||!generalMonthlyMvpWinners.length)return;
   generalMonthlyMvpIndex=((generalMonthlyMvpIndex%generalMonthlyMvpWinners.length)+generalMonthlyMvpWinners.length)%generalMonthlyMvpWinners.length;
   const x=generalMonthlyMvpWinners[generalMonthlyMvpIndex];
-  const img=card.querySelector("img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
+  const img=card.querySelector(":scope > img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
   if(img)img.src=x.player.cardImage||PLAYER_PLACEHOLDER;
   if(name)name.textContent=x.player.name||"Гравець";
   if(value)value.textContent=`${x.stats.mvp} MVP`;
