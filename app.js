@@ -7503,8 +7503,23 @@ function renderGeneralAwards(){
   generalMonthlyMvpIndex=0;
   clearInterval(generalMonthlyMvpTimer);
 
+  const awardTrophyV1302=title=>{
+    const items=[
+      ["ГРАВЕЦЬ МІСЯЦЯ","award-player-of-month.webp"],
+      ["БОМБАРДИР","award-top-scorer.webp"],
+      ["АСИСТЕНТ","award-best-assistant.webp"],
+      ["НАПАДНИК МІСЯЦЯ","award-best-forward.webp"],
+      ["ПІВЗАХИСНИК МІСЯЦЯ","award-best-midfielder.webp"],
+      ["ЗАХИСНИК МІСЯЦЯ","award-best-defender.webp"],
+      ["ВОРОТАР МІСЯЦЯ","award-best-goalkeeper.webp"],
+      ["MVP МІСЯЦЯ","award-mvp-month.webp"]
+    ];
+    const item=items.find(([label])=>title.includes(label));
+    return item?`<div class="general-award-trophy-v1302"><img src="${item[1]}?v=13.02" alt="${title}" loading="lazy"></div>`:"";
+  };
   const card=(icon,title,x,value,main=false)=>x?`<div class="general-award-card ${main?"main":""}">
-      <small>${icon} ${title}</small>
+      ${awardTrophyV1302(title)}
+      <small>${title}</small>
       <img src="${x.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
       <strong>${esc(x.player.name)}</strong>
       <b>${value}</b>
@@ -7516,7 +7531,8 @@ function renderGeneralAwards(){
   const positionAwardCardV1255=(icon,title,winner)=>winner
     ?card(icon,title,winner,winner.adjusted.toFixed(2))
     :`<div class="general-award-card general-award-pending" data-position-award-pending="true">
-        <small>${icon} ${title}</small>
+        ${awardTrophyV1302(title)}
+        <small>${title}</small>
         <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
         <strong>Недостатньо матчів</strong>
         <b>${teamMatches>0?`Мін. ${Math.ceil(teamMatches/2)} матчів`:'Поки немає матчів'}</b>
@@ -7528,7 +7544,8 @@ function renderGeneralAwards(){
     awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.stats.average.toFixed(2),true));
   }else{
     awardCards.push(`<div class="general-award-card general-award-pending main" data-player-month-pending="true">
-      <small>👑 ГРАВЕЦЬ МІСЯЦЯ</small>
+      ${awardTrophyV1302("ГРАВЕЦЬ МІСЯЦЯ")}
+      <small>ГРАВЕЦЬ МІСЯЦЯ</small>
       <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
       <strong>Недостатньо матчів</strong>
       <b>${teamMatches>0?`Мін. ${minPlayerMonthMatches} матчів (50%)`:'Поки немає матчів'}</b>
@@ -7543,7 +7560,8 @@ function renderGeneralAwards(){
   if(generalMonthlyMvpWinners.length){
     const first=generalMonthlyMvpWinners[0];
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
-      <small>🏆 MVP МІСЯЦЯ <em class="general-award-counter"></em></small>
+      ${awardTrophyV1302("MVP МІСЯЦЯ")}
+      <small>MVP МІСЯЦЯ <em class="general-award-counter"></em></small>
       <img src="${first.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
       <strong>${esc(first.player.name)}</strong>
       <b>${first.stats.mvp} MVP</b>
