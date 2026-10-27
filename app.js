@@ -7515,7 +7515,7 @@ function renderGeneralAwards(){
       ["MVP МІСЯЦЯ","award-mvp-month.webp"]
     ];
     const item=items.find(([label])=>title.includes(label));
-    return item?`<div class="general-award-trophy-v1302"><img src="${item[1]}?v=13.02" alt="${title}" loading="lazy"></div>`:"";
+    return item?`<div class="general-award-trophy-v1302"><img src="${item[1]}?v=13.04" alt="${title}" loading="lazy"></div>`:"";
   };
   const card=(icon,title,x,value,main=false)=>x?`<div class="general-award-card ${main?"main":""}">
       ${awardTrophyV1302(title)}
@@ -9994,7 +9994,7 @@ function playerAwardTrophyMarkupV1303(title){
     ["award-mvp-month.webp",["MVP","МВП"]]
   ];
   const item=items.find(([,labels])=>labels.some(label=>value.includes(label)));
-  return item?`<img src="${item[0]}?v=13.03" alt="${esc(title||"Нагорода")}" loading="lazy">`:"";
+  return item?`<img src="${item[0]}?v=13.04" alt="${esc(title||"Нагорода")}" loading="lazy">`:"";
 }
 async function renderAwardsIntoPlayerModalV589(pid){
   currentAwardsPlayerIdV589=pid;
