@@ -48,7 +48,10 @@
     const label=d.toLocaleDateString('uk-UA',{month:'long',year:'numeric'});
     return label.charAt(0).toLocaleUpperCase('uk-UA')+label.slice(1);
   };
-  const byPlayer = pid => data().filter(r=>r.player_id===pid && usable(r));
+  // The profile's position screen has an independent mode; awards always use
+  // monthWinner's requested source, never this local UI filter.
+  let positionMode='training';
+  const byPlayer = (pid, mode=positionMode) => data().filter(r=>r.player_id===pid && r.match_type===mode && usable(r));
 
   // The 50% threshold is per team calendar month, not per player's total apps.
   // A candidate's positional average must include a valid rating for EVERY such match.
@@ -76,6 +79,31 @@
   let selectedCode=null;
   let loading=null;
   let loaded=false;
+
+  function syncPositionModeV1301(){
+    const isOfficial=positionMode==='official';
+    const officialBtn=$('showOfficialPositionsBtnV1291');
+    const trainingBtn=$('showTrainingPositionsBtnV1291');
+    if(officialBtn){
+      officialBtn.classList.toggle('active',isOfficial);
+      officialBtn.setAttribute('aria-pressed',String(isOfficial));
+    }
+    if(trainingBtn){
+      trainingBtn.classList.toggle('active',!isOfficial);
+      trainingBtn.setAttribute('aria-pressed',String(!isOfficial));
+    }
+    const caption=$('positionCaptionV1291');
+    if(caption)caption.textContent=isOfficial
+      ? 'Офіційні матчі: враховано лише ігри ліги та кубка з указаною позицією. Матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.'
+      : 'Тренування: враховано лише матчі зборів із визначеною позицією на фінальному скріншоті FC27. Старі матчі без позиції не розподіляються автоматично. ФРВ / ST → ЦФД.';
+  }
+  function setPositionModeV1301(mode){
+    if(mode!=='training' && mode!=='official')return;
+    if(positionMode!==mode)selectedCode=null;
+    positionMode=mode;
+    syncPositionModeV1301();
+    render();
+  }
 
   function fit(){
     const slider=$('playerViewSlider'),slide=$('playerPositionsSlide');
@@ -128,6 +156,7 @@
     if(selectedPlayer!==pid){selectedPlayer=pid;selectedCode=null;}
     if(!loaded&&!loading && typeof sb!=='undefined' && typeof authUser!=='undefined' && authUser)void refresh();
     const root=$('playerPositionsSlide');if(!root)return;
+    syncPositionModeV1301();
     const p=(typeof players!=='undefined'?players:[]).find(x=>x.id===pid);
     const rows=byPlayer(pid);
     const counts=Object.fromEntries(POS.map(pos=>[pos[0],0]));
@@ -174,11 +203,14 @@
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
+    syncPositionModeV1301();
+    $('showOfficialPositionsBtnV1291')?.addEventListener('click',()=>setPositionModeV1301('official'));
+    $('showTrainingPositionsBtnV1291')?.addEventListener('click',()=>setPositionModeV1301('training'));
     $('playerPositionsTab')?.addEventListener('click',()=>{
       // Always recheck server data when users revisit the read-only positions tab.
       void refresh();
     });
   });
-  window.CenturiaPositionsV1250={normalize,positions:POS,render,refresh,monthWinner};
+  window.CenturiaPositionsV1250={normalize,positions:POS,render,refresh,monthWinner,setMode:setPositionModeV1301,getMode:()=>positionMode};
   if(!Array.isArray(window.CenturiaPositionMatchesV1250))window.CenturiaPositionMatchesV1250=[];
 })();
