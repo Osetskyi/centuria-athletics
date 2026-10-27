@@ -34,3 +34,10 @@
 @media(prefers-reduced-motion:reduce){
   .general-award-card .general-award-trophy-v1302 img{animation:none!important}
 }
+
+/* v13.03 — animated awards in the player profile's Awards tab */
+.player-award-card .player-award-icon img{
+  display:block;width:78px;height:78px;max-width:100%;margin:0 auto;
+  object-fit:contain;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+}

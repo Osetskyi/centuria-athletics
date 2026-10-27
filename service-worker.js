@@ -1,5 +1,5 @@
 // v13.01 — Player position source switch fix
-const CACHE_VERSION="centuria-pwa-v1302-award-trophies";
+const CACHE_VERSION="centuria-pwa-v1303-player-trophies";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";

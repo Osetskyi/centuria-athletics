@@ -9981,6 +9981,21 @@ function fieldLabelV589(k){
 function awardsForPlayerV589(pid){
   return playerAwardsV589.filter(a=>a.player_id===pid);
 }
+function playerAwardTrophyMarkupV1303(title){
+  const value=String(title||"").normalize("NFC").toLocaleUpperCase("uk-UA");
+  const items=[
+    ["award-player-of-month.webp",["ГРАВЕЦЬ МІСЯЦЯ","PLAYER OF THE MONTH"]],
+    ["award-top-scorer.webp",["БОМБАРДИР","БОМБАРДІР","TOP SCORER"]],
+    ["award-best-assistant.webp",["АСИСТЕНТ","ASSISTANT"]],
+    ["award-best-forward.webp",["НАПАДНИК","FORWARD"]],
+    ["award-best-midfielder.webp",["ПІВЗАХИСНИК","ПОЛУЗАЩИТНИК","MIDFIELDER"]],
+    ["award-best-goalkeeper.webp",["ВОРОТАР","ГОЛКІПЕР","GOALKEEPER"]],
+    ["award-best-defender.webp",["ЗАХИСНИК","DEFENDER"]],
+    ["award-mvp-month.webp",["MVP","МВП"]]
+  ];
+  const item=items.find(([,labels])=>labels.some(label=>value.includes(label)));
+  return item?`<img src="${item[0]}?v=13.03" alt="${esc(title||"Нагорода")}" loading="lazy">`:"";
+}
 async function renderAwardsIntoPlayerModalV589(pid){
   currentAwardsPlayerIdV589=pid;
   const box=$("playerAwardsList");if(!box)return;
@@ -10010,7 +10025,7 @@ async function renderAwardsIntoPlayerModalV589(pid){
 
   box.innerHTML=rows.length?rows.map(a=>`
     <div class="player-award-card">
-      <div class="player-award-icon">${esc(a.icon||"🏅")}</div>
+      <div class="player-award-icon">${playerAwardTrophyMarkupV1303(a.title)||esc(a.icon||"🏅")}</div>
       <strong>${esc(a.title||"Нагорода")}</strong>
       <span>${a.award_date?new Date(a.award_date+"T00:00:00").toLocaleDateString("uk-UA",{month:"long",year:"numeric"}):""}</span>
       ${a.note?`<small>${esc(a.note)}</small>`:""}
