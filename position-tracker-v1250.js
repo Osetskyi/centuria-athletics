@@ -53,11 +53,11 @@
   let positionMode='training';
   const byPlayer = (pid, mode=positionMode) => data().filter(r=>r.player_id===pid && r.match_type===mode && usable(r));
 
-  // The 50% threshold is per team calendar month, not per player's total apps.
+  // The 35% threshold is per team calendar month, not per player's total apps.
   // A candidate's positional average must include a valid rating for EVERY such match.
   function monthWinner(month,mode,category,teamMatches){
     if(!(teamMatches>0))return null;
-    const minimum=Math.ceil(teamMatches/2);
+    const minimum=Math.max(1,Math.ceil(teamMatches*.35));
     const key=month && typeof month.getMonth==='function'
       ? `${month.getFullYear()}-${String(month.getMonth()+1).padStart(2,'0')}` : dateKey(month);
     const rows=data().filter(r=>(mode==='combined'||r.match_type===mode) && dateKey(r.match_date)===key && usable(r)?.[5]===category);

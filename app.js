@@ -411,7 +411,7 @@ async function registerPushServiceWorker(){
   try{
     const regs = await navigator.serviceWorker.getRegistrations().catch(()=>[]);
     await Promise.all((regs||[]).map(async reg=>{ try{ await reg.update(); }catch(_e){} }));
-    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=13.00",{scope:"/",updateViaCache:"none"});
+    pushRegistration = await navigator.serviceWorker.register("/service-worker.js?v=13.36",{scope:"/",updateViaCache:"none"});
     await navigator.serviceWorker.ready;
     return pushRegistration;
   }catch(err){
@@ -7098,7 +7098,7 @@ function generalTeamMatches(monthDate=null,sinceDate=null){
 }
 
 function generalMinMatches(teamMatches){
-  return teamMatches>0?Math.max(1,Math.ceil(teamMatches*.30)):1;
+  return teamMatches>0?Math.max(1,Math.ceil(teamMatches*.35)):1;
 }
 
 function generalAdjustedRating(stats,teamMatches){
@@ -7427,7 +7427,7 @@ function paintGeneralMonthlyMvp(){
   if(!card||!generalMonthlyMvpWinners.length)return;
   generalMonthlyMvpIndex=((generalMonthlyMvpIndex%generalMonthlyMvpWinners.length)+generalMonthlyMvpWinners.length)%generalMonthlyMvpWinners.length;
   const x=generalMonthlyMvpWinners[generalMonthlyMvpIndex];
-  const img=card.querySelector(":scope > img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
+  const img=card.querySelector("img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
   if(img)img.src=x.player.cardImage||PLAYER_PLACEHOLDER;
   if(name)name.textContent=x.player.name||"Гравець";
   if(value)value.textContent=`${x.stats.mvp} MVP`;
@@ -7467,10 +7467,9 @@ function renderGeneralAwards(){
   const current=generalMonthKey(now)===generalMonthKey(generalAwardsMonthCursor);
 
   const teamMatches=combinedAwardTeamMatchesV1296(generalAwardsMonthCursor);
-  const minMatches=generalMinMatches(teamMatches); // Goals and assists keep their 30% threshold.
-  const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
-  // No single minimum describes every monthly award; show thresholds on each
-  // positional/pending card instead of the misleading shared 30% heading.
+  const minMatches=generalMinMatches(teamMatches);
+  const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.35));
+  // All monthly awards use the same minimum participation threshold.
   $("generalAwardsState").textContent=(current?"ПОТОЧНІ ЛІДЕРИ":"ФІНАЛЬНІ НАГОРОДИ")+" • УСІ МАТЧІ";
 
   const data=players.map(player=>{
@@ -7478,8 +7477,7 @@ function renderGeneralAwards(){
     return {player,stats,adjusted:generalAdjustedRating(stats,teamMatches)};
   }).filter(x=>x.stats.events>0||x.stats.matches>0);
   const eligible=data.filter(x=>x.stats.matches>=minMatches);
-  // v12.57: Player of Month requires 50% of all team matches this month.
-  // Other counting awards still use their existing separate 30% requirement.
+  // Player of Month uses the same 35% minimum as every other monthly award.
   const playerMonthEligible=teamMatches>0
     ?data.filter(x=>x.stats.matches>=minPlayerMonthMatches&&x.stats.ratedMatches===x.stats.matches):[];
   const maxima={
@@ -7515,7 +7513,7 @@ function renderGeneralAwards(){
       ["MVP МІСЯЦЯ","award-mvp-month.webp"]
     ];
     const item=items.find(([label])=>title.includes(label));
-    return item?`<div class="general-award-trophy-v1302"><img src="${item[1]}?v=13.04" alt="${title}" loading="lazy"></div>`:"";
+    return item?`<div class="general-award-trophy-v1302"><img src="${item[1]}?v=13.05" alt="${title}" loading="lazy"></div>`:"";
   };
   const card=(icon,title,x,value,main=false)=>x?`<div class="general-award-card ${main?"main":""}">
       ${awardTrophyV1302(title)}
@@ -7525,8 +7523,8 @@ function renderGeneralAwards(){
       <b>${value}</b>
     </div>`:"";
 
-  /* v12.57: show all four positional awards even before anyone qualifies.
-     Winners still use the same monthWinner() 50% threshold and positional
+  /* v13.27: show all four positional awards even before anyone qualifies.
+     Winners use the same monthWinner() 35% threshold and positional
      averages; the placeholders affect display only, never award issuance. */
   const positionAwardCardV1255=(icon,title,winner)=>winner
     ?card(icon,title,winner,winner.adjusted.toFixed(2))
@@ -7535,11 +7533,11 @@ function renderGeneralAwards(){
         <small>${title}</small>
         <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
         <strong>Недостатньо матчів</strong>
-        <b>${teamMatches>0?`Мін. ${Math.ceil(teamMatches/2)} матчів`:'Поки немає матчів'}</b>
+        <b>${teamMatches>0?`Мін. ${Math.max(1,Math.ceil(teamMatches*.35))} матчів (35%)`:'Поки немає матчів'}</b>
       </div>`;
 
   const awardCards=[];
-  // Make the stricter Player-of-Month requirement visible when nobody qualifies.
+  // Keep the minimum participation count visible when nobody qualifies.
   if(playerOfMonth){
     awardCards.push(card("👑","ГРАВЕЦЬ МІСЯЦЯ",playerOfMonth,playerOfMonth.stats.average.toFixed(2),true));
   }else{
@@ -7548,7 +7546,7 @@ function renderGeneralAwards(){
       <small>ГРАВЕЦЬ МІСЯЦЯ</small>
       <span class="general-award-pending-symbol" aria-hidden="true">⏳</span>
       <strong>Недостатньо матчів</strong>
-      <b>${teamMatches>0?`Мін. ${minPlayerMonthMatches} матчів (50%)`:'Поки немає матчів'}</b>
+      <b>${teamMatches>0?`Мін. ${minPlayerMonthMatches} матчів (35%)`:'Поки немає матчів'}</b>
     </div>`);
   }
   if(scorer)awardCards.push(card("⚽","БОМБАРДИР",scorer,`${scorer.stats.goals}`));
@@ -7631,7 +7629,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
   try{
     const teamMatches=combinedAwardTeamMatchesV1296(monthDate);
     const minMatches=generalMinMatches(teamMatches);
-    const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.50));
+    const minPlayerMonthMatches=Math.max(1,Math.ceil(teamMatches*.35));
     if(!teamMatches)return {teamMatches,minMatches,awards:[]};
 
     const data=players.map(player=>{
@@ -7642,7 +7640,7 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     if(!eligible.length)return {teamMatches,minMatches,awards:[]};
 
     // Keep completed-month auto-issued awards consistent with the on-screen
-    // Player-of-Month rule. Do not change scorer, assist or MVP eligibility.
+    // 35% participation rule used by all monthly awards.
     const playerMonthEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches&&x.stats.ratedMatches===x.stats.matches);
     const maxima={
       goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
@@ -9994,7 +9992,7 @@ function playerAwardTrophyMarkupV1303(title){
     ["award-mvp-month.webp",["MVP","МВП"]]
   ];
   const item=items.find(([,labels])=>labels.some(label=>value.includes(label)));
-  return item?`<img src="${item[0]}?v=13.04" alt="${esc(title||"Нагорода")}" loading="lazy">`:"";
+  return item?`<img src="${item[0]}?v=13.05" alt="${esc(title||"Нагорода")}" loading="lazy">`:"";
 }
 async function renderAwardsIntoPlayerModalV589(pid){
   currentAwardsPlayerIdV589=pid;
@@ -12699,7 +12697,7 @@ if(document.readyState==="loading"){
 (function(){
   const footerSelector=".settings-version";
   const currentVersion=()=>{
-    const raw=String(document.querySelector('meta[name="centuria-build"]')?.content||"12.57").trim();
+    const raw=String(document.querySelector('meta[name="centuria-build"]')?.content||"13.53").trim();
     return `v${raw.replace(/^v/i,"")}`;
   };
   function syncSettingsVersion(){
