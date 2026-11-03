@@ -1,5 +1,5 @@
-// v13.53 — keep Settings version synced with the current build
-const CACHE_VERSION="centuria-pwa-v1353-settings-version";
+// v13.54 — MVP award tie rotation and trophy rendering
+const CACHE_VERSION="centuria-pwa-v1354-mvp-awards";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";

@@ -7427,8 +7427,8 @@ function paintGeneralMonthlyMvp(){
   if(!card||!generalMonthlyMvpWinners.length)return;
   generalMonthlyMvpIndex=((generalMonthlyMvpIndex%generalMonthlyMvpWinners.length)+generalMonthlyMvpWinners.length)%generalMonthlyMvpWinners.length;
   const x=generalMonthlyMvpWinners[generalMonthlyMvpIndex];
-  const img=card.querySelector("img"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
-  if(img)img.src=x.player.cardImage||PLAYER_PLACEHOLDER;
+  const img=card.querySelector(".general-monthly-mvp-player-card"),name=card.querySelector("strong"),value=card.querySelector("b"),counter=card.querySelector(".general-award-counter"),dots=card.querySelector(".general-award-dots");
+  if(img){img.src=x.player.cardImage||PLAYER_PLACEHOLDER;img.alt=x.player.name||"Гравець";}
   if(name)name.textContent=x.player.name||"Гравець";
   if(value)value.textContent=`${x.stats.mvp} MVP`;
   if(counter)counter.textContent=generalMonthlyMvpWinners.length>1?`${generalMonthlyMvpIndex+1}/${generalMonthlyMvpWinners.length}`:"";
@@ -7495,9 +7495,11 @@ function renderGeneralAwards(){
   const defenderOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"defense",teamMatches);
   const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(generalAwardsMonthCursor,"keeper",teamMatches);
 
-  const mvpEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
-  const maxMvp=Math.max(0,...mvpEligible.map(x=>x.stats.mvp||0));
-  generalMonthlyMvpWinners=maxMvp>0?mvpEligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+  // MVP of the month follows daily MVP wins directly. Keep every player tied
+  // for the highest count so the card can rotate through all shared winners.
+  const mvpCandidates=data.filter(x=>(x.stats.mvp||0)>0);
+  const maxMvp=Math.max(0,...mvpCandidates.map(x=>x.stats.mvp||0));
+  generalMonthlyMvpWinners=maxMvp>0?mvpCandidates.filter(x=>(x.stats.mvp||0)===maxMvp):[];
   generalMonthlyMvpIndex=0;
   clearInterval(generalMonthlyMvpTimer);
 
@@ -7560,7 +7562,7 @@ function renderGeneralAwards(){
     awardCards.push(`<div class="general-award-card general-monthly-mvp-card" data-monthly-mvp-card>
       ${awardTrophyV1302("MVP МІСЯЦЯ")}
       <small>MVP МІСЯЦЯ <em class="general-award-counter"></em></small>
-      <img src="${first.player.cardImage||PLAYER_PLACEHOLDER}" alt="">
+      <img class="general-monthly-mvp-player-card" src="${first.player.cardImage||PLAYER_PLACEHOLDER}" alt="${esc(first.player.name||"Гравець")}">
       <strong>${esc(first.player.name)}</strong>
       <b>${first.stats.mvp} MVP</b>
       <span class="general-award-dots"></span>
@@ -7639,8 +7641,8 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     const eligible=data.filter(x=>x.stats.matches>=minMatches);
     if(!eligible.length)return {teamMatches,minMatches,awards:[]};
 
-    // Keep completed-month auto-issued awards consistent with the on-screen
-    // 35% participation rule used by all monthly awards.
+    // Other monthly awards keep the 35% participation rule. Player of the
+    // Month is rating-based and also requires every match to be rated.
     const playerMonthEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches&&x.stats.ratedMatches===x.stats.matches);
     const maxima={
       goals:Math.max(0,...playerMonthEligible.map(x=>x.stats.goals||0)),
@@ -7656,9 +7658,9 @@ function calculateMonthlyAwardsV754(monthDate,mode){
     const defenderOfMonth=combinedPositionMonthWinnerV1296(monthDate,"defense",teamMatches);
     const goalkeeperOfMonth=combinedPositionMonthWinnerV1296(monthDate,"keeper",teamMatches);
 
-    const mvpEligible=data.filter(x=>x.stats.matches>=minPlayerMonthMatches);
-    const maxMvp=Math.max(0,...mvpEligible.map(x=>x.stats.mvp||0));
-    const mvpWinners=maxMvp>0?mvpEligible.filter(x=>(x.stats.mvp||0)===maxMvp):[];
+    const mvpCandidates=data.filter(x=>(x.stats.mvp||0)>0);
+    const maxMvp=Math.max(0,...mvpCandidates.map(x=>x.stats.mvp||0));
+    const mvpWinners=maxMvp>0?mvpCandidates.filter(x=>(x.stats.mvp||0)===maxMvp):[];
     const modeLabel="Усі матчі";
     const awards=[];
     const push=(x,title,icon,note)=>{if(x?.player?.id)awards.push({player_id:x.player.id,title,icon,note});};
@@ -12697,7 +12699,7 @@ if(document.readyState==="loading"){
 (function(){
   const footerSelector=".settings-version";
   const currentVersion=()=>{
-    const raw=String(document.querySelector('meta[name="centuria-build"]')?.content||"13.53").trim();
+    const raw=String(document.querySelector('meta[name="centuria-build"]')?.content||"13.54").trim();
     return `v${raw.replace(/^v/i,"")}`;
   };
   function syncSettingsVersion(){
