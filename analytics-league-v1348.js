@@ -169,13 +169,18 @@
       if(match.match_kind&&match.match_kind!=='league')continue;
       const round=Number(match.round_number);
       if(!Number.isInteger(round)||round<1)continue;
-      const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-      if(!hasResult)continue;
       const home=stats.get(normalize(match.home_team_name));
       const away=stats.get(normalize(match.away_team_name));
+      if(!home||!away)continue;
+      if(match.match_status==='double_forfeit'){
+        home.played++;away.played++;home.losses++;away.losses++;
+        continue;
+      }
+      const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
+      if(!hasResult)continue;
       const homeGoals=Number(match.home_score);
       const awayGoals=Number(match.away_score);
-      if(!home||!away||!Number.isFinite(homeGoals)||!Number.isFinite(awayGoals))continue;
+      if(!Number.isFinite(homeGoals)||!Number.isFinite(awayGoals))continue;
       home.played++;away.played++;
       home.goals_for+=homeGoals;home.goals_against+=awayGoals;
       away.goals_for+=awayGoals;away.goals_against+=homeGoals;
@@ -231,11 +236,16 @@
       if(match.match_kind&&match.match_kind!=='league')return false;
       const round=Number(match.round_number);
       const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-      return Number.isInteger(round)&&round>0&&hasResult;
+      return Number.isInteger(round)&&round>0&&(hasResult||match.match_status==='double_forfeit');
     }).sort((a,b)=>clean(a.match_date).localeCompare(clean(b.match_date))||clean(a.match_time).localeCompare(clean(b.match_time)));
     for(const match of completed){
       const homeForm=findForm(match.home_team_name);
       const awayForm=findForm(match.away_team_name);
+      if(match.match_status==='double_forfeit'){
+        if(homeForm)homeForm.push({outcome:'loss',goalsFor:null,goalsAgainst:null,opponent:match.away_team_name,scoreLabel:'Подвійна ТП — поразка обом'});
+        if(awayForm)awayForm.push({outcome:'loss',goalsFor:null,goalsAgainst:null,opponent:match.home_team_name,scoreLabel:'Подвійна ТП — поразка обом'});
+        continue;
+      }
       const homeGoals=Number(match.home_score);
       const awayGoals=Number(match.away_score);
       if(!homeForm||!awayForm||!Number.isFinite(homeGoals)||!Number.isFinite(awayGoals))continue;
@@ -250,7 +260,7 @@
   const centuriaCompletedMatches=league=>(matchesByLeague.get(league?.id)||[]).filter(match=>{
     if(match.match_kind&&match.match_kind!=='league')return false;
     const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-    return hasResult&&(isCenturiaName(match.home_team_name)||isCenturiaName(match.away_team_name));
+    return (hasResult||match.match_status==='double_forfeit')&&(isCenturiaName(match.home_team_name)||isCenturiaName(match.away_team_name));
   }).sort((a,b)=>clean(a.match_date).localeCompare(clean(b.match_date))||clean(a.match_time).localeCompare(clean(b.match_time)));
   const averageStat=(sum,count,digits=0)=>count?Number((sum/count).toFixed(digits)).toLocaleString('uk-UA',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'';
   const summarizeCenturiaLeague=league=>{
@@ -261,6 +271,8 @@
     const saved=matchStatsByLeague.get(league?.id)||new Map();
     for(const match of matches){
       const isHome=isCenturiaName(match.home_team_name);
+      if(match.match_status==='double_forfeit')summary.losses++;
+      else {
       const goalsFor=Number(isHome?match.home_score:match.away_score);
       const goalsAgainst=Number(isHome?match.away_score:match.home_score);
       if(!Number.isFinite(goalsFor)||!Number.isFinite(goalsAgainst))continue;
@@ -268,6 +280,7 @@
       if(goalsFor>goalsAgainst)summary.wins++;
       else if(goalsFor<goalsAgainst)summary.losses++;
       else summary.draws++;
+      }
       const row=saved.get(String(match.id));
       const ownStats=row?.[isHome?'home_stats':'away_stats']||{};
       const opponentStats=row?.[isHome?'away_stats':'home_stats']||{};
@@ -336,7 +349,7 @@
       const resultHtml=results.length?results.map(result=>{
         const label=result.outcome==='win'?'Перемога':result.outcome==='draw'?'Нічия':'Поразка';
         const short=result.outcome==='win'?'В':result.outcome==='draw'?'Н':'П';
-        const title=`${label}: ${teamName} ${result.goalsFor}:${result.goalsAgainst} ${result.opponent||'суперник'}`;
+        const title=result.scoreLabel?`${result.scoreLabel}: ${teamName} — ${result.opponent||'суперник'}`:`${label}: ${teamName} ${result.goalsFor}:${result.goalsAgainst} ${result.opponent||'суперник'}`;
         return `<span class="ca-team-form-result-v1330 is-${result.outcome}" title="${esc(title)}" aria-label="${esc(title)}">${short}</span>`;
       }).join(''):'<span class="ca-team-form-empty-v1330">Матчів ще немає</span>';
       centuriaHtml=`<div class="ca-team-form-row-v1330" data-ca-team-centuria="true"><span class="ca-team-form-club-v1330">${teamNoteCrestHtml(centuria)}<b>${esc(teamName)}</b></span><div class="ca-team-form-results-v1330" aria-label="Останні результати ${esc(teamName)}">${resultHtml}</div></div>`;
@@ -515,7 +528,7 @@
     if(error)throw error;
     return (Array.isArray(data)?data:[]).filter(match=>{
       const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-      return hasResult||match.match_status==='postponed'||match.match_status==='scheduled';
+      return hasResult||match.match_status==='double_forfeit'||match.match_status==='postponed'||match.match_status==='scheduled';
     });
   };
   const fetchUpcomingCenturiaCalendarMatches=async league=>{
@@ -604,16 +617,18 @@
           const time=clean(match.match_time).slice(0,5);
           const kind=match.match_kind==='cup'?'КУБОК':'ЛІГА';
           const postponed=match.match_status==='postponed';
+          const doubleForfeit=match.match_status==='double_forfeit';
           const hasScore=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-          const canOpenStats=enableMatchStats&&!postponed&&hasScore&&clean(match.id);
-          const statsAction=canOpenStats?` data-ca-open-match-stats="${esc(match.id)}" role="button" tabindex="0" aria-label="Відкрити статистику матчу: ${esc(match.home_team_name)} ${esc(match.home_score)} — ${esc(match.away_score)} ${esc(match.away_team_name)}"`:'';
+          const canOpenStats=enableMatchStats&&!postponed&&(hasScore||doubleForfeit)&&clean(match.id);
+          const scoreLabel=doubleForfeit?'Подвійна ТП · обом поразка · 0 очок':hasScore?`${match.home_score} — ${match.away_score}`:'Заплановано';
+          const statsAction=canOpenStats?` data-ca-open-match-stats="${esc(match.id)}" role="button" tabindex="0" aria-label="Відкрити статистику матчу: ${esc(match.home_team_name)} ${esc(scoreLabel)} ${esc(match.away_team_name)}"`:'';
           return `<article class="ca-analytics-match-v1319${canOpenStats?' ca-analytics-match-clickable-v1327':''}"${statsAction}>
             <div class="ca-analytics-match-meta-v1319"><span>${esc(formattedMatchDate(match.match_date))}${time?` · ${esc(time)}`:''}</span><b>${kind}</b></div>
             <div class="ca-analytics-match-score-v1319">
               <span class="ca-analytics-match-team-v1319 ca-analytics-home-team-v1319">${teamNoteCrestHtml({name:match.home_team_name||'Команда',logo:homeLogo})}<b>${esc(match.home_team_name||'Команда')}</b></span>
-          <strong${postponed?' class="ca-analytics-match-postponed-v1323"':!hasScore?' class="ca-analytics-match-scheduled-v1339"':''}>${postponed?'Перенесено':hasScore?esc(match.home_score)+' : '+esc(match.away_score):'Заплановано'}</strong>
+          <strong${postponed||doubleForfeit?' class="ca-analytics-match-postponed-v1323"':!hasScore?' class="ca-analytics-match-scheduled-v1339"':''}>${postponed?'Перенесено':doubleForfeit?'Подвійна ТП · обом поразка · 0 очок':hasScore?esc(match.home_score)+' : '+esc(match.away_score):'Заплановано'}</strong>
               <span class="ca-analytics-match-team-v1319 ca-analytics-away-team-v1319"><b>${esc(match.away_team_name||'Команда')}</b>${teamNoteCrestHtml({name:match.away_team_name||'Команда',logo:awayLogo})}</span>
-            </div>${isAdmin()&&match.match_kind==='league'?`<div class="ca-cup-match-actions-v1336"><button type="button" class="ca-analytics-table-toggle-v1318" data-ca-edit-league-match="${esc(match.id)}">${hasScore?'ЗМІНИТИ МАТЧ':'ВНЕСТИ РАХУНОК'}</button></div>`:''}
+            </div>${isAdmin()&&match.match_kind==='league'?`<div class="ca-cup-match-actions-v1336"><button type="button" class="ca-analytics-table-toggle-v1318" data-ca-edit-league-match="${esc(match.id)}">${hasScore||doubleForfeit?'ЗМІНИТИ МАТЧ':'ВНЕСТИ РАХУНОК'}</button></div>`:''}
           </article>`;
         }).join('')}</div>
       </section>`;
@@ -734,7 +749,7 @@
         <header class="ca-analytics-window-head-v1319 ca-match-stats-head-v1327"><div class="ca-match-stats-head-copy-v1327"><small>${esc(roundText)} · ${esc(match.competition_name||'CENTURIA ATHLETICS')}</small><h2 id="caMatchStatsTitleV1327">СТАТИСТИКА МАТЧУ</h2><p>${matchDate}</p>
           <div class="ca-match-stats-score-v1327">
             <span class="ca-match-stats-team-v1327">${homeLogo?`<img src="${esc(homeLogo)}" alt="" referrerpolicy="no-referrer">`:''}<b>${esc(match.home_team_name||'Команда')}</b></span>
-            <strong>${esc(match.home_score)} : ${esc(match.away_score)}</strong>
+            <strong>${match.match_status==='double_forfeit'?'ПОДВІЙНА ТП · ПОРАЗКА ОБОМ · 0 ОЧОК':`${esc(match.home_score)} : ${esc(match.away_score)}`}</strong>
             <span class="ca-match-stats-team-v1327 away">${awayLogo?`<img src="${esc(awayLogo)}" alt="" referrerpolicy="no-referrer">`:''}<b>${esc(match.away_team_name||'Команда')}</b></span>
           </div>
         </div><button type="button" class="ca-analytics-window-close-v1319" data-match-stats-close aria-label="Закрити статистику">×</button></header>
@@ -1185,14 +1200,16 @@
     const overlay=document.createElement('div');overlay.id=RESULT_MODAL_ID;overlay.className='ca-analytics-modal-v1317';
     const homeDefault=match?.home_team_name||teams[0]?.name,awayDefault=match?.away_team_name||teams.find(team=>team.name!==homeDefault)?.name;
     const selectOptions=selected=>teams.map(team=>`<option value="${esc(team.name)}" ${team.name===selected?'selected':''}>${esc(team.name)}</option>`).join('');
-    overlay.innerHTML=`<div class="ca-analytics-dialog-v1317 ca-result-dialog-v1336" role="dialog" aria-modal="true" aria-labelledby="caResultTitleV1336"><header class="ca-analytics-modal-head-v1317"><div><small class="ca-analytics-modal-kicker-v1317">${kind==='cup'?'КУБОК':'ЛІГА'} · ${esc(competition.name)}</small><h2 id="caResultTitleV1336">${match?'ЗМІНИТИ МАТЧ':'ДОДАТИ МАТЧ'}</h2><p>Матч без рахунку можна зберегти зараз, а результат внести після гри.</p></div><button type="button" class="ca-analytics-close-v1317" data-ca-result-close aria-label="Закрити">×</button></header><form class="ca-analytics-form-v1317"><div class="ca-result-fields-v1336"><label class="ca-analytics-field-v1317">РАУНД<input name="round" type="number" min="1" max="100" step="1" value="${esc(match?.round_number||1)}" required></label><label class="ca-analytics-field-v1317">ДАТА<input name="date" type="date" value="${esc(match?.match_date||localToday())}" required></label><label class="ca-analytics-field-v1317">ЧАС<input name="time" type="time" value="${esc(clean(match?.match_time).slice(0,5))}"></label><label class="ca-analytics-field-v1317">ДОМA<select name="home">${selectOptions(homeDefault)}</select></label><label class="ca-analytics-field-v1317">ВИЇЗД<select name="away">${selectOptions(awayDefault)}</select></label><label class="ca-analytics-field-v1317">РАХУНОК · ДОМA<input name="homeScore" type="number" min="0" step="1" inputmode="numeric" placeholder="—" value="${match?.home_score??''}"></label><label class="ca-analytics-field-v1317">РАХУНОК · ВИЇЗД<input name="awayScore" type="number" min="0" step="1" inputmode="numeric" placeholder="—" value="${match?.away_score??''}"></label></div><footer class="ca-analytics-modal-foot-v1317"><button type="button" class="ca-analytics-secondary-v1317" data-ca-result-close>СКАСУВАТИ</button><button type="submit" class="ca-analytics-primary-v1317" data-ca-result-save>ЗБЕРЕГТИ МАТЧ</button></footer></form></div>`;
+    overlay.innerHTML=`<div class="ca-analytics-dialog-v1317 ca-result-dialog-v1336" role="dialog" aria-modal="true" aria-labelledby="caResultTitleV1336"><header class="ca-analytics-modal-head-v1317"><div><small class="ca-analytics-modal-kicker-v1317">${kind==='cup'?'КУБОК':'ЛІГА'} · ${esc(competition.name)}</small><h2 id="caResultTitleV1336">${match?'ЗМІНИТИ МАТЧ':'ДОДАТИ МАТЧ'}</h2><p>Матч без рахунку можна зберегти зараз, а результат внести після гри.</p></div><button type="button" class="ca-analytics-close-v1317" data-ca-result-close aria-label="Закрити">×</button></header><form class="ca-analytics-form-v1317"><div class="ca-result-fields-v1336"><label class="ca-analytics-field-v1317">РАУНД<input name="round" type="number" min="1" max="100" step="1" value="${esc(match?.round_number||1)}" required></label><label class="ca-analytics-field-v1317">ДАТА<input name="date" type="date" value="${esc(match?.match_date||localToday())}" required></label><label class="ca-analytics-field-v1317">ЧАС<input name="time" type="time" value="${esc(clean(match?.match_time).slice(0,5))}"></label><label class="ca-analytics-field-v1317">ДОМA<select name="home">${selectOptions(homeDefault)}</select></label><label class="ca-analytics-field-v1317">ВИЇЗД<select name="away">${selectOptions(awayDefault)}</select></label>${kind==='league'?`<label class="ca-analytics-field-v1317">ТИП РЕЗУЛЬТАТУ<select name="resultType"><option value="score" ${match?.match_status==='double_forfeit'?'':'selected'}>Звичайний результат</option><option value="double_forfeit" ${match?.match_status==='double_forfeit'?'selected':''}>Подвійна ТП · поразка обом · 0 очок</option></select></label>`:''}<label class="ca-analytics-field-v1317">РАХУНОК · ДОМA<input name="homeScore" type="number" min="0" step="1" inputmode="numeric" placeholder="—" value="${match?.home_score??''}"></label><label class="ca-analytics-field-v1317">РАХУНОК · ВИЇЗД<input name="awayScore" type="number" min="0" step="1" inputmode="numeric" placeholder="—" value="${match?.away_score??''}"></label></div><footer class="ca-analytics-modal-foot-v1317"><button type="button" class="ca-analytics-secondary-v1317" data-ca-result-close>СКАСУВАТИ</button><button type="submit" class="ca-analytics-primary-v1317" data-ca-result-save>ЗБЕРЕГТИ МАТЧ</button></footer></form></div>`;
     document.body.appendChild(overlay);document.body.classList.add('ca-analytics-modal-open-v1317');
+    const syncResultType=()=>{const field=overlay.querySelector('[name="resultType"]');if(!field)return;const isDouble=field.value==='double_forfeit';for(const name of ['homeScore','awayScore']){const input=overlay.querySelector(`[name="${name}"]`);input.disabled=isDouble;if(isDouble)input.value='';}};
+    overlay.querySelector('[name="resultType"]')?.addEventListener('change',syncResultType);syncResultType();
     overlay.addEventListener('click',event=>{if(event.target===overlay||event.target.closest('[data-ca-result-close]')){overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');}});
     overlay.querySelector('form').addEventListener('submit',async event=>{
-      event.preventDefault();const form=event.currentTarget,home=form.elements.home.value,away=form.elements.away.value,hs=clean(form.elements.homeScore.value),as=clean(form.elements.awayScore.value),round=Number(form.elements.round.value);
+      event.preventDefault();const form=event.currentTarget,home=form.elements.home.value,away=form.elements.away.value,doubleForfeit=kind==='league'&&form.elements.resultType?.value==='double_forfeit',hs=doubleForfeit?'':clean(form.elements.homeScore.value),as=doubleForfeit?'':clean(form.elements.awayScore.value),round=Number(form.elements.round.value);
       if(home===away){toast('Обери дві різні команди');return;}if(!Number.isInteger(round)||round<1||round>100){toast('Раунд має бути від 1 до 100');return;}if(Boolean(hs)!==Boolean(as)){toast('Вкажи обидва голи або залиш рахунок порожнім');return;}
       const homeScore=hs===''?null:Number(hs),awayScore=as===''?null:Number(as);if([homeScore,awayScore].some(score=>score!==null&&(!Number.isInteger(score)||score<0))){toast('Рахунок має бути цілим числом від 0');return;}
-      const homeTeam=teams.find(team=>team.name===home),awayTeam=teams.find(team=>team.name===away),payload={match_date:form.elements.date.value,match_time:form.elements.time.value||null,competition_name:competition.name,home_team_name:home,home_team_image:homeTeam?.logo||null,away_team_name:away,away_team_image:awayTeam?.logo||null,home_score:homeScore,away_score:awayScore,match_kind:kind,round_number:round,match_status:homeScore===null?'scheduled':'played',cup_id:kind==='cup'?competition.id:null};
+      const homeTeam=teams.find(team=>team.name===home),awayTeam=teams.find(team=>team.name===away),payload={match_date:form.elements.date.value,match_time:form.elements.time.value||null,competition_name:competition.name,home_team_name:home,home_team_image:homeTeam?.logo||null,away_team_name:away,away_team_image:awayTeam?.logo||null,home_score:doubleForfeit?null:homeScore,away_score:doubleForfeit?null:awayScore,match_kind:kind,round_number:round,match_status:doubleForfeit?'double_forfeit':homeScore===null?'scheduled':'played',cup_id:kind==='cup'?competition.id:null};
       const button=form.querySelector('[data-ca-result-save]');button.disabled=true;button.textContent='ЗБЕРІГАЮ…';
       try{const db=client();if(!db||!user())throw new Error('Увійди в акаунт, щоб зберегти матч');let request=db.from('centuria_analytics_matches');request=match?request.update(payload).eq('id',match.id):request.insert(payload);const {error}=await request;if(error)throw error;overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');if(kind==='league'){matchesByLeague.delete(competition.id);const latest=leagues.find(item=>item.id===competition.id)||competition;await loadLeagueData(latest);}else{cupMatchesById.delete(String(competition.id));cupMatches=await fetchCupMatches(competition);cupMatchesById.set(String(competition.id),cupMatches);}render();renderHomeStandings();toast('Матч збережено');}catch(error){button.disabled=false;button.textContent='ЗБЕРЕГТИ МАТЧ';toast(failMessage(error));}
     });

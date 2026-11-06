@@ -1,3 +1,10 @@
+Centuria Test v13.55
+
+- Added double technical forfeit result type for league matches. Both teams receive a loss and 0 points; no goals are added.
+- Preserved access to saved match statistics for double forfeits.
+- Updated round history, form, and standings to show and count the result correctly.
+- Added database status constraint migration.
+
 Centuria Test v13.54
 
 - У блоці «MVP місяця» зберігається трофей замість підміни його карткою гравця.
