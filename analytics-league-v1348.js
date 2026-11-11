@@ -1,4 +1,4 @@
-/* Centuria Analytics v13.61 — place Brothers in the 15-team bye slot */
+/* Centuria Analytics v13.62 — make the Cup bye slot editable */
 (()=>{
   'use strict';
 
@@ -12,6 +12,7 @@
   const MATCH_STATS_TABLE='centuria_analytics_match_statistics';
   const CUP_TABLE='centuria_analytics_cups';
   const CUP_MODAL_ID='caAnalyticsCupModalV1336';
+  const CUP_BYE_MODAL_ID='caAnalyticsCupByeModalV1362';
   const RESULT_MODAL_ID='caAnalyticsResultModalV1336';
   const TEAM_NOTE_TABLE='centuria_analytics_team_notes';
   const TEAM_NOTE_MODAL_ID='caAnalyticsTeamNoteModalV1338';
@@ -111,6 +112,14 @@
       if(!title)throw new Error('Вкажи назву кубка');
       if(unique.length<2)throw new Error('Обери щонайменше дві команди');
       const {data,error}=await db.from(CUP_TABLE).insert({name:title,teams:unique}).select('id,name,teams,created_at,created_by').single();
+      if(error)throw error;return data;
+    },
+    async updateTeams({id,teams}={}){
+      const db=client();if(!db||!user()||!isAdmin())throw new Error('Редагувати склад кубка може тільки ADMIN');
+      const chosen=(Array.isArray(teams)?teams:[]).map(team=>({...team,normalized_name:clean(team?.normalized_name)||normalize(team?.name),name:clean(team?.name),logo:clean(team?.logo),country:clean(team?.country),league_code:clean(team?.league_code)})).filter(team=>team.normalized_name&&team.name);
+      const unique=[...new Map(chosen.map(team=>[team.normalized_name,team])).values()];
+      if(!clean(id)||unique.length<2)throw new Error('Не вдалося зберегти склад кубка');
+      const {data,error}=await db.from(CUP_TABLE).update({teams:unique}).eq('id',id).select('id,name,teams,created_at,created_by').single();
       if(error)throw error;return data;
     },
     async delete(id){
@@ -497,28 +506,7 @@
   const cupBracketStageName=(teamCount,round)=>{
     return `РАУНД ${round}`;
   };
-  const isBrothersEntrant=team=>{
-    const name=normalize(clean(team?.name)).replace(/[^a-z0-9а-яіїєґ]/g,'');
-    return name.includes('brothers');
-  };
-  const cupBrothersEntrant=teams=>{
-    const saved=(Array.isArray(teams)?teams:[]).find(isBrothersEntrant);
-    if(saved)return saved;
-    const leagueTeam=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrothersEntrant);
-    return leagueTeam?{...leagueTeam}:{normalized_name:'brothers',name:'Brothers',logo:''};
-  };
-  const cupEntrantsInOrder=teams=>{
-    const source=Array.isArray(teams)?[...teams]:[];
-    let brothersIndex=source.findIndex(isBrothersEntrant);
-    if(brothersIndex<0&&source.length===15){
-      source[14]=cupBrothersEntrant(source);
-      brothersIndex=14;
-    }
-    if(brothersIndex<0)return source;
-    const brothers=source[brothersIndex],others=source.filter((_,index)=>index!==brothersIndex);
-    others.splice(Math.min(14,others.length),0,brothers);
-    return others.slice(0,15);
-  };
+  const cupEntrantsInOrder=teams=>Array.isArray(teams)?[...teams]:[];
   const cupBracketHtml=(teams,matches)=>{
     const grouped=new Map();
     matches.forEach(match=>{
@@ -529,7 +517,7 @@
     const entrants=cupEntrantsInOrder(teams);
     const maxRound=Math.max(1,...grouped.keys());
     const teamCount=Math.max(2,entrants.length);
-    const byeTeam=teamCount%2===1?(teamCount===15?cupBrothersEntrant(entrants):entrants[teamCount-1]):null;
+    const byeTeam=teamCount%2===1?entrants[teamCount-1]:null;
     const byeMatchIndex=byeTeam?Math.floor(teamCount/2):-1;
     const entrantKeys=new Set(entrants.map(team=>normalize(clean(team?.name))));
     const firstRoundCount=Math.max(grouped.get(1)?.length||0,Math.ceil(teamCount/2),1);
@@ -569,7 +557,8 @@
         const awayRow=`<div class="ca-cup-bracket-team-v1357 ${awayWinner?'is-winner':''} ${!match&&!awayTeam?'is-placeholder':''}">${awayCrest}<b>${esc(awayName)}</b><strong>${hasScore?esc(match.away_score):''}</strong></div>`;
         const date=match?`${esc(formattedMatchDate(match.match_date))}${clean(match.match_time)?` · ${esc(clean(match.match_time).slice(0,5))}`:''}`:'';
         const action=match&&isAdmin()?`<button type="button" class="ca-cup-bracket-edit-v1357" data-ca-edit-cup-match="${esc(match.id)}" aria-label="Змінити матч ${esc(homeName)} — ${esc(awayName)}">✎</button>`:'';
-        const footer=match?`<footer><span>${date}</span>${action}</footer>`:isByeMatch?'<footer><span>ВІЛЬНИЙ ПРОХІД</span></footer>':'';
+        const byeAction=isByeMatch&&isAdmin()?'<button type="button" class="ca-cup-bracket-edit-v1357" data-ca-edit-cup-bye aria-label="Змінити команду з вільним проходом">✎</button>':'';
+        const footer=match?`<footer><span>${date}</span>${action}</footer>`:isByeMatch?`<footer><span>ВІЛЬНИЙ ПРОХІД</span>${byeAction}</footer>`:'';
         return `<div class="ca-cup-bracket-slot-v1357" style="grid-row:${startRow}/span ${span}"><article class="ca-cup-bracket-match-v1357 ${isByeMatch?'is-bye':''}" data-ca-bracket-match data-ca-round-index="${index}" data-ca-match-index="${matchIndex}">${homeRow}${awayRow}${footer}</article></div>`;
       }).join('');
       const title=cupBracketStageName(teamCount,round);
@@ -1118,7 +1107,7 @@
   }
 
   const closeModal=()=>{
-    [MODAL_ID,TABLE_MODAL_ID,HISTORY_MODAL_ID,MATCH_STATS_MODAL_ID,CUP_MODAL_ID,RESULT_MODAL_ID,TEAM_NOTE_MODAL_ID,TEAM_HISTORY_SEASON_MODAL_ID].forEach(id=>document.getElementById(id)?.remove());
+    [MODAL_ID,TABLE_MODAL_ID,HISTORY_MODAL_ID,MATCH_STATS_MODAL_ID,CUP_MODAL_ID,CUP_BYE_MODAL_ID,RESULT_MODAL_ID,TEAM_NOTE_MODAL_ID,TEAM_HISTORY_SEASON_MODAL_ID].forEach(id=>document.getElementById(id)?.remove());
     document.body.classList.remove('ca-analytics-modal-open-v1317');
   };
   const openTeamNoteModal=async({teamKey,teamName,logo}={})=>{
@@ -1296,6 +1285,32 @@
     form.addEventListener('submit',async event=>{event.preventDefault();if(saving)return;const chosen=clubs.filter(club=>selected.has(clean(club.normalized_name)||normalize(club.name)));saving=true;update();try{const created=await window.CenturiaAnalyticsCupApi.create({name:nameField.value,teams:chosen});cups=[created,...cups];activeCupId=String(created.id);cupMatches=[];cupMatchesById.set(String(created.id),[]);overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');render();toast(`Кубок «${created.name}» створено`);}catch(error){saving=false;update();toast(failMessage(error));}});
     try{const [clubRows,leagueRows,groupRows]=await Promise.all([clubApi().list(),clubApi().listLeagues(),clubApi().listGroups()]);clubs=Array.isArray(clubRows)?clubRows:[];const availableLeagues=Array.isArray(leagueRows)?leagueRows:[];leagueNames=new Map(availableLeagues.map(row=>[clean(row.code).toUpperCase(),clean(row.name)]));groupNames=new Map((Array.isArray(groupRows)?groupRows:[]).map(row=>[clean(row.code).toUpperCase(),`${clean(row.flag)} ${clean(row.name)}`.trim()]));if(!availableLeagues.length){leagueSelect.innerHTML='<option value="" selected disabled>У базі ще немає ліг</option>';list.innerHTML='<p>У базі клубів поки немає доступних ліг.</p>';}else{leagueSelect.innerHTML='<option value="" selected disabled>Спочатку обери лігу</option>'+availableLeagues.map(row=>`<option value="${esc(clean(row.code).toUpperCase())}">${esc(row.name)}</option>`).join('');paint();}}catch(error){list.innerHTML=`<p class="ca-analytics-error-v1317">${esc(failMessage(error))}</p>`;}
     update();setTimeout(()=>nameField.focus(),50);
+  };
+
+  const openCupByeEditModal=cup=>{
+    if(!isAdmin()||!cup)return;
+    const teams=Array.isArray(cup.teams)?cup.teams:[];
+    if(teams.length<3||teams.length%2===0){toast('У цьому кубку немає окремого слота вільного проходу');return;}
+    closeModal();
+    const selectedIndex=teams.length-1;
+    const options=teams.map((team,index)=>`<option value="${index}" ${index===selectedIndex?'selected':''}>${esc(team.name||'Команда')}</option>`).join('');
+    const overlay=document.createElement('div');overlay.id=CUP_BYE_MODAL_ID;overlay.className='ca-analytics-modal-v1317';
+    overlay.innerHTML=`<div class="ca-analytics-dialog-v1317 ca-result-dialog-v1336" role="dialog" aria-modal="true" aria-labelledby="caCupByeTitleV1362"><header class="ca-analytics-modal-head-v1317"><div><small class="ca-analytics-modal-kicker-v1317">КУБОК · РЕДАГУВАННЯ</small><h2 id="caCupByeTitleV1362">ЗМІНИТИ ВІЛЬНИЙ ПРОХІД</h2><p>Обери команду, яка автоматично перейде до наступного раунду.</p></div><button type="button" class="ca-analytics-close-v1317" data-ca-cup-bye-close aria-label="Закрити">×</button></header><form class="ca-analytics-form-v1317"><div class="ca-result-fields-v1336"><label class="ca-analytics-field-v1317">КОМАНДА З ВІЛЬНИМ ПРОХОДОМ<select name="byeTeam">${options}</select></label></div><footer class="ca-analytics-modal-foot-v1317"><button type="button" class="ca-analytics-secondary-v1317" data-ca-cup-bye-close>СКАСУВАТИ</button><button type="submit" class="ca-analytics-primary-v1317" data-ca-cup-bye-save>ЗБЕРЕГТИ</button></footer></form></div>`;
+    document.body.appendChild(overlay);document.body.classList.add('ca-analytics-modal-open-v1317');
+    overlay.addEventListener('click',event=>{if(event.target===overlay||event.target.closest('[data-ca-cup-bye-close]')){overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');}});
+    overlay.querySelector('form').addEventListener('submit',async event=>{
+      event.preventDefault();
+      const form=event.currentTarget,index=Number(form.elements.byeTeam.value),selectedTeam=teams[index];
+      if(!selectedTeam){toast('Обери команду для вільного проходу');return;}
+      const updatedTeams=[...teams.filter((_,teamIndex)=>teamIndex!==index),selectedTeam];
+      const button=form.querySelector('[data-ca-cup-bye-save]');button.disabled=true;button.textContent='ЗБЕРІГАЮ…';
+      try{
+        const updated=await window.CenturiaAnalyticsCupApi.updateTeams({id:cup.id,teams:updatedTeams});
+        cups=cups.map(item=>String(item.id)===String(updated.id)?updated:item);
+        overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');render();
+        toast(`${selectedTeam.name} отримує вільний прохід`);
+      }catch(error){button.disabled=false;button.textContent='ЗБЕРЕГТИ';toast(failMessage(error));}
+    });
   };
 
   const openResultModal=(kind,competition,match=null)=>{
@@ -1484,6 +1499,7 @@
     }
     if(event.target.closest?.('[data-ca-add-league-match]')){const active=leagues.find(item=>item.id===activeId);if(active)openResultModal('league',active);return;}
     if(event.target.closest?.('[data-ca-add-cup-match]')){const cup=cups.find(item=>String(item.id)===String(activeCupId))||cups[0];if(cup)openResultModal('cup',cup);return;}
+    if(event.target.closest?.('[data-ca-edit-cup-bye]')){const cup=cups.find(item=>String(item.id)===String(activeCupId))||cups[0];if(cup)openCupByeEditModal(cup);return;}
     const editCup=event.target.closest?.('[data-ca-edit-cup-match]');
     if(editCup){const cup=cups.find(item=>String(item.id)===String(activeCupId))||cups[0],match=cupMatches.find(item=>String(item.id)===String(editCup.dataset.caEditCupMatch));if(cup&&match)openResultModal('cup',cup,match);return;}
     const editLeague=event.target.closest?.('[data-ca-edit-league-match]');
