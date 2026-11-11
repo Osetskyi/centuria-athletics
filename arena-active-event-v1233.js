@@ -1,8 +1,8 @@
-/* Centuria v13.81 — remove completed tournaments from the Active Event card. */
+/* Centuria v13.82 — reliably recognize completed Ukrainian event labels. */
 (()=>{
   'use strict';
 
-  const BUILD='13.81';
+  const BUILD='13.82';
   const ACTIVE_EVENT_KEY='ca_arena_active_event';
   const ACTIVE_EVENT_LEGACY_KEY='ca_arena_active_event_v925';
   let busy=false;
@@ -33,7 +33,7 @@
       return rounds.length>=Math.max(1,Number(comp.swissRounds)||1);
     return true;
   };
-  const eventCompleted=event=>/\bЗАВЕРШЕНО\b/i.test(String(event?.meta||''));
+  const eventCompleted=event=>String(event?.meta||'').toUpperCase().includes('ЗАВЕРШЕНО');
   const eventMatchesCompetition=(event,comp)=>{
     if(!event?.title||!comp?.kind)return false;
     const title=String(comp.title||(comp.kind==='cup'?'CENTURIA CUP':'CENTURIA LEAGUE'));
@@ -252,7 +252,7 @@
       }
       if(comp?.kind==='league')renderActiveLeagueTable(comp);
     }catch(err){
-      console.warn('Arena active event v12.35',err);
+      console.warn('Arena active event v13.82',err);
     }finally{busy=false;}
   };
 
