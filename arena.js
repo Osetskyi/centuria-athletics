@@ -1385,6 +1385,9 @@
     }catch(_e){}
   };
   const applyRemoteArenaStateV1012=(row,redraw=true)=>{
+    const incomingUpdatedAt=Date.parse(String(row?.updated_at||''));
+    const knownUpdatedAt=Date.parse(String(remoteArenaLastUpdatedV1012||''));
+    if(Number.isFinite(incomingUpdatedAt)&&Number.isFinite(knownUpdatedAt)&&incomingUpdatedAt<knownUpdatedAt)return;
     remoteArenaStateApplyingV1012=true;
     try{
       const remoteComp=row?.active_competition;
@@ -4529,19 +4532,53 @@
       route=tournamentDraftKind;tab="mine";draw();
       try{window.showToast?.("Турнір створено")}catch(_e){}
     },
-    finishCurrentTournament(){
+    async finishCurrentTournament(){
       if(!isArenaAdmin()||!testCompetition)return;
       if(!isCompetitionCompleted(testCompetition)){try{window.showToast?.("Турнір ще не завершено")}catch(_e){};return;}
-      syncHistoryArchiveFromCompetition(testCompetition);
-
-
-  const activeBracketMiniWrapV1110=(title,meta,content)=>`<div class="arena-active-event-preview-v879 arena-active-event-cup-preview-v879 arena-active-event-preview-full-v1101 arena-active-event-bracket-preview-v1110"><div class="arena-active-event-preview-title-v879"><span>${esc(title)}</span><span>${esc(meta||'')}</span></div><div class="arena-active-event-bracket-body-v1110">${content||''}</div></div>`;
+      const completed=cloneArenaStateV1012(testCompetition);
+      const archiveKind=completed.kind==='cup'?'cup':'league';
+      const archived=syncHistoryArchiveFromCompetition(completed);
+      if(!archived){try{window.showToast?.("Не вдалося створити запис в Історії")}catch(_e){};return;}
+      if(archiveKind==='league'){
+        leagueSignupPoll=null;remoteLeagueVotesV1093={};
+        saveLeagueSignupPollV1093();
+      }else{
+        cupSignupPoll=null;remoteCupVotesV1029={};remoteCupVoteRowsV1029=[];
+        saveCupSignupPoll();
+      }
       testCompetition=null;
       activeEvent=null;
       saveTestCompetition();
       saveActiveEvent();
-      route="home";tab="mine";draw();
-      try{window.showToast?.("Турнір завершено та збережено в Історії")}catch(_e){}
+      hist=archiveKind;
+      route="history";tab=archiveKind;draw();
+
+      const api=arenaStateApiV1012();
+      if(!api?.isReady?.()||!api?.canWrite?.()||!api?.save){
+        try{window.showToast?.("Турнір завершено та збережено в Історії")}catch(_e){}
+        return;
+      }
+      clearTimeout(remoteArenaStateSaveTimerV1012);
+      const finalSnapshot=arenaGlobalSnapshotV1012();
+      try{
+        await remoteArenaStateSaveInFlightV1061;
+        const saved=await api.save(finalSnapshot);
+        const archiveRows=Array.isArray(saved?.history_archive?.[archiveKind])?saved.history_archive[archiveKind]:[];
+        const archivedRow=archiveRows.some(item=>{
+          const id=String(item?.competitionId||item?.archiveId||'');
+          const expected=String(archived.competitionId||archived.archiveId||'');
+          return (expected&&id===expected)||String(item?.title||'')===String(archived.title||'');
+        });
+        if(!saved||saved.active_competition||saved.active_event||!archivedRow)
+          throw new Error('The shared archive did not confirm the completed tournament');
+        remoteArenaLastUpdatedV1012=String(saved.updated_at||remoteArenaLastUpdatedV1012||'');
+        applyRemoteArenaStateV1012(saved,false);
+        hist=archiveKind;route="history";tab=archiveKind;draw();
+        window.showToast?.("Турнір завершено та збережено в Історії");
+      }catch(err){
+        console.warn('Arena tournament finish sync',err);
+        window.showToast?.("Турнір збережено локально, але не вдалося синхронізувати Історію. Перевір з’єднання");
+      }
     },
     async openClubDatabase(){
       if(!isArenaAdmin()||clubDatabaseModalOpeningV1275||document.querySelector('.arena-clubdb-modal-v945'))return;
