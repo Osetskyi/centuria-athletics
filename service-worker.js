@@ -1,5 +1,5 @@
-// v13.54 — MVP award tie rotation and trophy rendering
-const CACHE_VERSION="centuria-pwa-v1369-analytics-layout";
+// v13.83 — tournament video cover support
+const CACHE_VERSION="centuria-pwa-v1383-tournament-video-covers";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";

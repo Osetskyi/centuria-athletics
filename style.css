@@ -29297,12 +29297,13 @@ body.light-theme .arena-clubdb-footer-v945 .arena-secondary-v852{
   overflow:hidden!important;
   padding:10px!important;
 }
-.arena-cup-cover-preview-v1026 img{
+.arena-cup-cover-preview-v1026 :is(img,video){
   display:block!important;
   width:100%!important;
   max-height:190px!important;
   object-fit:cover!important;
   border-radius:14px!important;
+  background:#08090c!important;
 }
 .arena-cup-cover-empty-v1026{
   color:rgba(245,233,208,.56)!important;
@@ -29316,7 +29317,7 @@ body.light-theme .arena-clubdb-footer-v945 .arena-secondary-v852{
   border:1px solid rgba(214,179,95,.16)!important;
   background:rgba(255,255,255,.04)!important;
 }
-.arena-cup-poll-cover-v1026 img{display:block!important;width:100%!important;max-height:210px!important;object-fit:cover!important;}
+.arena-cup-poll-cover-v1026 :is(img,video){display:block!important;width:100%!important;max-height:210px!important;object-fit:cover!important;background:#08090c!important;}
 .arena-cup-poll-top-v1026{display:flex!important;justify-content:space-between!important;gap:12px!important;align-items:flex-start!important;}
 .arena-cup-poll-top-v1026 h3{margin:6px 0 4px!important;color:#fff1d2!important;font-size:26px!important;line-height:1.05!important;}
 .arena-cup-poll-top-v1026 p{margin:0!important;}
@@ -32754,9 +32755,9 @@ body.light-theme .arena-cup-bracket-link-v1038{
   border-radius:18px!important;border:1px solid rgba(214,179,95,.30)!important;
   margin-bottom:14px!important;background:#131824!important;
 }
-#screen-arena .arena-league-cover-v1093 img{
+#screen-arena .arena-league-cover-v1093 :is(img,video){
   display:block!important;width:100%!important;max-height:200px!important;
-  object-fit:cover!important;object-position:center!important;
+  object-fit:cover!important;object-position:center!important;background:#08090c!important;
 }
 #screen-arena .arena-app-v852[data-route="league"] .arena-league-signup-v1093{
   display:flex!important;flex-direction:column!important;gap:14px!important;

@@ -9719,6 +9719,33 @@ window.CenturiaArenaStateApi={
   canWrite(){
     return String(authRole||'viewer').toLowerCase()==='admin';
   },
+  async uploadTournamentVideo(file){
+    if(!sb||!authUser||String(authRole||'viewer').toLowerCase()!=='admin')throw new Error('Тільки ADMIN може завантажити відео турніру');
+    if(!file)throw new Error('Відео не вибрано');
+    const nameExt=String(file.name||'').split('.').pop().toLowerCase();
+    const typeExt={
+      'video/mp4':'mp4',
+      'video/x-m4v':'m4v',
+      'video/quicktime':'mov',
+      'video/webm':'webm'
+    };
+    const extByName=['mp4','m4v','mov','webm'].includes(nameExt)?nameExt:'';
+    const ext=typeExt[String(file.type||'').toLowerCase()]||extByName;
+    if(!ext)throw new Error('Підтримуються відео MP4, MOV та WebM');
+    if(Number(file.size)>52428800)throw new Error('Відео завелике. Максимальний розмір — 50 МБ');
+    const contentType=ext==='mov'?'video/quicktime':ext==='webm'?'video/webm':'video/mp4';
+    const token=window.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2,10)}`;
+    const path=`arena-covers/${authUser.id}/${token}.${ext}`;
+    const {error}=await sb.storage.from('centuria-assets').upload(path,file,{
+      upsert:false,
+      contentType,
+      cacheControl:'3600'
+    });
+    if(error)throw new Error(error.message||'Не вдалося завантажити відео');
+    const {data}=sb.storage.from('centuria-assets').getPublicUrl(path);
+    if(!data?.publicUrl)throw new Error('Не вдалося отримати адресу відео');
+    return data.publicUrl;
+  },
   async matchAction({action,competitionId,matchId,leg=1,homeScore=null,awayScore=null,tiebreakWinner=null}={}){
     if(!sb||!authUser)throw new Error('Увійди в акаунт');
     const {data,error}=await sb.rpc('centuria_arena_match_action_v1290',{
