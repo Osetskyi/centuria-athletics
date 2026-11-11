@@ -1,0 +1,35 @@
+/* v13.70 — reserve the crest's actual width in Cup bracket team rows. */
+.ca-cup-bracket-team-v1357{
+  grid-template-columns:32px minmax(0,1fr) 18px!important;
+  gap:6px!important;
+  padding-left:8px!important;
+  padding-right:8px!important;
+}
+.ca-cup-bracket-team-v1357 .ca-analytics-crest-v1317,
+.ca-cup-bracket-team-v1357 .ca-team-note-trigger-v1338{
+  display:grid!important;
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  flex:0 0 32px!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+}
+.ca-cup-bracket-team-v1357 .ca-analytics-crest-v1317 img,
+.ca-cup-bracket-team-v1357 .ca-team-note-trigger-v1338 img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+}
+@media(max-width:620px){
+  .ca-cup-bracket-team-v1357{
+    grid-template-columns:32px minmax(0,1fr) 17px!important;
+    gap:6px!important;
+    padding-left:7px!important;
+    padding-right:6px!important;
+  }
+}
