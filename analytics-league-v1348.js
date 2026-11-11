@@ -22,6 +22,7 @@
   let cups=[];
   let activeId='';
   let activeCupId='';
+  let activeAnalyticsView='league';
   let cupMatches=[];
   let cupsError='';
   let loading=false;
@@ -490,16 +491,86 @@
 
   const fetchCupMatches=async cup=>{
     const db=client();if(!db||!user())throw new Error('Увійди в акаунт, щоб переглянути матчі кубка');
-    const {data,error}=await db.from('centuria_analytics_matches').select('id,match_date,match_time,competition_name,home_team_name,home_team_image,away_team_name,away_team_image,home_score,away_score,match_kind,round_number,match_status,cup_id').eq('cup_id',cup.id).order('round_number',{ascending:true}).order('match_date',{ascending:true});
+    const {data,error}=await db.from('centuria_analytics_matches').select('id,match_date,match_time,created_at,competition_name,home_team_name,home_team_image,away_team_name,away_team_image,home_score,away_score,match_kind,round_number,match_status,cup_id').eq('cup_id',cup.id).order('round_number',{ascending:true}).order('created_at',{ascending:true}).order('match_date',{ascending:true});
     if(error)throw error;return Array.isArray(data)?data:[];
   };
-  const cupMatchesHtml=matches=>{
-    if(!matches.length)return '<div class="ca-analytics-history-empty-v1319"><span aria-hidden="true">🏆</span><b>МАТЧІВ КУБКА ЩЕ НЕ ДОДАНО</b><p>ADMIN може додати пари команд і згодом вносити рахунки.</p></div>';
-    const rounds=groupedHistoryRounds(matches,historyRoundNumbers(matches));
-    return rounds.map(([round,items])=>`<section class="ca-analytics-round-group-v1321"><header class="ca-analytics-round-head-v1321"><b>${round===null?'МАТЧІ':`РАУНД ${round}`}</b><span>${items.length} ${matchCountLabel(items.length)}</span></header><div class="ca-analytics-history-list-v1319">${items.map(match=>{
-      const homeLogo=imageUrl(match.home_team_image),awayLogo=imageUrl(match.away_team_image),hasScore=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-      return `<article class="ca-analytics-match-v1319 ca-cup-match-v1336"><div class="ca-analytics-match-meta-v1319"><span>${esc(formattedMatchDate(match.match_date))}${clean(match.match_time)?` · ${esc(clean(match.match_time).slice(0,5))}`:''}</span><b>КУБОК</b></div><div class="ca-analytics-match-score-v1319"><span class="ca-analytics-match-team-v1319 ca-analytics-home-team-v1319">${teamNoteCrestHtml({name:match.home_team_name,logo:homeLogo})}<b>${esc(match.home_team_name)}</b></span><strong>${hasScore?`${esc(match.home_score)} : ${esc(match.away_score)}`:'— : —'}</strong><span class="ca-analytics-match-team-v1319 ca-analytics-away-team-v1319"><b>${esc(match.away_team_name)}</b>${teamNoteCrestHtml({name:match.away_team_name,logo:awayLogo})}</span></div>${isAdmin()?`<div class="ca-cup-match-actions-v1336"><button type="button" class="ca-analytics-table-toggle-v1318" data-ca-edit-cup-match="${esc(match.id)}">${hasScore?'ЗМІНИТИ МАТЧ':'ВНЕСТИ РАХУНОК'}</button></div>`:''}</article>`;
-    }).join('')}</div></section>`).join('');
+  const cupBracketStageName=(teamCount,round)=>{
+    const remaining=Math.ceil(teamCount/Math.pow(2,round-1));
+    if(remaining===16)return '1/8 ФІНАЛУ';
+    if(remaining===8)return '1/4 ФІНАЛУ';
+    if(remaining===4)return 'ПІВФІНАЛ';
+    if(remaining===2)return 'ФІНАЛ';
+    return `РАУНД ${round}`;
+  };
+  const cupBracketHtml=(teams,matches)=>{
+    const grouped=new Map();
+    matches.forEach(match=>{
+      const parsed=Number(match.round_number),round=Number.isInteger(parsed)&&parsed>0?parsed:1;
+      if(!grouped.has(round))grouped.set(round,[]);
+      grouped.get(round).push(match);
+    });
+    const maxRound=Math.max(1,...grouped.keys());
+    const teamCount=Math.max(2,teams.length);
+    const firstRoundCount=Math.max(grouped.get(1)?.length||0,Math.ceil(teamCount/2),1);
+    const roundsCount=Math.max(Math.ceil(Math.log2(teamCount)),maxRound,1);
+    const counts=[];
+    for(let round=1;round<=roundsCount;round++){
+      const expected=round===1?firstRoundCount:Math.ceil((counts[round-2]||firstRoundCount)/2);
+      counts.push(Math.max(expected,grouped.get(round)?.length||0,1));
+    }
+    const safeRounds=Math.max(roundsCount,Math.ceil(Math.log2(Math.max(...counts.map((count,index)=>count*Math.pow(2,index)),1)))+1);
+    while(counts.length<safeRounds){const round=counts.length+1;counts.push(Math.max(1,Math.ceil(counts[counts.length-1]/2),grouped.get(round)?.length||0));}
+    const baseRows=counts.reduce((max,count,index)=>Math.max(max,count*Math.pow(2,index)),1);
+    const normalizedBase=2**Math.ceil(Math.log2(baseRows));
+    while(counts.length<Math.ceil(Math.log2(normalizedBase))+1){counts.push(Math.max(1,Math.ceil(counts[counts.length-1]/2)));}
+    const bracketRounds=counts.map((count,index)=>{
+      const round=index+1,actual=grouped.get(round)||[];
+      const cards=Array.from({length:count},(_,matchIndex)=>{
+        const match=actual[matchIndex]||null;
+        const startRow=Math.floor(matchIndex*normalizedBase/count)+1,endRow=Math.floor((matchIndex+1)*normalizedBase/count),span=Math.max(1,endRow-startRow+1);
+        const homeName=clean(match?.home_team_name)||(round===1?`КОМАНДА ${matchIndex*2+1}`:`Winner of R${round-1} M${matchIndex*2+1}`);
+        const awayName=clean(match?.away_team_name)||(round===1?`КОМАНДА ${matchIndex*2+2}`:`Winner of R${round-1} M${matchIndex*2+2}`);
+        const hasScore=match&&match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
+        const homeWinner=hasScore&&Number(match.home_score)>Number(match.away_score),awayWinner=hasScore&&Number(match.away_score)>Number(match.home_score);
+        const homeCrest=match?teamNoteCrestHtml({name:homeName,logo:imageUrl(match.home_team_image)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
+        const awayCrest=match?teamNoteCrestHtml({name:awayName,logo:imageUrl(match.away_team_image)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
+        const homeRow=`<div class="ca-cup-bracket-team-v1357 ${homeWinner?'is-winner':''} ${!match?'is-placeholder':''}">${homeCrest}<b>${esc(homeName)}</b><strong>${hasScore?esc(match.home_score):''}</strong></div>`;
+        const awayRow=`<div class="ca-cup-bracket-team-v1357 ${awayWinner?'is-winner':''} ${!match?'is-placeholder':''}">${awayCrest}<b>${esc(awayName)}</b><strong>${hasScore?esc(match.away_score):''}</strong></div>`;
+        const date=match?`${esc(formattedMatchDate(match.match_date))}${clean(match.match_time)?` · ${esc(clean(match.match_time).slice(0,5))}`:''}`:'';
+        const action=match&&isAdmin()?`<button type="button" class="ca-cup-bracket-edit-v1357" data-ca-edit-cup-match="${esc(match.id)}" aria-label="Змінити матч ${esc(homeName)} — ${esc(awayName)}">✎</button>`:'';
+        const footer=match?`<footer><span>${date}</span>${action}</footer>`:'';
+        return `<div class="ca-cup-bracket-slot-v1357" style="grid-row:${startRow}/span ${span}"><article class="ca-cup-bracket-match-v1357" data-ca-bracket-match data-ca-round-index="${index}" data-ca-match-index="${matchIndex}">${homeRow}${awayRow}${footer}</article></div>`;
+      }).join('');
+      const stageTeams=Math.max(2,Math.ceil(teamCount/Math.pow(2,index)));
+      const title=cupBracketStageName(stageTeams,round);
+      return `<section class="ca-cup-bracket-round-v1357" data-ca-bracket-round="${index}"><h3><span>${title}</span><small>РАУНД ${round}</small></h3><div class="ca-cup-bracket-lane-v1357">${cards}</div></section>`;
+    }).join('');
+    return `<div class="ca-cup-bracket-help-v1357"><b>ТУРНІРНА СІТКА</b><span>ПРОКРУЧУЙ ВПРАВО, ЩОБ ПОБАЧИТИ НАСТУПНІ РАУНДИ →</span></div><div class="ca-cup-bracket-viewport-v1357" tabindex="0" role="region" aria-label="Сітка кубка. Прокручуй горизонтально між раундами"><div class="ca-cup-bracket-content-v1357" data-ca-cup-bracket style="--cup-bracket-base-rows:${normalizedBase}"><svg class="ca-cup-bracket-links-v1357" data-ca-cup-connectors aria-hidden="true"></svg>${bracketRounds}</div></div>`;
+  };
+  const drawCupBracketConnectors=()=>{
+    const content=root()?.querySelector('[data-ca-cup-bracket]');
+    const svg=content?.querySelector('[data-ca-cup-connectors]');
+    if(!content||!svg)return;
+    const origin=content.getBoundingClientRect();
+    const width=Math.max(content.scrollWidth,content.clientWidth),height=Math.max(content.scrollHeight,content.clientHeight);
+    svg.setAttribute('width',String(width));svg.setAttribute('height',String(height));svg.setAttribute('viewBox',`0 0 ${width} ${height}`);svg.replaceChildren();
+    const rounds=[...content.querySelectorAll('[data-ca-bracket-round]')];
+    const ns='http://www.w3.org/2000/svg';
+    rounds.slice(0,-1).forEach((round,index)=>{
+      const sources=[...round.querySelectorAll('[data-ca-bracket-match]')];
+      const targets=[...(rounds[index+1]?.querySelectorAll('[data-ca-bracket-match]')||[])];
+      sources.forEach((source,matchIndex)=>{
+        const target=targets[Math.floor(matchIndex/2)];if(!target)return;
+        const from=source.getBoundingClientRect(),to=target.getBoundingClientRect();
+        const x1=from.right-origin.left,x2=to.left-origin.left,y1=from.top+from.height/2-origin.top,y2=to.top+to.height/2-origin.top,mid=(x1+x2)/2;
+        const path=document.createElementNS(ns,'path');path.setAttribute('d',`M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`);path.setAttribute('class','ca-cup-bracket-link-v1357');svg.appendChild(path);
+      });
+    });
+  };
+  const analyticsViewTabsHtml=()=>{
+    const cup=cups.find(item=>String(item.id)===String(activeCupId))||cups[0];
+    const cupSubtitle=cup?cup.name:(cupsError?'РОЗДІЛ ПОТРЕБУЄ НАЛАШТУВАННЯ':'ТУРНІРНА СІТКА');
+    return `<nav class="ca-analytics-competition-tabs-v1356" aria-label="Розділи центру аналітики"><button type="button" class="ca-analytics-competition-tab-v1356 ${activeAnalyticsView==='league'?'is-active':''}" data-ca-analytics-view="league" aria-pressed="${activeAnalyticsView==='league'}"><span><b>ЛІГА</b><small>ТАБЛИЦЯ · ФОРМА · ІСТОРІЯ</small></span><i aria-hidden="true">▦</i></button><button type="button" class="ca-analytics-competition-tab-v1356 ${activeAnalyticsView==='cup'?'is-active':''}" data-ca-analytics-view="cup" aria-pressed="${activeAnalyticsView==='cup'}"><span><b>КУБОК</b><small>${esc(cupSubtitle)}</small></span><i aria-hidden="true">🏆</i></button></nav>`;
   };
   const cupPanelHtml=()=>{
     const cup=cups.find(item=>String(item.id)===String(activeCupId))||cups[0];
@@ -511,9 +582,14 @@
     else{
       const teams=Array.isArray(cup.teams)?cup.teams:[];
       const teamStrip=teams.map(team=>`<span class="ca-cup-team-chip-v1336">${teamNoteCrestHtml(team)}<b>${esc(team.name)}</b></span>`).join('');
-      body=`<div class="ca-cup-meta-v1336"><b>${esc(cup.name)}</b><span>${teams.length} КОМАНД · ${cupMatches.length} ${matchCountLabel(cupMatches.length).toLowerCase()}</span></div><div class="ca-cup-teams-v1336">${teamStrip}</div><div class="ca-cup-results-v1336">${cupMatchesHtml(cupMatches)}</div>${isAdmin()?`<div class="ca-cup-delete-v1336"><button type="button" class="ca-analytics-table-toggle-v1318" data-ca-delete-cup="${esc(cup.id)}">ВИДАЛИТИ КУБОК</button></div>`:''}`;
+      const completed=cupMatches.filter(match=>match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined);
+      const waiting=cupMatches.length-completed.length;
+      const goals=completed.reduce((sum,match)=>sum+Number(match.home_score||0)+Number(match.away_score||0),0);
+      const participants=teams.length?`<details class="ca-cup-participants-v1356"><summary><span>КОМАНДИ ТУРНІРУ</span><b>${teams.length}</b><i aria-hidden="true">⌄</i></summary><div class="ca-cup-teams-v1336">${teamStrip}</div></details>`:'';
+      const summary=`<div class="ca-cup-summary-v1356"><div><b>${teams.length}</b><span>КОМАНДИ</span></div><div><b>${completed.length}</b><span>З РАХУНКОМ</span></div><div><b>${waiting}</b><span>ОЧІКУЮТЬ</span></div><div><b>${goals}</b><span>ЗАБИТО ГОЛІВ</span></div></div>`;
+      body=`<div class="ca-cup-meta-v1336"><div><small>ТУРНІРНИЙ ОГЛЯД</small><b>${esc(cup.name)}</b></div><span>${cupMatches.length} ${matchCountLabel(cupMatches.length).toLowerCase()} · ${teams.length} ${teams.length===1?'КОМАНДА':'КОМАНД'}</span></div>${summary}${participants}${cupBracketHtml(teams,cupMatches)}${isAdmin()?`<div class="ca-cup-delete-v1336"><button type="button" class="ca-analytics-table-toggle-v1318" data-ca-delete-cup="${esc(cup.id)}">ВИДАЛИТИ КУБОК</button></div>`:''}`;
     }
-    return `<section class="ca-analytics-panel-v1317 ca-analytics-cup-panel-v1336" aria-labelledby="caAnalyticsCupTitleV1336"><header class="ca-analytics-panel-head-v1317 ca-analytics-cup-head-v1336"><div class="ca-analytics-panel-title-v1317"><small>ТУРНІРНА СІТКА</small><h2 id="caAnalyticsCupTitleV1336">КУБОК</h2><p>Команди з бази клубів · ручне внесення матчів і рахунків</p></div>${actions}</header>${body}</section>`;
+    return `<section class="ca-analytics-panel-v1317 ca-analytics-cup-panel-v1336" aria-labelledby="caAnalyticsCupTitleV1336"><header class="ca-analytics-panel-head-v1317 ca-analytics-cup-head-v1336"><div class="ca-analytics-panel-title-v1317"><small>ТУРНІРНА СІТКА</small><h2 id="caAnalyticsCupTitleV1336">КУБОК</h2><p>Розклад, рахунки та перебіг турніру за раундами.</p></div>${actions}</header>${body}</section>`;
   };
 
   const fetchLeagueMatches=async league=>{
@@ -956,11 +1032,12 @@
     const host=root();
     if(!host)return;
     if(loading){host.innerHTML=emptyHtml('ЗАВАНТАЖЕННЯ ЛІГИ','Зачекай, відкриваємо турнірну таблицю.');return;}
+    if(activeAnalyticsView==='cup'){host.innerHTML=`${analyticsViewTabsHtml()}${cupPanelHtml()}`;requestAnimationFrame(drawCupBracketConnectors);return;}
     const active=leagues.find(league=>league.id===activeId)||leagues[0];
-    if(!active){host.innerHTML=`${emptyHtml()}${cupPanelHtml()}`;return;}
+    if(!active){host.innerHTML=`${analyticsViewTabsHtml()}${emptyHtml()}`;return;}
     activeId=active.id;
     const options=leagues.length>1?`<select class="ca-analytics-select-v1317" aria-label="Обрати лігу" data-ca-league-select>${leagues.map(league=>`<option value="${esc(league.id)}" ${league.id===active.id?'selected':''}>${esc(league.name)}</option>`).join('')}</select>`:'';
-    host.innerHTML=`<article class="ca-analytics-panel-v1317">
+    host.innerHTML=`${analyticsViewTabsHtml()}<article class="ca-analytics-panel-v1317">
       <div class="ca-analytics-panel-head-v1317">
         <div class="ca-analytics-panel-title-v1317"><small>ТУРНІРНА ТАБЛИЦЯ</small><h2>${esc(active.name)}</h2><p>${esc(leagueMeta(active))}</p></div>
         <div class="ca-analytics-panel-actions-v1317">${options}${isAdmin()?'<button type="button" class="ca-analytics-primary-v1317" data-ca-create-league>＋ НОВА ЛІГА</button>':''}</div>
@@ -974,7 +1051,7 @@
         ${isAdmin()?'<button type="button" class="ca-analytics-table-toggle-v1318" data-ca-add-league-match>＋ ДОДАТИ МАТЧ</button>':''}
       </div>
       <p class="ca-analytics-note-v1317">Матчі та рахунки ліги додаються вручну й зібрані в окремій історії.</p>
-    </article>${cupPanelHtml()}${teamFormHtml(active)}${seasonGoalsHtml(active)}${teamHistoryHtml(active)}`;
+    </article>${teamFormHtml(active)}${seasonGoalsHtml(active)}${teamHistoryHtml(active)}`;
     if(!seasonGoalsLoaded&&!seasonGoalsLoading&&isReady())void loadSeasonGoals();
     if(!teamHistoryLoaded&&!teamHistoryLoading&&isReady())void loadTeamHistory();
   };
@@ -1353,6 +1430,8 @@
       homeAnalyticsCard.querySelector('.ca-analytics-entry-head-v1312[data-nav="analytics"]')?.click();
       return;
     }
+    const analyticsViewButton=event.target.closest?.('[data-ca-analytics-view]');
+    if(analyticsViewButton){const view=analyticsViewButton.dataset.caAnalyticsView;if(view==='league'||view==='cup'){activeAnalyticsView=view;render();}return;}
     const teamNoteTrigger=event.target.closest?.('[data-ca-team-note]');
     if(teamNoteTrigger){void openTeamNoteModal({teamKey:teamNoteTrigger.dataset.caTeamNote,teamName:teamNoteTrigger.dataset.caTeamNoteName,logo:teamNoteTrigger.dataset.caTeamNoteLogo});return;}
     const matchStatsTrigger=event.target.closest?.('[data-ca-open-match-stats]');
@@ -1414,6 +1493,9 @@
     cupMatches=cupMatchesById.get(activeCupId)||[];render();
     if(!cupMatchesById.has(activeCupId))fetchCupMatches(cup).then(matches=>{if(activeCupId===String(cup.id)){cupMatches=matches;cupMatchesById.set(activeCupId,matches);render();}}).catch(error=>{cupsError='Не вдалося завантажити матчі кубка.';render();toast(failMessage(error));});
   });
+
+  window.addEventListener('resize',()=>{if(activeAnalyticsView==='cup')requestAnimationFrame(drawCupBracketConnectors);},{passive:true});
+  document.addEventListener('toggle',event=>{if(activeAnalyticsView==='cup'&&event.target?.matches?.('.ca-cup-participants-v1356'))requestAnimationFrame(drawCupBracketConnectors);},true);
 
   const init=()=>{
     const screen=document.getElementById('screen-analytics');
