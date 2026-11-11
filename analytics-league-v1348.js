@@ -1,4 +1,4 @@
-/* Centuria Analytics v13.50 — archive uses current standings columns */
+/* Centuria Analytics v13.59 — Brazzerz bye slot correction */
 (()=>{
   'use strict';
 
@@ -499,10 +499,16 @@
   };
   const cupEntrantsInOrder=teams=>{
     const source=Array.isArray(teams)?[...teams]:[];
-    const brazzerzIndex=source.findIndex(team=>{
-      const name=normalize(clean(team?.name)).replace(/[^a-z0-9]/g,'');
-      return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers');
-    });
+    const isBrazzerz=team=>{
+      const name=normalize(clean(team?.name)).replace(/[^a-z0-9а-яіїєґ]/g,'');
+      return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers')||name.includes('браззерс')||name.includes('бразерс');
+    };
+    let brazzerzIndex=source.findIndex(isBrazzerz);
+    if(brazzerzIndex<0&&source.length===15){
+      const leagueBrazzerz=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrazzerz);
+      source[14]=leagueBrazzerz?{...leagueBrazzerz}:{normalized_name:'brazzerz',name:'Brazzerz',logo:''};
+      brazzerzIndex=14;
+    }
     if(brazzerzIndex<0)return source;
     const brazzerz=source[brazzerzIndex],others=source.filter((_,index)=>index!==brazzerzIndex);
     others.splice(Math.min(14,others.length),0,brazzerz);
