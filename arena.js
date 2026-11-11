@@ -4551,7 +4551,7 @@
       saveTestCompetition();
       saveActiveEvent();
       hist=archiveKind;
-      route="history";tab=archiveKind;draw();
+      route="home";tab="mine";draw();
 
       const api=arenaStateApiV1012();
       if(!api?.isReady?.()||!api?.canWrite?.()||!api?.save){
@@ -4573,7 +4573,7 @@
           throw new Error('The shared archive did not confirm the completed tournament');
         remoteArenaLastUpdatedV1012=String(saved.updated_at||remoteArenaLastUpdatedV1012||'');
         applyRemoteArenaStateV1012(saved,false);
-        hist=archiveKind;route="history";tab=archiveKind;draw();
+        hist=archiveKind;route="home";tab="mine";draw();
         window.showToast?.("Турнір завершено та збережено в Історії");
       }catch(err){
         console.warn('Arena tournament finish sync',err);
