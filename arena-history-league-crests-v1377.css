@@ -1,0 +1,8 @@
+/* v13.77 — archived League crests; dimensions are also set inline by arena.js. */
+.arena-modal-v852 .arena-history-league-table-card-v1120 .has-history-club-crest-v1377{position:relative!important;box-sizing:border-box!important}
+.arena-modal-v852 .arena-history-league-table-card-v1120 .arena-history-league-crest-v1377 img{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important}
+@media(max-width:360px){
+  .arena-modal-v852 .arena-history-league-table-card-v1120 .mobile-player.has-history-club-crest-v1377{padding-left:34px!important;min-height:32px!important}
+  .arena-modal-v852 .arena-history-league-table-card-v1120 .arena-history-league-crest-v1377{width:26px!important;height:26px!important;min-width:26px!important;min-height:26px!important}
+}
+:is(html[data-site-theme="light"],html.light-theme,body[data-site-theme="light"],body.light-theme) .arena-modal-v852 .arena-history-league-table-card-v1120 .arena-history-league-crest-v1377{background:rgba(255,255,255,.72)!important;border-color:rgba(151,108,29,.24)!important}
