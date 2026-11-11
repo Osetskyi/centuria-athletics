@@ -1,0 +1,82 @@
+.ca-tournament-media-field-v1363 input[type="file"]{
+  display:block!important;
+  width:100%!important;
+  margin-top:8px!important;
+  padding:9px!important;
+  border:1px dashed rgba(226,189,112,.38)!important;
+  border-radius:12px!important;
+  background:rgba(0,0,0,.25)!important;
+  color:#fff7e8!important;
+  font-size:11px!important;
+}
+.ca-tournament-media-field-v1363>small{
+  display:block!important;
+  margin-top:6px!important;
+  color:rgba(248,242,230,.62)!important;
+  font-size:9px!important;
+  line-height:1.45!important;
+}
+.ca-tournament-media-preview-v1363{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:6px!important;
+  width:100%!important;
+  margin-top:9px!important;
+  padding:6px!important;
+  overflow:hidden!important;
+  border:1px solid rgba(226,189,112,.24)!important;
+  border-radius:12px!important;
+  background:rgba(0,0,0,.24)!important;
+}
+.ca-tournament-media-preview-v1363[hidden]{display:none!important}
+.ca-tournament-media-preview-visual-v1363{
+  display:block!important;
+  width:100%!important;
+  max-height:170px!important;
+  aspect-ratio:16/8!important;
+  border-radius:8px!important;
+  object-fit:cover!important;
+  background:#090806!important;
+}
+.ca-tournament-media-preview-name-v1363{
+  overflow:hidden!important;
+  color:rgba(248,242,230,.68)!important;
+  font-size:9px!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.ca-tournament-media-v1363{
+  display:block!important;
+  width:min(100%,780px)!important;
+  height:auto!important;
+  aspect-ratio:16/7!important;
+  max-height:260px!important;
+  margin:12px auto!important;
+  overflow:hidden!important;
+  border:1px solid rgba(226,189,112,.2)!important;
+  border-radius:16px!important;
+  background:#090806!important;
+}
+.ca-tournament-media-v1363 img,
+.ca-tournament-media-v1363 video{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+}
+.ca-tournament-media-v1363.ca-tournament-media-cup-v1363{margin-top:5px!important}
+html[data-site-theme="light"] .ca-tournament-media-field-v1363 input[type="file"],
+html.light-theme .ca-tournament-media-field-v1363 input[type="file"]{
+  background:rgba(255,255,255,.76)!important;
+  color:#30291d!important;
+}
+html[data-site-theme="light"] .ca-tournament-media-field-v1363>small,
+html.light-theme .ca-tournament-media-field-v1363>small,
+html[data-site-theme="light"] .ca-tournament-media-preview-name-v1363,
+html.light-theme .ca-tournament-media-preview-name-v1363{
+  color:rgba(48,41,29,.65)!important;
+}
+@media(max-width:620px){
+  .ca-tournament-media-v1363{aspect-ratio:16/9!important;max-height:190px!important;border-radius:13px!important}
+  .ca-tournament-media-preview-visual-v1363{max-height:140px!important}
+}

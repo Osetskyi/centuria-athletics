@@ -1,0 +1,22 @@
+/* v13.64: Persist crop settings as metadata so remote logos do not need canvas/CORS access. */
+#screen-arena .arena-app-v852 .arena-crest-v852.has-photo.is-cropped-v1364,
+.arena-modal-v852 .arena-crest-v852.has-photo.is-cropped-v1364,
+#arenaLeagueDrawModalV1095 .arena-crest-v852.has-photo.is-cropped-v1364{
+  position:relative!important;
+}
+#screen-arena .arena-app-v852 .arena-crest-v852.has-photo.is-cropped-v1364>img,
+.arena-modal-v852 .arena-crest-v852.has-photo.is-cropped-v1364>img,
+#arenaLeagueDrawModalV1095 .arena-crest-v852.has-photo.is-cropped-v1364>img{
+  position:absolute!important;
+  left:50%!important;
+  top:50%!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:contain!important;
+  object-position:center center!important;
+  transform:translate(-50%,-50%) translate(var(--ca-club-logo-crop-x-v1364,0%),var(--ca-club-logo-crop-y-v1364,0%)) scale(var(--ca-club-logo-crop-zoom-v1364,1))!important;
+  transform-origin:center center!important;
+  border-radius:0!important;
+}

@@ -1142,6 +1142,28 @@
     return clubDatabase;
   };
   const clubDbNames=()=>loadClubDatabase().map(c=>c.name);
+  const CLUB_LOGO_CROP_PREFIX_V1364="ca-club-logo-crop-v1364:";
+  const clubLogoCropDecodeV1364=value=>{
+    const raw=String(value||"").trim();
+    if(!raw.startsWith(CLUB_LOGO_CROP_PREFIX_V1364))return {src:raw,x:0,y:0,zoom:1,cropped:false};
+    try{
+      const data=JSON.parse(raw.slice(CLUB_LOGO_CROP_PREFIX_V1364.length));
+      const x=Number(data?.x),y=Number(data?.y),zoom=Number(data?.zoom);
+      return {
+        src:String(data?.src||"").trim(),
+        x:Number.isFinite(x)?Math.max(-2,Math.min(2,x)):0,
+        y:Number.isFinite(y)?Math.max(-2,Math.min(2,y)):0,
+        zoom:Number.isFinite(zoom)?Math.max(.6,Math.min(2.4,zoom)):1,
+        cropped:true
+      };
+    }catch(_e){return {src:raw,x:0,y:0,zoom:1,cropped:false};}
+  };
+  const clubLogoCropEncodeV1364=data=>CLUB_LOGO_CROP_PREFIX_V1364+JSON.stringify({
+    src:String(data?.src||"").trim(),
+    x:Number.isFinite(Number(data?.x))?Math.max(-2,Math.min(2,Number(data.x))):0,
+    y:Number.isFinite(Number(data?.y))?Math.max(-2,Math.min(2,Number(data.y))):0,
+    zoom:Number.isFinite(Number(data?.zoom))?Math.max(.6,Math.min(2.4,Number(data.zoom))):1
+  });
   const clubLogoFor=team=>String(clubDbFind(team)?.logo||"").trim();
   const upsertClubDatabase=(name,logo,opts={})=>{
     name=String(name||"").trim();
@@ -1693,13 +1715,17 @@
     const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${theme.bg1}"/><stop offset="100%" stop-color="${theme.bg2}"/></linearGradient><radialGradient id="shine" cx="0.3" cy="0.2" r="0.9"><stop offset="0%" stop-color="rgba(255,255,255,0.55)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs><circle cx="80" cy="80" r="73" fill="url(#g)" stroke="${theme.ring}" stroke-width="8"/><circle cx="80" cy="80" r="57" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="2"/><circle cx="80" cy="80" r="73" fill="url(#shine)" opacity="0.35"/><text x="80" y="90" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${fg}" letter-spacing="1.5">${label}</text></svg>`;
     return svgToDataUri(svg);
   };
-  const crestBadge=(team,photo="")=>{
+  const crestBadge=(team,photo="",preferManual=false)=>{
     const teamName=canonicalTeamName(team);
     const dbSrc=clubLogoFor(teamName);
     const manualSrc=String(photo||"").trim();
     const autoSrc=autoTeamLogo(teamName);
-    const finalSrc=dbSrc||manualSrc||autoSrc;
-    return `<div class="arena-crest-v852 arena-crest-team-v930 ${finalSrc?"has-photo":""}" title="${esc(teamName)}">${finalSrc?`<img src="${esc(finalSrc)}" alt="${esc(teamName)}">`:`<span>${esc(crestLabel(teamName))}</span>`}</div>`;
+    const selectedSrc=preferManual?(manualSrc||dbSrc||autoSrc):(dbSrc||manualSrc||autoSrc);
+    const logo=clubLogoCropDecodeV1364(selectedSrc);
+    const finalSrc=logo.src;
+    const cropClass=logo.cropped?"is-cropped-v1364":"";
+    const cropStyle=logo.cropped?`--ca-club-logo-crop-zoom-v1364:${logo.zoom};--ca-club-logo-crop-x-v1364:${(logo.x*100).toFixed(3)}%;--ca-club-logo-crop-y-v1364:${(logo.y*100).toFixed(3)}%`:"";
+    return `<div class="arena-crest-v852 arena-crest-team-v930 ${finalSrc?"has-photo":""} ${cropClass}" title="${esc(teamName)}">${finalSrc?`<img ${cropStyle?`style="${esc(cropStyle)}"`:""} src="${esc(finalSrc)}" alt="${esc(teamName)}">`:`<span>${esc(crestLabel(teamName))}</span>`}</div>`;
   };
   const makeLeagueSchedule=(names)=>{
     const arr=[...names];
@@ -4834,8 +4860,8 @@
       if(!name&&!fileLogo){preview.innerHTML='<div class="arena-clubdb-preview-empty-v945">Введи назву або додай емблему</div>';return;}
       const display=name||"Новий клуб";
       const crest=fileLogo
-        ? `<button class="arena-clubdb-crop-trigger-v993" type="button" onclick="ArenaV852.openClubLogoPositionEditor()" aria-label="Налаштувати положення емблеми">${crestBadge(display,fileLogo)}<span>НАЛАШТУВАТИ</span></button>`
-        : crestBadge(display,fileLogo);
+        ? `<button class="arena-clubdb-crop-trigger-v993" type="button" onclick="ArenaV852.openClubLogoPositionEditor()" aria-label="Налаштувати положення емблеми">${crestBadge(display,fileLogo,true)}<span>НАЛАШТУВАТИ</span></button>`
+        : crestBadge(display,fileLogo,true);
       preview.innerHTML=`${crest}<div><strong>${esc(display)}</strong><small>${fileLogo?"Натисни на емблему, щоб поправити її положення":"Емблема з бази / автоматична"}</small></div>`;
     },
     async previewClubDatabaseLogo(input){
@@ -4879,11 +4905,13 @@
     openClubLogoPositionEditor(){
       if(!isArenaAdmin())return;
       const preview=document.getElementById("arenaClubDbPreviewV945");
-      const src=String(preview?.dataset?.logoSource||preview?.dataset?.logo||"").trim();
+      const savedCrop=clubLogoCropDecodeV1364(preview?.dataset?.logoSource||preview?.dataset?.logo||"");
+      const src=savedCrop.src;
       if(!src){try{window.showToast?.("Спочатку додай емблему")}catch(_e){};return;}
       const img=new Image();
       img.onload=()=>{
-        clubLogoCropState={src,img,x:0,y:0,zoom:1};
+        const cropFrameSize=Math.max(1,document.getElementById("arenaClubLogoCropFrameV993")?.clientWidth||240);
+        clubLogoCropState={src,img,x:savedCrop.x*cropFrameSize,y:savedCrop.y*cropFrameSize,zoom:savedCrop.zoom};
         modal(`<div class="arena-club-logo-crop-modal-v993">
           <div class="arena-club-logo-crop-head-v993">
             <div><small>БАЗА КЛУБІВ · ЕМБЛЕМА</small><h2>РОЗТАШУВАННЯ ЕМБЛЕМИ</h2><p>Перетягни емблему пальцем. Масштаб зміни повзунком.</p></div>
@@ -4902,7 +4930,14 @@
             <button class="arena-primary-v852" type="button" onclick="ArenaV852.applyClubLogoCrop(this)">ЗАСТОСУВАТИ</button>
           </div>
         </div>`);
-        requestAnimationFrame(()=>{renderClubLogoCropImageV993();bindClubLogoCropGesturesV993();});
+        requestAnimationFrame(()=>{
+          const frameSize=Math.max(1,document.getElementById("arenaClubLogoCropFrameV993")?.clientWidth||240);
+          clubLogoCropState.x=savedCrop.x*frameSize;
+          clubLogoCropState.y=savedCrop.y*frameSize;
+          const range=document.getElementById("arenaClubLogoCropZoomV993");
+          if(range)range.value=String(Math.round(savedCrop.zoom*100));
+          renderClubLogoCropImageV993();bindClubLogoCropGesturesV993();
+        });
       };
       img.onerror=()=>{try{window.showToast?.("Не вдалося відкрити емблему")}catch(_e){}};
       img.src=src;
@@ -4921,26 +4956,16 @@
     },
     applyClubLogoCrop(button){
       if(!clubLogoCropState?.img)return;
-      const img=clubLogoCropState.img;
       const frame=document.getElementById("arenaClubLogoCropFrameV993");
       const frameSize=Math.max(1,frame?.clientWidth||240);
-      const outSize=256;
-      const base=Math.min(frameSize/Math.max(1,img.naturalWidth),frameSize/Math.max(1,img.naturalHeight));
-      const scale=base*clubLogoCropState.zoom*(outSize/frameSize);
-      const drawW=img.naturalWidth*scale;
-      const drawH=img.naturalHeight*scale;
-      const offX=clubLogoCropState.x*(outSize/frameSize);
-      const offY=clubLogoCropState.y*(outSize/frameSize);
-      const canvas=document.createElement("canvas");
-      canvas.width=outSize;canvas.height=outSize;
-      const ctx=canvas.getContext("2d");
-      ctx.clearRect(0,0,outSize,outSize);
-      ctx.imageSmoothingEnabled=true;
-      ctx.imageSmoothingQuality="high";
-      ctx.drawImage(img,(outSize-drawW)/2+offX,(outSize-drawH)/2+offY,drawW,drawH);
-      const result=canvas.toDataURL("image/webp",.94);
+      const result=clubLogoCropEncodeV1364({
+        src:clubLogoCropState.src,
+        x:clubLogoCropState.x/frameSize,
+        y:clubLogoCropState.y/frameSize,
+        zoom:clubLogoCropState.zoom
+      });
       const preview=document.getElementById("arenaClubDbPreviewV945");
-      if(preview)preview.dataset.logo=result;
+      if(preview){preview.dataset.logo=result;preview.dataset.logoSource=result;}
       button?.closest(".arena-modal-v852")?.remove();
       clubLogoCropState=null;
       this.refreshClubDatabasePreview();
