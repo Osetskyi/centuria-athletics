@@ -401,6 +401,31 @@
     loadHistoryArchive();
     return Array.isArray(historyArchive?.[kind]) ? historyArchive[kind] : [];
   };
+  const HISTORY_KIND_PREFERENCE_KEY_V1372="ca_arena_history_kind_v1372";
+  const readHistoryKindPreferenceV1372=()=>{
+    try{const kind=localStorage.getItem(HISTORY_KIND_PREFERENCE_KEY_V1372);return kind==='league'||kind==='cup'?kind:'';}catch(_e){return '';}
+  };
+  const saveHistoryKindPreferenceV1372=kind=>{
+    if(kind!=='league'&&kind!=='cup')return;
+    try{localStorage.setItem(HISTORY_KIND_PREFERENCE_KEY_V1372,kind);}catch(_e){}
+  };
+  const latestHistoryKindV1372=()=>{
+    const league=Array.isArray(historyArchive?.league)?historyArchive.league[0]:null;
+    const cup=Array.isArray(historyArchive?.cup)?historyArchive.cup[0]:null;
+    if(league&&!cup)return 'league';
+    if(cup&&!league)return 'cup';
+    if(!league&&!cup)return 'cup';
+    const leagueAt=Date.parse(String(league?.completedAt||''));
+    const cupAt=Date.parse(String(cup?.completedAt||''));
+    if(Number.isFinite(leagueAt)&&Number.isFinite(cupAt))return leagueAt>=cupAt?'league':'cup';
+    if(Number.isFinite(leagueAt))return 'league';
+    if(Number.isFinite(cupAt))return 'cup';
+    return 'league';
+  };
+  const restoreHistoryKindV1372=()=>{
+    hist=readHistoryKindPreferenceV1372()||latestHistoryKindV1372();
+    return hist;
+  };
   const isCompetitionCompleted=comp=>!!(comp && (comp.kind==='league'
     ? (comp.leagueFormat==='top4' ? !!comp.champion
       : comp.leagueFormat==='swiss' ? (comp.rounds||[]).length>=Math.max(1,Number(comp.swissRounds)||1) && (comp.rounds||[]).every(leagueRoundDoneV1093)
@@ -1399,6 +1424,7 @@
         historySeedArchive(),
         (remoteHistory&&typeof remoteHistory==='object')?cloneArenaStateV1012(remoteHistory):{cup:[],league:[]}
       );
+      restoreHistoryKindV1372();
       const remoteEvent=row?.active_event;
       activeEvent=(remoteEvent&&remoteEvent.route&&remoteEvent.title)
         ? cloneArenaStateV1012(remoteEvent)
@@ -3954,6 +3980,7 @@
       loadCupSignupPoll();
       loadLeagueSignupPollV1093();
       loadHistoryArchive();
+      restoreHistoryKindV1372();
       ensureFriendlyRealtimeV1007();
       ensureRemoteClubPollingV1009();
       ensureRemotePlayerPrefsPollingV1011();
@@ -3963,6 +3990,7 @@
     },
     go(r){
       const wasCup=route==="cup";
+      if(r==="history")restoreHistoryKindV1372();
       route=r; tab="mine"; tabAnim="none";
       if(r!=="cup"||!wasCup)cupDrawAutoAttemptKeyV1034="";
       if(r!=="league")leagueDrawAutoAttemptKeyV1095="";
@@ -4000,6 +4028,8 @@
       draw();
     },
     setHist(h){
+      if(h!=="cup"&&h!=="league")return;
+      saveHistoryKindPreferenceV1372(h);
       if(h===hist) return;
       const list=currentSwipeList()||["cup","league"];
       const cur=list.indexOf(hist), next=list.indexOf(h);
@@ -4551,6 +4581,7 @@
       saveTestCompetition();
       saveActiveEvent();
       hist=archiveKind;
+      saveHistoryKindPreferenceV1372(archiveKind);
       route="home";tab="mine";draw();
 
       const api=arenaStateApiV1012();
@@ -4573,7 +4604,7 @@
           throw new Error('The shared archive did not confirm the completed tournament');
         remoteArenaLastUpdatedV1012=String(saved.updated_at||remoteArenaLastUpdatedV1012||'');
         applyRemoteArenaStateV1012(saved,false);
-        hist=archiveKind;route="home";tab="mine";draw();
+        hist=archiveKind;saveHistoryKindPreferenceV1372(archiveKind);route="home";tab="mine";draw();
         window.showToast?.("Турнір завершено та збережено в Історії");
       }catch(err){
         console.warn('Arena tournament finish sync',err);
