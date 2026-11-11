@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#120c05">
-<meta name="centuria-build" content="13.70">
+<meta name="centuria-build" content="13.71">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -29,7 +29,6 @@
 <link rel="stylesheet" href="style.css?v=13.17">
 <link rel="stylesheet" href="analytics-center-v1348.css?v=13.58">
 <link rel="stylesheet" href="analytics-center-v1369.css?v=13.69">
-<link rel="stylesheet" href="analytics-center-v1370.css?v=13.70">
 <link rel="stylesheet" href="club-logo-crop-v1364.css?v=13.64">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
   <link rel="manifest" href="manifest.webmanifest?v=12.61">
@@ -156,6 +155,59 @@ html.light-theme .ca-analytics-empty-v1312 p{color:rgba(41,37,30,.68)}
 #screen-home #homeNextEvent.home-next-split-v1278 #homeNextMatch{grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr)!important}
 #screen-home #homeNextEvent #homeNextMatch .home-next-logo{width:46px!important;height:46px!important}
 #screen-home #homeNextEvent #homeNextMatch .home-next-logo img{width:42px!important;height:42px!important;max-width:100%!important;max-height:100%!important}
+</style>
+
+
+<style id="ca-cup-crest-spacing-v1371">
+#screen-analytics .ca-cup-bracket-team-v1357{
+  display:grid!important;
+  grid-template-columns:32px minmax(0,1fr) 18px!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding-left:9px!important;
+  padding-right:8px!important;
+}
+#screen-analytics .ca-cup-bracket-team-v1357>.ca-analytics-crest-v1317,
+#screen-analytics .ca-cup-bracket-team-v1357>.ca-team-note-trigger-v1338{
+  grid-column:1!important;
+  grid-row:1!important;
+  display:grid!important;
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  flex:0 0 32px!important;
+  margin:0!important;
+  justify-self:start!important;
+  box-sizing:border-box!important;
+}
+#screen-analytics .ca-cup-bracket-team-v1357>b{
+  grid-column:2!important;
+  grid-row:1!important;
+  min-width:0!important;
+  margin-left:3px!important;
+}
+#screen-analytics .ca-cup-bracket-team-v1357>strong{
+  grid-column:3!important;
+  grid-row:1!important;
+}
+#screen-analytics .ca-cup-bracket-team-v1357>.ca-analytics-crest-v1317 img,
+#screen-analytics .ca-cup-bracket-team-v1357>.ca-team-note-trigger-v1338 img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+}
+@media(max-width:620px){
+  #screen-analytics .ca-cup-bracket-team-v1357{
+    grid-template-columns:32px minmax(0,1fr) 17px!important;
+    gap:7px!important;
+    padding-left:7px!important;
+    padding-right:6px!important;
+  }
+}
 </style>
 
 </head>
