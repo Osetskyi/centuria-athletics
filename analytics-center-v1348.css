@@ -1396,6 +1396,8 @@ html[data-site-theme="light"] .ca-cup-participants-v1356,html.light-theme .ca-cu
 .ca-cup-bracket-lane-v1357{position:relative!important;display:grid!important;grid-template-rows:repeat(var(--cup-bracket-base-rows,1),148px)!important;grid-auto-rows:148px!important}
 .ca-cup-bracket-slot-v1357{position:relative!important;z-index:2!important;display:flex!important;align-items:center!important;min-width:0!important;padding:5px 0!important}
 .ca-cup-bracket-match-v1357{position:relative!important;z-index:2!important;width:100%!important;min-width:0!important;overflow:hidden!important;border:1px solid rgba(226,189,112,.18)!important;border-radius:12px!important;background:rgba(24,23,23,.96)!important;box-shadow:0 8px 18px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.045)!important}
+.ca-cup-bracket-match-v1357.is-bye{border-color:rgba(225,190,92,.5)!important;box-shadow:0 0 12px rgba(225,190,92,.12),0 8px 18px rgba(0,0,0,.22)!important}
+.ca-cup-bracket-match-v1357.is-bye>footer>span{color:#f3d47b!important;font-size:7px!important;letter-spacing:.07em!important}
 .ca-cup-bracket-team-v1357{display:grid!important;grid-template-columns:23px minmax(0,1fr) 23px!important;align-items:center!important;gap:6px!important;min-height:41px!important;padding:6px 8px!important;border-bottom:1px solid rgba(255,255,255,.09)!important;color:#e8e8eb!important}
 .ca-cup-bracket-team-v1357:last-of-type{border-bottom:0!important}
 .ca-cup-bracket-team-v1357 .ca-analytics-crest-v1317{width:22px!important;height:22px!important;display:grid!important;place-items:center!important;border:0!important;background:transparent!important}
@@ -1417,6 +1419,7 @@ html[data-site-theme="light"] .ca-cup-bracket-round-v1357>h3>small,html.light-th
 html[data-site-theme="light"] .ca-cup-bracket-round-v1357>h3,html.light-theme .ca-cup-bracket-round-v1357>h3{border-bottom-color:rgba(119,90,40,.19)!important}
 html[data-site-theme="light"] .ca-cup-bracket-link-v1357,html.light-theme .ca-cup-bracket-link-v1357{stroke:rgba(143,105,30,.43)!important}
 html[data-site-theme="light"] .ca-cup-bracket-match-v1357,html.light-theme .ca-cup-bracket-match-v1357{border-color:rgba(119,90,40,.23)!important;background:rgba(255,252,244,.96)!important;box-shadow:0 8px 18px rgba(76,55,19,.12),inset 0 1px 0 rgba(255,255,255,.95)!important}
+html[data-site-theme="light"] .ca-cup-bracket-match-v1357.is-bye,html.light-theme .ca-cup-bracket-match-v1357.is-bye{border-color:rgba(164,124,38,.5)!important;box-shadow:0 0 12px rgba(164,124,38,.13),0 8px 18px rgba(76,55,19,.12)!important}
 html[data-site-theme="light"] .ca-cup-bracket-team-v1357,html.light-theme .ca-cup-bracket-team-v1357{border-bottom-color:rgba(119,90,40,.13)!important;color:#30291d!important}
 html[data-site-theme="light"] .ca-cup-bracket-team-v1357>strong,html.light-theme .ca-cup-bracket-team-v1357>strong{color:rgba(48,41,29,.6)!important}
 html[data-site-theme="light"] .ca-cup-bracket-team-v1357.is-winner>b,html.light-theme .ca-cup-bracket-team-v1357.is-winner>b,

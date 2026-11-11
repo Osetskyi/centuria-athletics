@@ -495,12 +495,18 @@
     if(error)throw error;return Array.isArray(data)?data:[];
   };
   const cupBracketStageName=(teamCount,round)=>{
-    const remaining=Math.ceil(teamCount/Math.pow(2,round-1));
-    if(remaining===16)return '1/8 ФІНАЛУ';
-    if(remaining===8)return '1/4 ФІНАЛУ';
-    if(remaining===4)return 'ПІВФІНАЛ';
-    if(remaining===2)return 'ФІНАЛ';
     return `РАУНД ${round}`;
+  };
+  const cupEntrantsInOrder=teams=>{
+    const source=Array.isArray(teams)?[...teams]:[];
+    const brazzerzIndex=source.findIndex(team=>{
+      const name=normalize(clean(team?.name)).replace(/[^a-z0-9]/g,'');
+      return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers');
+    });
+    if(brazzerzIndex<0)return source;
+    const brazzerz=source[brazzerzIndex],others=source.filter((_,index)=>index!==brazzerzIndex);
+    others.splice(Math.min(14,others.length),0,brazzerz);
+    return others.slice(0,15);
   };
   const cupBracketHtml=(teams,matches)=>{
     const grouped=new Map();
@@ -509,8 +515,12 @@
       if(!grouped.has(round))grouped.set(round,[]);
       grouped.get(round).push(match);
     });
+    const entrants=cupEntrantsInOrder(teams);
     const maxRound=Math.max(1,...grouped.keys());
-    const teamCount=Math.max(2,teams.length);
+    const teamCount=Math.max(2,entrants.length);
+    const byeTeam=teamCount%2===1?entrants[teamCount-1]:null;
+    const byeMatchIndex=byeTeam?Math.floor(teamCount/2):-1;
+    const entrantKeys=new Set(entrants.map(team=>normalize(clean(team?.name))));
     const firstRoundCount=Math.max(grouped.get(1)?.length||0,Math.ceil(teamCount/2),1);
     const roundsCount=Math.max(Math.ceil(Math.log2(teamCount)),maxRound,1);
     const counts=[];
@@ -526,24 +536,33 @@
     const bracketRounds=counts.map((count,index)=>{
       const round=index+1,actual=grouped.get(round)||[];
       const cards=Array.from({length:count},(_,matchIndex)=>{
-        const match=actual[matchIndex]||null;
+        const candidate=actual[matchIndex]||null;
+        const candidateIsInvalidBye=Boolean(candidate&&byeTeam&&round===1&&matchIndex===byeMatchIndex&&![candidate.home_team_name,candidate.away_team_name].every(name=>entrantKeys.has(normalize(clean(name)))));
+        const match=candidateIsInvalidBye?null:candidate;
         const startRow=Math.floor(matchIndex*normalizedBase/count)+1,endRow=Math.floor((matchIndex+1)*normalizedBase/count),span=Math.max(1,endRow-startRow+1);
-        const homeName=clean(match?.home_team_name)||(round===1?`КОМАНДА ${matchIndex*2+1}`:`Winner of R${round-1} M${matchIndex*2+1}`);
-        const awayName=clean(match?.away_team_name)||(round===1?`КОМАНДА ${matchIndex*2+2}`:`Winner of R${round-1} M${matchIndex*2+2}`);
+        const isByeMatch=!match&&round===1&&matchIndex===byeMatchIndex;
+        const homeByeAdvance=!match&&round===2&&byeTeam&&matchIndex*2===byeMatchIndex;
+        const awayByeAdvance=!match&&round===2&&byeTeam&&matchIndex*2+1===byeMatchIndex;
+        const seededHome=round===1?entrants[matchIndex*2]:null,seededAway=round===1?entrants[matchIndex*2+1]:null;
+        const homeTeam=homeByeAdvance||isByeMatch?byeTeam:match?null:seededHome;
+        const awayTeam=awayByeAdvance?byeTeam:match?null:seededAway;
+        const homeName=clean(match?.home_team_name)||(isByeMatch||homeByeAdvance?clean(byeTeam?.name):round===1?clean(seededHome?.name)||`КОМАНДА ${matchIndex*2+1}`:`Winner of R${round-1} M${matchIndex*2+1}`);
+        const awayName=clean(match?.away_team_name)||(isByeMatch?'BYE':awayByeAdvance?clean(byeTeam?.name):round===1?clean(seededAway?.name)||`КОМАНДА ${matchIndex*2+2}`:`Winner of R${round-1} M${matchIndex*2+2}`);
         const hasScore=match&&match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
-        const homeWinner=hasScore&&Number(match.home_score)>Number(match.away_score),awayWinner=hasScore&&Number(match.away_score)>Number(match.home_score);
-        const homeCrest=match?teamNoteCrestHtml({name:homeName,logo:imageUrl(match.home_team_image)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
-        const awayCrest=match?teamNoteCrestHtml({name:awayName,logo:imageUrl(match.away_team_image)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
-        const homeRow=`<div class="ca-cup-bracket-team-v1357 ${homeWinner?'is-winner':''} ${!match?'is-placeholder':''}">${homeCrest}<b>${esc(homeName)}</b><strong>${hasScore?esc(match.home_score):''}</strong></div>`;
-        const awayRow=`<div class="ca-cup-bracket-team-v1357 ${awayWinner?'is-winner':''} ${!match?'is-placeholder':''}">${awayCrest}<b>${esc(awayName)}</b><strong>${hasScore?esc(match.away_score):''}</strong></div>`;
+        const homeWinner=Boolean(isByeMatch||homeByeAdvance)||(hasScore&&Number(match.home_score)>Number(match.away_score)),awayWinner=Boolean(awayByeAdvance)||(hasScore&&Number(match.away_score)>Number(match.home_score));
+        const teamByName=name=>entrants.find(team=>normalize(clean(team?.name))===normalize(name));
+        const homeLogo=match?.home_team_image||teamByName(homeName)?.logo||homeTeam?.logo||null,awayLogo=match?.away_team_image||teamByName(awayName)?.logo||awayTeam?.logo||null;
+        const homeCrest=match||homeTeam?teamNoteCrestHtml({name:homeName,logo:imageUrl(homeLogo)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
+        const awayCrest=match||awayTeam?teamNoteCrestHtml({name:awayName,logo:imageUrl(awayLogo)}):'<span class="ca-cup-bracket-crest-v1357 is-empty" aria-hidden="true">•</span>';
+        const homeRow=`<div class="ca-cup-bracket-team-v1357 ${homeWinner?'is-winner':''} ${!match&&!homeTeam?'is-placeholder':''}">${homeCrest}<b>${esc(homeName)}</b><strong>${hasScore?esc(match.home_score):''}</strong></div>`;
+        const awayRow=`<div class="ca-cup-bracket-team-v1357 ${awayWinner?'is-winner':''} ${!match&&!awayTeam?'is-placeholder':''}">${awayCrest}<b>${esc(awayName)}</b><strong>${hasScore?esc(match.away_score):''}</strong></div>`;
         const date=match?`${esc(formattedMatchDate(match.match_date))}${clean(match.match_time)?` · ${esc(clean(match.match_time).slice(0,5))}`:''}`:'';
         const action=match&&isAdmin()?`<button type="button" class="ca-cup-bracket-edit-v1357" data-ca-edit-cup-match="${esc(match.id)}" aria-label="Змінити матч ${esc(homeName)} — ${esc(awayName)}">✎</button>`:'';
-        const footer=match?`<footer><span>${date}</span>${action}</footer>`:'';
-        return `<div class="ca-cup-bracket-slot-v1357" style="grid-row:${startRow}/span ${span}"><article class="ca-cup-bracket-match-v1357" data-ca-bracket-match data-ca-round-index="${index}" data-ca-match-index="${matchIndex}">${homeRow}${awayRow}${footer}</article></div>`;
+        const footer=match?`<footer><span>${date}</span>${action}</footer>`:isByeMatch?'<footer><span>ВІЛЬНИЙ ПРОХІД</span></footer>':'';
+        return `<div class="ca-cup-bracket-slot-v1357" style="grid-row:${startRow}/span ${span}"><article class="ca-cup-bracket-match-v1357 ${isByeMatch?'is-bye':''}" data-ca-bracket-match data-ca-round-index="${index}" data-ca-match-index="${matchIndex}">${homeRow}${awayRow}${footer}</article></div>`;
       }).join('');
-      const stageTeams=Math.max(2,Math.ceil(teamCount/Math.pow(2,index)));
-      const title=cupBracketStageName(stageTeams,round);
-      return `<section class="ca-cup-bracket-round-v1357" data-ca-bracket-round="${index}"><h3><span>${title}</span><small>РАУНД ${round}</small></h3><div class="ca-cup-bracket-lane-v1357">${cards}</div></section>`;
+      const title=cupBracketStageName(teamCount,round);
+      return `<section class="ca-cup-bracket-round-v1357" data-ca-bracket-round="${index}"><h3><span>${title}</span></h3><div class="ca-cup-bracket-lane-v1357">${cards}</div></section>`;
     }).join('');
     return `<div class="ca-cup-bracket-help-v1357"><b>ТУРНІРНА СІТКА</b><span>ПРОКРУЧУЙ ВПРАВО, ЩОБ ПОБАЧИТИ НАСТУПНІ РАУНДИ →</span></div><div class="ca-cup-bracket-viewport-v1357" tabindex="0" role="region" aria-label="Сітка кубка. Прокручуй горизонтально між раундами"><div class="ca-cup-bracket-content-v1357" data-ca-cup-bracket style="--cup-bracket-base-rows:${normalizedBase}"><svg class="ca-cup-bracket-links-v1357" data-ca-cup-connectors aria-hidden="true"></svg>${bracketRounds}</div></div>`;
   };
@@ -580,7 +599,7 @@
     if(cupsError)body=`<p class="ca-analytics-note-v1317 ca-analytics-error-v1317">${esc(cupsError)}</p>`;
     else if(!cup)body='<div class="ca-analytics-cup-empty-v1336"><span aria-hidden="true">🏆</span><b>КУБОК ЩЕ НЕ СТВОРЕНО</b><p>Створи кубок для перегляду реальних матчів команди. Голосувань і реєстрації гравців тут немає.</p></div>';
     else{
-      const teams=Array.isArray(cup.teams)?cup.teams:[];
+      const teams=cupEntrantsInOrder(cup.teams);
       const teamStrip=teams.map(team=>`<span class="ca-cup-team-chip-v1336">${teamNoteCrestHtml(team)}<b>${esc(team.name)}</b></span>`).join('');
       const completed=cupMatches.filter(match=>match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined);
       const waiting=cupMatches.length-completed.length;
