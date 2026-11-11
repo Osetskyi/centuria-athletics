@@ -1,8 +1,8 @@
-/* Centuria v13.79 — club crests in League standings and Active Event table. */
+/* Centuria v13.80 — fix club crests in archived League standings. */
 (()=>{
   'use strict';
 
-  const BUILD='13.79';
+  const BUILD='13.80';
   let refreshTimer=0;
 
   const normalize=s=>String(s??'')
@@ -85,18 +85,20 @@
 
   const enhance=()=>{
     updateVersion();
-    const roots=[
-      document.getElementById('arenaApp'),
-      ...document.querySelectorAll('.arena-modal-v852 .arena-history-league-table-card-v1120')
-    ].filter(Boolean);
-    roots.forEach(root=>{
-      root.querySelectorAll('.arena-league-standings-card-v1096 .arena-league-mobile-row-v1099:not(.mobile-head)').forEach(row=>{
+    /* The archive table is itself .arena-league-standings-card-v1096.
+       Query the card first, then its rows; using "card rows" under the card
+       skipped every archived row because querySelectorAll excludes its root. */
+    const cards=document.querySelectorAll(
+      '#arenaApp .arena-league-standings-card-v1096, .arena-modal-v852 .arena-league-standings-card-v1096'
+    );
+    cards.forEach(card=>{
+      card.querySelectorAll('.arena-league-mobile-row-v1099:not(.mobile-head)').forEach(row=>{
         const cell=row.querySelector('.mobile-player');
         const team=String(cell?.querySelector('small')?.textContent||'').trim();
         ensureCrest(cell,team,false);
       });
 
-      root.querySelectorAll('.arena-league-standings-card-v1096 table.arena-league-standings-table-v1096 tbody .arena-league-player-cell-v1096').forEach(cell=>{
+      card.querySelectorAll('table.arena-league-standings-table-v1096 tbody .arena-league-player-cell-v1096').forEach(cell=>{
         const team=String(cell.querySelector('small')?.textContent||'').trim();
         ensureCrest(cell,team,true);
       });
