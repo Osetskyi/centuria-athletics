@@ -1,4 +1,4 @@
-/* v13.73 — open History on the newest archived competition, regardless of stale local tab selection. */
+/* v13.74 — keep the Supabase Arena archive canonical after remote sync; do not overwrite it from stale localStorage. */
 /* v12.30 — winner confetti restored and made continuous; light-theme close button kept. */
 /* v12.23-winner — champion celebration card for completed Cup/League. */
 /* v12.17 — EVO-based BYE for odd Cup rounds. */
@@ -12,7 +12,6 @@
   const P=[["Volkovson",1000,"Manchester United"],["Osetskyi_3",1000,"Real Madrid"],["Romeo_130901",1000,"Arsenal"],["Mitsuki_one_love",1000,"Barcelona"],["Loter24",1000,"Milan"]];
   const C={"Manchester United":"🔴","Real Madrid":"⚪","Arsenal":"🔴","Barcelona":"🔵","Milan":"⚫","Chelsea":"🔵","Liverpool":"🔴","Juventus":"⚫","Bayern Munich":"🔴","PSG":"🔵","Inter":"🔵","Centuria":"🟡"};
   let route="home", tab="mine", hist="cup", testParticipants=[];
-  let historyKindManuallySelectedV1373=false;
   let leagueTableViewV1108="table";
   let leagueCalendarOpenRoundsV1115={};
   let cupPollPanelV1031="";
@@ -33,6 +32,7 @@
   // v10.12 — Arena-wide Supabase state sync hooks. The real implementation
   // is attached after the history helpers are initialized.
   let remoteArenaStateApplyingV1012=false;
+  let remoteArenaStateReadyV1012=false;
   let queueRemoteArenaStateSaveV1012=()=>{};
   const PLAYER_PREFS_KEY="ca_arena_player_prefs_v930";
   let playerArenaPrefs={};
@@ -386,6 +386,10 @@
     };
   };
   const loadHistoryArchive=()=>{
+    // Once the shared state has loaded, Supabase-backed memory is canonical.
+    // Re-reading a stale or quota-blocked local cache here used to erase the
+    // just-loaded archive from both History and the EVO calculation.
+    if(remoteArenaStateReadyV1012)return historyArchive;
     const seed=historySeedArchive();
     let saved={cup:[],league:[]};
     try{
@@ -403,6 +407,14 @@
     loadHistoryArchive();
     return Array.isArray(historyArchive?.[kind]) ? historyArchive[kind] : [];
   };
+  const HISTORY_KIND_PREFERENCE_KEY_V1372="ca_arena_history_kind_v1372";
+  const readHistoryKindPreferenceV1372=()=>{
+    try{const kind=localStorage.getItem(HISTORY_KIND_PREFERENCE_KEY_V1372);return kind==='league'||kind==='cup'?kind:'';}catch(_e){return '';}
+  };
+  const saveHistoryKindPreferenceV1372=kind=>{
+    if(kind!=='league'&&kind!=='cup')return;
+    try{localStorage.setItem(HISTORY_KIND_PREFERENCE_KEY_V1372,kind);}catch(_e){}
+  };
   const latestHistoryKindV1372=()=>{
     const league=Array.isArray(historyArchive?.league)?historyArchive.league[0]:null;
     const cup=Array.isArray(historyArchive?.cup)?historyArchive.cup[0]:null;
@@ -416,10 +428,8 @@
     if(Number.isFinite(cupAt))return 'cup';
     return 'league';
   };
-  const restoreHistoryKindV1373=()=>{
-    // A remembered Cup selection can hide a newer completed League. On entry,
-    // default to the newest archive; preserve a tab choice only during this visit.
-    if(!historyKindManuallySelectedV1373)hist=latestHistoryKindV1372();
+  const restoreHistoryKindV1372=()=>{
+    hist=readHistoryKindPreferenceV1372()||latestHistoryKindV1372();
     return hist;
   };
   const isCompetitionCompleted=comp=>!!(comp && (comp.kind==='league'
@@ -1366,7 +1376,6 @@
      are refreshed through one Arena-wide realtime bridge as well.
      ======================================================== */
   let remoteArenaStateLoadingV1012=false;
-  let remoteArenaStateReadyV1012=false;
   let remoteArenaStateSaveTimerV1012=0;
   let remoteArenaStateSaveInFlightV1061=Promise.resolve();
   let remoteArenaStatePollV1012=0;
@@ -1420,7 +1429,7 @@
         historySeedArchive(),
         (remoteHistory&&typeof remoteHistory==='object')?cloneArenaStateV1012(remoteHistory):{cup:[],league:[]}
       );
-      restoreHistoryKindV1373();
+      restoreHistoryKindV1372();
       const remoteEvent=row?.active_event;
       activeEvent=(remoteEvent&&remoteEvent.route&&remoteEvent.title)
         ? cloneArenaStateV1012(remoteEvent)
@@ -2811,12 +2820,7 @@
       let idx=list.indexOf(hist);
       if(idx<0) idx=0;
       idx=Math.max(0,Math.min(list.length-1,idx+direction));
-      if(list[idx]!==hist){
-        historyKindManuallySelectedV1373=true;
-        tabAnim=direction>0?"next":"prev";
-        hist=list[idx];
-        draw();
-      }
+      if(list[idx]!==hist){ tabAnim=direction>0?"next":"prev"; hist=list[idx]; draw(); }
       return;
     }
     let idx=list.indexOf(tab);
@@ -3981,8 +3985,7 @@
       loadCupSignupPoll();
       loadLeagueSignupPollV1093();
       loadHistoryArchive();
-      historyKindManuallySelectedV1373=false;
-      restoreHistoryKindV1373();
+      restoreHistoryKindV1372();
       ensureFriendlyRealtimeV1007();
       ensureRemoteClubPollingV1009();
       ensureRemotePlayerPrefsPollingV1011();
@@ -3992,10 +3995,7 @@
     },
     go(r){
       const wasCup=route==="cup";
-      if(r==="history"){
-        historyKindManuallySelectedV1373=false;
-        restoreHistoryKindV1373();
-      }
+      if(r==="history")restoreHistoryKindV1372();
       route=r; tab="mine"; tabAnim="none";
       if(r!=="cup"||!wasCup)cupDrawAutoAttemptKeyV1034="";
       if(r!=="league")leagueDrawAutoAttemptKeyV1095="";
@@ -4034,7 +4034,7 @@
     },
     setHist(h){
       if(h!=="cup"&&h!=="league")return;
-      historyKindManuallySelectedV1373=true;
+      saveHistoryKindPreferenceV1372(h);
       if(h===hist) return;
       const list=currentSwipeList()||["cup","league"];
       const cur=list.indexOf(hist), next=list.indexOf(h);
@@ -4585,8 +4585,8 @@
       activeEvent=null;
       saveTestCompetition();
       saveActiveEvent();
-      historyKindManuallySelectedV1373=false;
       hist=archiveKind;
+      saveHistoryKindPreferenceV1372(archiveKind);
       route="home";tab="mine";draw();
 
       const api=arenaStateApiV1012();
@@ -4609,7 +4609,7 @@
           throw new Error('The shared archive did not confirm the completed tournament');
         remoteArenaLastUpdatedV1012=String(saved.updated_at||remoteArenaLastUpdatedV1012||'');
         applyRemoteArenaStateV1012(saved,false);
-        historyKindManuallySelectedV1373=false;hist=archiveKind;route="home";tab="mine";draw();
+        hist=archiveKind;saveHistoryKindPreferenceV1372(archiveKind);route="home";tab="mine";draw();
         window.showToast?.("Турнір завершено та збережено в Історії");
       }catch(err){
         console.warn('Arena tournament finish sync',err);
