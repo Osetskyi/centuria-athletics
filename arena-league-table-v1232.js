@@ -1,8 +1,8 @@
-/* Centuria v12.35 — club crests in League standings and Active Event table. */
+/* Centuria v13.79 — club crests in League standings and Active Event table. */
 (()=>{
   'use strict';
 
-  const BUILD='12.35';
+  const BUILD='13.79';
   let refreshTimer=0;
 
   const normalize=s=>String(s??'')
@@ -85,18 +85,21 @@
 
   const enhance=()=>{
     updateVersion();
-    const root=document.getElementById('arenaApp');
-    if(!root)return;
+    const roots=[
+      document.getElementById('arenaApp'),
+      ...document.querySelectorAll('.arena-modal-v852 .arena-history-league-table-card-v1120')
+    ].filter(Boolean);
+    roots.forEach(root=>{
+      root.querySelectorAll('.arena-league-standings-card-v1096 .arena-league-mobile-row-v1099:not(.mobile-head)').forEach(row=>{
+        const cell=row.querySelector('.mobile-player');
+        const team=String(cell?.querySelector('small')?.textContent||'').trim();
+        ensureCrest(cell,team,false);
+      });
 
-    root.querySelectorAll('.arena-league-standings-card-v1096 .arena-league-mobile-row-v1099:not(.mobile-head)').forEach(row=>{
-      const cell=row.querySelector('.mobile-player');
-      const team=String(cell?.querySelector('small')?.textContent||'').trim();
-      ensureCrest(cell,team,false);
-    });
-
-    root.querySelectorAll('.arena-league-standings-card-v1096 table.arena-league-standings-table-v1096 tbody .arena-league-player-cell-v1096').forEach(cell=>{
-      const team=String(cell.querySelector('small')?.textContent||'').trim();
-      ensureCrest(cell,team,true);
+      root.querySelectorAll('.arena-league-standings-card-v1096 table.arena-league-standings-table-v1096 tbody .arena-league-player-cell-v1096').forEach(cell=>{
+        const team=String(cell.querySelector('small')?.textContent||'').trim();
+        ensureCrest(cell,team,true);
+      });
     });
   };
 
@@ -107,7 +110,7 @@
 
   const init=()=>{
     updateVersion();
-    const root=document.getElementById('arenaApp')||document.documentElement;
+    const root=document.body||document.documentElement;
     const observer=new MutationObserver(queueEnhance);
     observer.observe(root,{childList:true,subtree:true,attributes:true,attributeFilter:['data-route','class']});
     setInterval(enhance,1400);
