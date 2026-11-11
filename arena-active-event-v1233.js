@@ -1,8 +1,8 @@
-/* Centuria v12.35 — active event League preview mirrors the real League table. */
+/* Centuria v13.81 — remove completed tournaments from the Active Event card. */
 (()=>{
   'use strict';
 
-  const BUILD='12.49';
+  const BUILD='13.81';
   const ACTIVE_EVENT_KEY='ca_arena_active_event';
   const ACTIVE_EVENT_LEGACY_KEY='ca_arena_active_event_v925';
   let busy=false;
@@ -14,6 +14,32 @@
   };
 
   const isScored=m=>Number.isFinite(m?.homeScore)&&Number.isFinite(m?.awayScore);
+  const competitionCompleted=comp=>{
+    if(!comp?.kind)return false;
+    if(comp.kind==='cup')return !!comp.champion;
+    if(comp.kind!=='league')return false;
+    if(comp.leagueFormat==='top4')return !!comp.champion;
+    const rounds=Array.isArray(comp.rounds)?comp.rounds:[];
+    if(!rounds.length)return false;
+    const matches=rounds.flatMap(round=>Array.isArray(round?.matches)?round.matches:[]);
+    if(!matches.length)return false;
+    const roundsDone=rounds.every(round=>{
+      const roundMatches=Array.isArray(round?.matches)?round.matches:[];
+      return roundMatches.every(match=>isScored(match)&&(!round?.playoff||
+        Number(match.homeScore)!==Number(match.awayScore)||!!match.tiebreakWinner));
+    });
+    if(!roundsDone)return false;
+    if(comp.leagueFormat==='swiss')
+      return rounds.length>=Math.max(1,Number(comp.swissRounds)||1);
+    return true;
+  };
+  const eventCompleted=event=>/\bЗАВЕРШЕНО\b/i.test(String(event?.meta||''));
+  const eventMatchesCompetition=(event,comp)=>{
+    if(!event?.title||!comp?.kind)return false;
+    const title=String(comp.title||(comp.kind==='cup'?'CENTURIA CUP':'CENTURIA LEAGUE'));
+    if(String(event.title)!==title)return false;
+    return !event.createdAt||!comp.createdAt||String(event.createdAt)===String(comp.createdAt);
+  };
   const currentLeagueRound=comp=>(comp?.rounds||[]).find(r=>(r?.matches||[]).some(m=>!isScored(m)))||(comp?.rounds||[]).at(-1)||null;
 
   const eventFromCompetition=comp=>{
@@ -51,6 +77,23 @@
       if(old!==raw)changed=true;
       window.__CENTURIA_ARENA_ACTIVE_EVENT__=event;
     }catch(_e){window.__CENTURIA_ARENA_ACTIVE_EVENT__=event;}
+    return changed;
+  };
+
+  const storedEvent=()=>{
+    try{
+      return JSON.parse(localStorage.getItem(ACTIVE_EVENT_KEY)||localStorage.getItem(ACTIVE_EVENT_LEGACY_KEY)||'null');
+    }catch(_e){return null;}
+  };
+  const clearStoredEvent=()=>{
+    let changed=false;
+    try{
+      changed=!!localStorage.getItem(ACTIVE_EVENT_KEY)||!!localStorage.getItem(ACTIVE_EVENT_LEGACY_KEY);
+      localStorage.removeItem(ACTIVE_EVENT_KEY);
+      localStorage.removeItem(ACTIVE_EVENT_LEGACY_KEY);
+    }catch(_e){}
+    if(window.__CENTURIA_ARENA_ACTIVE_EVENT__)changed=true;
+    window.__CENTURIA_ARENA_ACTIVE_EVENT__=null;
     return changed;
   };
 
@@ -189,9 +232,18 @@
     try{
       const row=await api.get();
       const comp=row?.active_competition;
-      const event=(row?.active_event?.route&&row?.active_event?.title)
-        ? row.active_event
-        : eventFromCompetition(comp);
+      const remoteEvent=(row?.active_event?.route&&row?.active_event?.title)?row.active_event:null;
+      const event=comp?.kind?eventFromCompetition(comp):remoteEvent;
+      const completed=comp?.kind
+        ? competitionCompleted(comp)||(eventMatchesCompetition(remoteEvent,comp)&&eventCompleted(remoteEvent))
+        : eventCompleted(remoteEvent||storedEvent());
+      if(completed){
+        const changed=clearStoredEvent();
+        const root=document.getElementById('arenaApp');
+        const hasVisibleActiveCard=!!root?.querySelector('.arena-active-event-v877:not(.arena-active-event-empty-v879)');
+        if(redraw&&root?.dataset?.route==='home'&&(changed||hasVisibleActiveCard))window.ArenaV852?.draw?.();
+        return;
+      }
       if(!event)return;
       const changed=persistEvent(event);
       const root=document.getElementById('arenaApp');
