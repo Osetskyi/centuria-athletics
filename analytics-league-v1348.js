@@ -1,4 +1,4 @@
-/* Centuria Analytics v13.60 — force Brazzerz into the 15-team bye slot */
+/* Centuria Analytics v13.61 — place Brothers in the 15-team bye slot */
 (()=>{
   'use strict';
 
@@ -497,26 +497,26 @@
   const cupBracketStageName=(teamCount,round)=>{
     return `РАУНД ${round}`;
   };
-  const isBrazzerzEntrant=team=>{
+  const isBrothersEntrant=team=>{
     const name=normalize(clean(team?.name)).replace(/[^a-z0-9а-яіїєґ]/g,'');
-    return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers')||name.includes('браззерс')||name.includes('бразерс');
+    return name.includes('brothers');
   };
-  const cupBrazzerzEntrant=teams=>{
-    const saved=(Array.isArray(teams)?teams:[]).find(isBrazzerzEntrant);
+  const cupBrothersEntrant=teams=>{
+    const saved=(Array.isArray(teams)?teams:[]).find(isBrothersEntrant);
     if(saved)return saved;
-    const leagueTeam=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrazzerzEntrant);
-    return leagueTeam?{...leagueTeam}:{normalized_name:'brazzerz',name:'Brazzerz',logo:''};
+    const leagueTeam=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrothersEntrant);
+    return leagueTeam?{...leagueTeam}:{normalized_name:'brothers',name:'Brothers',logo:''};
   };
   const cupEntrantsInOrder=teams=>{
     const source=Array.isArray(teams)?[...teams]:[];
-    let brazzerzIndex=source.findIndex(isBrazzerzEntrant);
-    if(brazzerzIndex<0&&source.length===15){
-      source[14]=cupBrazzerzEntrant(source);
-      brazzerzIndex=14;
+    let brothersIndex=source.findIndex(isBrothersEntrant);
+    if(brothersIndex<0&&source.length===15){
+      source[14]=cupBrothersEntrant(source);
+      brothersIndex=14;
     }
-    if(brazzerzIndex<0)return source;
-    const brazzerz=source[brazzerzIndex],others=source.filter((_,index)=>index!==brazzerzIndex);
-    others.splice(Math.min(14,others.length),0,brazzerz);
+    if(brothersIndex<0)return source;
+    const brothers=source[brothersIndex],others=source.filter((_,index)=>index!==brothersIndex);
+    others.splice(Math.min(14,others.length),0,brothers);
     return others.slice(0,15);
   };
   const cupBracketHtml=(teams,matches)=>{
@@ -529,7 +529,7 @@
     const entrants=cupEntrantsInOrder(teams);
     const maxRound=Math.max(1,...grouped.keys());
     const teamCount=Math.max(2,entrants.length);
-    const byeTeam=teamCount%2===1?(teamCount===15?cupBrazzerzEntrant(entrants):entrants[teamCount-1]):null;
+    const byeTeam=teamCount%2===1?(teamCount===15?cupBrothersEntrant(entrants):entrants[teamCount-1]):null;
     const byeMatchIndex=byeTeam?Math.floor(teamCount/2):-1;
     const entrantKeys=new Set(entrants.map(team=>normalize(clean(team?.name))));
     const firstRoundCount=Math.max(grouped.get(1)?.length||0,Math.ceil(teamCount/2),1);
