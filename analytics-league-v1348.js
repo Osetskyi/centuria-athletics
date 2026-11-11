@@ -1,4 +1,4 @@
-/* Centuria Analytics v13.59 — Brazzerz bye slot correction */
+/* Centuria Analytics v13.60 — force Brazzerz into the 15-team bye slot */
 (()=>{
   'use strict';
 
@@ -497,16 +497,21 @@
   const cupBracketStageName=(teamCount,round)=>{
     return `РАУНД ${round}`;
   };
+  const isBrazzerzEntrant=team=>{
+    const name=normalize(clean(team?.name)).replace(/[^a-z0-9а-яіїєґ]/g,'');
+    return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers')||name.includes('браззерс')||name.includes('бразерс');
+  };
+  const cupBrazzerzEntrant=teams=>{
+    const saved=(Array.isArray(teams)?teams:[]).find(isBrazzerzEntrant);
+    if(saved)return saved;
+    const leagueTeam=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrazzerzEntrant);
+    return leagueTeam?{...leagueTeam}:{normalized_name:'brazzerz',name:'Brazzerz',logo:''};
+  };
   const cupEntrantsInOrder=teams=>{
     const source=Array.isArray(teams)?[...teams]:[];
-    const isBrazzerz=team=>{
-      const name=normalize(clean(team?.name)).replace(/[^a-z0-9а-яіїєґ]/g,'');
-      return name.includes('brazzerz')||name.includes('brazzers')||name.includes('brazers')||name.includes('браззерс')||name.includes('бразерс');
-    };
-    let brazzerzIndex=source.findIndex(isBrazzerz);
+    let brazzerzIndex=source.findIndex(isBrazzerzEntrant);
     if(brazzerzIndex<0&&source.length===15){
-      const leagueBrazzerz=leagues.flatMap(league=>Array.isArray(league?.teams)?league.teams:[]).find(isBrazzerz);
-      source[14]=leagueBrazzerz?{...leagueBrazzerz}:{normalized_name:'brazzerz',name:'Brazzerz',logo:''};
+      source[14]=cupBrazzerzEntrant(source);
       brazzerzIndex=14;
     }
     if(brazzerzIndex<0)return source;
@@ -524,7 +529,7 @@
     const entrants=cupEntrantsInOrder(teams);
     const maxRound=Math.max(1,...grouped.keys());
     const teamCount=Math.max(2,entrants.length);
-    const byeTeam=teamCount%2===1?entrants[teamCount-1]:null;
+    const byeTeam=teamCount%2===1?(teamCount===15?cupBrazzerzEntrant(entrants):entrants[teamCount-1]):null;
     const byeMatchIndex=byeTeam?Math.floor(teamCount/2):-1;
     const entrantKeys=new Set(entrants.map(team=>normalize(clean(team?.name))));
     const firstRoundCount=Math.max(grouped.get(1)?.length||0,Math.ceil(teamCount/2),1);
