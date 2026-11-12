@@ -1,4 +1,4 @@
-/* Centuria v12.57 — position history from match screenshots; read-only player UI. */
+/* Centuria v13.84 — position history from match screenshots; read-only player UI. */
 (function(){
   'use strict';
   // Russian position names match the game's score screen. The rest of the UI is Ukrainian.
@@ -191,7 +191,12 @@
     if(typeof sb==='undefined'||!sb||typeof authUser==='undefined'||!authUser)return;
     if(loading)return loading;
     loading=(async()=>{
-      const {data:rows,error}=await sb.from('player_position_matches').select('*');
+      const fetchAll=window.CenturiaLoadAllPositionMatchesV1384;
+      if(typeof fetchAll!=='function'){
+        console.warn('Position history pagination helper unavailable');
+        return;
+      }
+      const {data:rows,error}=await fetchAll();
       if(error){console.warn('Position history fetch error',error);return;}
       window.CenturiaPositionMatchesV1250=rows||[];
       loaded=true;

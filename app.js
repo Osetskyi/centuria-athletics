@@ -5504,13 +5504,33 @@ $("homeNextEvent")?.addEventListener("click",openHomeNextEvent);
 
 
 /* Training days, official stats and MVP */
+/* v13.84: player_position_matches has grown beyond the Data API's single-response
+   row cap. Read it in stable, ordered pages so recent position history is not
+   silently omitted from player cards and awards. */
+async function loadAllPositionMatchesV1384(){
+  const pageSize=500;
+  const rows=[];
+  for(let from=0;;from+=pageSize){
+    const {data:page,error}=await sb.from("player_position_matches").select("*")
+      .order("created_at",{ascending:true})
+      .order("id",{ascending:true})
+      .range(from,from+pageSize-1);
+    if(error)return {data:null,error};
+    const chunk=page||[];
+    rows.push(...chunk);
+    if(chunk.length<pageSize)break;
+  }
+  return {data:rows,error:null};
+}
+window.CenturiaLoadAllPositionMatchesV1384=loadAllPositionMatchesV1384;
+
 async function loadStatisticsData(){
   if(!sb||!authUser)return;
   const [td,ts,os,pm]=await Promise.all([
     sb.from("training_days").select("*").order("training_date",{ascending:true}),
     sb.from("training_player_stats").select("*"),
     sb.from("official_match_player_stats").select("*"),
-    sb.from("player_position_matches").select("*")
+    loadAllPositionMatchesV1384()
   ]);
   if(!td.error)trainingDays=td.data||[];
   if(!ts.error)trainingStats=ts.data||[];
