@@ -2570,6 +2570,63 @@
     return `<div class="arena-route-head-v920 arena-league-head-v920"><h2>CENTURIA LEAGUE</h2><p class="arena-gold-v852">АКТИВНОЇ ЛІГИ ПОКИ НЕМАЄ</p></div>${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`
   }
 
+  const restoreWorldCupPairsV1387=()=>{
+    const comp=testCompetition;
+    if(!isArenaAdmin()||comp?.kind!=='cup'||!String(comp.title||'').toLowerCase().includes('world cup')||comp.champion)return false;
+    const seedPairs=[
+      ['FastikX777','Watchful-mullet'],
+      ['Romeo_130901','ratikss_odessa'],
+      ['Volkovson','im-like-lonely'],
+      ['Casilias','Osetskyi_3'],
+      ['VanDerJoy','kozaksirko_60fps']
+    ];
+    const seedNames=[...seedPairs.flat(), 'Grud16'];
+    const participants=Array.isArray(comp.participants)?comp.participants:[];
+    if(!seedNames.every(name=>participants.some(player=>sameArenaPlayer(player,name))))return false;
+    const original=comp.rounds?.[0];
+    if(!original||(original.matches||[]).some(match=>isScored(match)||matchProposalV1067(match)))return false;
+    const playerClub=name=>{
+      const oldPair=(comp.draw?.pairs||[]).find(pair=>sameArenaPlayer(pair.home,name)||sameArenaPlayer(pair.away,name));
+      if(oldPair){const club=sameArenaPlayer(oldPair.home,name)?oldPair.homeClub:oldPair.awayClub;if(club)return club;}
+      const bye=(comp.draw?.byes||[]).find(item=>sameArenaPlayer(item?.player||item,name));
+      const key=Object.keys(comp.participantClubs||{}).find(player=>sameArenaPlayer(player,name));
+      return String(bye?.club||(key&&comp.participantClubs[key])||clubFor(name)||'').trim();
+    };
+    const extras=participants.filter(player=>!seedNames.some(name=>sameArenaPlayer(player,name)));
+    const plannedPairs=seedPairs.map(pair=>[...pair]);
+    const plannedByes=[];
+    if(extras.length){
+      plannedPairs.push(['Grud16',extras[0]]);
+      for(let i=1;i+1<extras.length;i+=2)plannedPairs.push([extras[i],extras[i+1]]);
+      if((extras.length-1)%2)plannedByes.push(extras.at(-1));
+    }else plannedByes.push('Grud16');
+    const participantClubs={...(comp.participantClubs||{})};
+    for(const name of participants){
+      const key=Object.keys(participantClubs).find(player=>sameArenaPlayer(player,name));
+      const team=playerClub(name);
+      if(team)participantClubs[key||name]=team;
+    }
+    const round=cloneArenaStateV1012(original);
+    round.matches=plannedPairs.map(([home,away],index)=>({id:`C1_FIXED_${index+1}`,round:Number(original.round)||1,home,away,homeScore:null,awayScore:null,leg2HomeScore:null,leg2AwayScore:null,tiebreakWinner:null,homeClub:participantClubs[Object.keys(participantClubs).find(player=>sameArenaPlayer(player,home))]||playerClub(home)||'Centuria',awayClub:participantClubs[Object.keys(participantClubs).find(player=>sameArenaPlayer(player,away))]||playerClub(away)||'Centuria'}));
+    round.byes=plannedByes;
+    const pairs=plannedPairs.map(([home,away])=>({home,away,homeClub:playerClub(home)||participantClubs[home]||'Centuria',awayClub:playerClub(away)||participantClubs[away]||'Centuria'}));
+    const byes=plannedByes.map(player=>({player,club:playerClub(player)||participantClubs[player]||'Centuria'}));
+    const oldMatches=original.matches||[];
+    const sameMatches=oldMatches.length===plannedPairs.length&&plannedPairs.every(([home,away],i)=>sameArenaPlayer(oldMatches[i]?.home,home)&&sameArenaPlayer(oldMatches[i]?.away,away));
+    const sameByes=(original.byes||[]).length===plannedByes.length&&plannedByes.every((name,i)=>sameArenaPlayer((original.byes||[])[i],name));
+    const oldDrawPairs=comp.draw?.pairs||[];
+    const sameDrawPairs=oldDrawPairs.length===pairs.length&&pairs.every((pair,i)=>sameArenaPlayer(oldDrawPairs[i]?.home,pair.home)&&sameArenaPlayer(oldDrawPairs[i]?.away,pair.away)&&normalizeTeamName(oldDrawPairs[i]?.homeClub)===normalizeTeamName(pair.homeClub)&&normalizeTeamName(oldDrawPairs[i]?.awayClub)===normalizeTeamName(pair.awayClub));
+    const oldDrawByes=comp.draw?.byes||[];
+    const sameDrawByes=oldDrawByes.length===byes.length&&byes.every((bye,i)=>sameArenaPlayer(oldDrawByes[i]?.player||oldDrawByes[i],bye.player)&&normalizeTeamName(oldDrawByes[i]?.club)===normalizeTeamName(bye.club));
+    if(sameMatches&&sameByes&&sameDrawPairs&&sameDrawByes)return false;
+    const now=Date.now();
+    testCompetition={...comp,participantClubs,rounds:[round,...(comp.rounds||[]).slice(1)],draw:{...(comp.draw||{}),pairs,byes,completedAt:comp.draw?.completedAt||now,updatedAt:now}};
+    saveTestCompetition();
+    syncActiveEventFromCompetition();
+    cupDrawAnimationOpenV1033=false;cupDrawOpenV1032=false;resetCupDrawAnimationStateV1033();
+    window.showToast?.('Пари відновлено як на скріншоті, збірні збережено');
+    return true;
+  };
   function cup(){
     const t=[["mine","МІЙ МАТЧ"],["bracket","СІТКА"],["round","РАУНД"],["old","ІСТОРІЯ"]];
     const cupHero=(title,meta,kicker="ТУРНІР КУБКА")=>`<div class="arena-route-head-v920 arena-cup-hero-v969"><div class="arena-cup-kicker-v969">🏆 ${kicker}</div><h2>${title}</h2><p>${meta}</p></div>`;
@@ -2577,6 +2634,7 @@
     const matchCard=(home,away,label,action)=>`<div class="arena-card-v852 arena-cup-match-card-v969"><div class="arena-gold-v852 arena-cup-stage-v969">${label}</div><div class="arena-cup-match-v969"><div class="arena-cup-side-v969">${crestBadge(competitionClubFor(home),teamPhotoFor(home))}<h3>${esc(home)}</h3><span>${esc(competitionClubFor(home))}</span></div><div class="arena-cup-vs-v969">VS</div><div class="arena-cup-side-v969">${crestBadge(competitionClubFor(away),teamPhotoFor(away))}<h3>${esc(away)}</h3><span>${esc(competitionClubFor(away))}</span></div></div>${action}</div>`;
     const pairCard=(home,away,scoreHtml,kicker,match=null)=>`<div class="arena-card-v852 arena-cup-pair-v969"><div class="arena-cup-pair-kicker-v969">${kicker}</div><div class="arena-cup-pair-line-v969"><div class="arena-cup-pair-side-v1058">${crestBadge(competitionClubFor(home),teamPhotoFor(home))}<span class="arena-cup-pair-copy-v1058"><b>${esc(home)}</b><span class="arena-muted-v852">${esc(competitionClubFor(home))}</span></span></div><div class="arena-cup-pair-score-v969">${scoreHtml}</div><div class="arena-cup-pair-side-v1058 arena-cup-pair-side-right-v1058">${crestBadge(competitionClubFor(away),teamPhotoFor(away))}<span class="arena-cup-pair-copy-v1058"><b>${esc(away)}</b><span class="arena-muted-v852">${esc(competitionClubFor(away))}</span></span></div></div></div>`;
     if(testCompetition?.kind==="cup"){
+      restoreWorldCupPairsV1387();
       const r=currentCupRound();
       const viewer=currentArenaViewerName();
       const viewerMatch=viewer?allMatches().find(m=>!cupMatchFinished(m,testCompetition)&&(sameArenaPlayer(m.home,viewer)||sameArenaPlayer(m.away,viewer))):null;
@@ -2603,7 +2661,7 @@
       const liveCover=testCompetition.cover?`<div class="arena-cup-poll-cover-v1026 arena-live-cup-cover-v121">${tournamentCoverMediaMarkupV1383(testCompetition.cover,testCompetition.title||'CENTURIA CUP')}</div>`:'';
       const firstCupRound=testCompetition.rounds?.[0];
       const cupRoundStarted=!!(firstCupRound?.matches||[]).some(m=>isScored(m)||matchProposalV1067(m));
-      const addCupPlayers=isArenaAdmin()&&!testCompetition.champion&&!cupRoundStarted?`<button type="button" class="arena-secondary-v852" onclick="ArenaV852.openAddCupParticipantsV1386()">＋ ДОДАТИ ГРАВЦЯ</button>`:'';
+      const addCupPlayers=isArenaAdmin()&&!testCompetition.champion&&!cupRoundStarted?`<button type="button" class="arena-secondary-v852" onclick="ArenaV852.openAddCupParticipantsV1387()">＋ ДОДАТИ ГРАВЦЯ</button>`:'';
       const replaceCover=isArenaAdmin()?`<div class="arena-live-cover-edit-v121"><button type="button" class="arena-secondary-v852 arena-cover-replace-v121" onclick="document.getElementById('arenaCupLiveCoverV121')?.click()">🖼 ЗАМІНИТИ ФОТО / ВІДЕО / ВІДЕО КУБКА</button><input id="arenaCupLiveCoverV121" type="file" accept="${tournamentCoverAcceptV1383}" hidden onchange="ArenaV852.replaceTournamentCover(this,'cup','live')">${addCupPlayers}</div>`:'';
       const winnerCelebration=competitionWinnerCelebrationV1223(testCompetition);
       return `${cupHero(testCompetition.title||'CENTURIA CUP',meta,'ТУРНІР КУБКА')}${winnerCelebration||(liveCover+replaceCover)}${drawBlock}${tabs(t)}${tabStage(body,t,tab,'ArenaV852.setTab')}`;
@@ -4367,21 +4425,21 @@
         if(badge)badge.innerHTML='';
       }
     },
-    openAddCupParticipantsV1386(){
+    openAddCupParticipantsV1387(){
       if(!isArenaAdmin()||testCompetition?.kind!=='cup'||testCompetition.champion)return;
       const firstRound=testCompetition.rounds?.[0];
       if((firstRound?.matches||[]).some(m=>isScored(m)||matchProposalV1067(m))){window.showToast?.('Додавати гравців можна лише до першого зіграного матчу');return;}
       const existing=testCompetition.participants||[];
       const pool=livePlayerPoolV1295().filter(name=>!existing.some(old=>sameArenaPlayer(old,name))).sort((a,b)=>String(a).localeCompare(String(b),'uk'));
       const rows=pool.map(name=>`<label><input type="checkbox" data-cup-player="${esc(name)}"><span>${esc(name)}</span><small>${esc(clubFor(name))}</small></label>`).join('');
-      modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA · КУБОК</small><h2>ДОДАТИ ГРАВЦІВ</h2><p>Можна додати одного або кількох учасників до першого зіграного матчу. Уже визначені пари й команди залишаться такими самими. Новий гравець стане наприкінці сітки: зіграє з учасником, який мав BYE, або отримає BYE сам.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><div class="arena-tournament-manual-v996"><input id="arenaCupManualPlayerV1386" type="text" placeholder="Нік гравця вручну"><small>Можна ввести кілька ніків через кому.</small></div><div class="arena-tournament-players-v996" id="arenaCupPlayersV1386">${rows||'<p class="arena-muted-v852">Усі гравці зі списку вже беруть участь. За потреби введи нік вручну.</p>'}</div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.addCupParticipantsV1386()">ДОДАТИ ДО КУБКА</button></div></div>`);
+      modal(`<div class="arena-tournament-create-v996 arena-cup-poll-create-v1026"><div class="arena-tournament-create-head-v996"><div><small>ADMIN · ARENA · КУБОК</small><h2>ДОДАТИ ГРАВЦІВ</h2><p>Можна додати одного або кількох учасників до першого зіграного матчу. Уже визначені пари й команди залишаться такими самими. Новий гравець стане наприкінці сітки: зіграє з учасником, який мав BYE, або отримає BYE сам.</p></div><button type="button" class="arena-player-close-v934" onclick="this.closest('.arena-modal-v852').remove()">✕</button></div><div class="arena-tournament-manual-v996"><input id="arenaCupManualPlayerV1387" type="text" placeholder="Нік гравця вручну"><small>Можна ввести кілька ніків через кому.</small></div><div class="arena-tournament-players-v996" id="arenaCupPlayersV1387">${rows||'<p class="arena-muted-v852">Усі гравці зі списку вже беруть участь. За потреби введи нік вручну.</p>'}</div><div class="arena-tournament-create-actions-v996"><button class="arena-secondary-v852" type="button" onclick="this.closest('.arena-modal-v852').remove()">СКАСУВАТИ</button><button class="arena-primary-v852" type="button" onclick="ArenaV852.addCupParticipantsV1387()">ДОДАТИ ДО КУБКА</button></div></div>`);
     },
-    addCupParticipantsV1386(){
+    addCupParticipantsV1387(){
       if(!isArenaAdmin()||testCompetition?.kind!=='cup'||testCompetition.champion)return;
       const firstRound=testCompetition.rounds?.[0];
       if((firstRound?.matches||[]).some(m=>isScored(m)||matchProposalV1067(m))){document.querySelector('.arena-modal-v852')?.remove();window.showToast?.('Перший матч уже зіграно — список учасників закритий');return;}
-      const chosen=[...document.querySelectorAll('#arenaCupPlayersV1386 input[type="checkbox"]:checked')].map(input=>String(input.dataset.cupPlayer||'').trim()).filter(Boolean);
-      const manual=String(document.getElementById('arenaCupManualPlayerV1386')?.value||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
+      const chosen=[...document.querySelectorAll('#arenaCupPlayersV1387 input[type="checkbox"]:checked')].map(input=>String(input.dataset.cupPlayer||'').trim()).filter(Boolean);
+      const manual=String(document.getElementById('arenaCupManualPlayerV1387')?.value||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean);
       const current=testCompetition.participants||[];
       const candidates=[...chosen,...manual];
       const additions=candidates.filter((name,index)=>!current.some(old=>sameArenaPlayer(old,name))&&candidates.findIndex(other=>sameArenaPlayer(other,name))===index);
