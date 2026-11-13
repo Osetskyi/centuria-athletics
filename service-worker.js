@@ -1,5 +1,5 @@
 // v13.84 — complete paginated position history
-const CACHE_VERSION="centuria-pwa-v1384-position-history-pagination";
+const CACHE_VERSION="centuria-pwa-v1385-cup-participant-registration";
 const ADD_PLAYER_SCRIPT="/arena-league-add-v1231.js?v=12.57";
 const ADD_PLAYER_STYLE="/arena-league-add-v1231.css?v=12.57";
 const TABLE_SCRIPT="/arena-league-table-v1232.js?v=12.57";
