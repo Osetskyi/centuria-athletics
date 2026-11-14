@@ -1,7 +1,7 @@
 
 const POSITIONS = [
   ["GK","ВРТ"],["LB","ЛЗ"],["CB","ЦЗ"],["RB","ПЗ"],
-  ["LM","ЛП"],["CM","ЦП"],["CAM","ЦАП"],["RM","ПП"],["ST","ФРВ"]
+  ["LM","ЛП"],["CM","ЦП"],["CDM","ЦОП"],["CAM","ЦАП"],["RM","ПП"],["ST","ФРВ"]
 ];
 const POS_LABEL = Object.fromEntries(POSITIONS);
 const ARCHETYPES = [
@@ -289,8 +289,8 @@ const FORMATIONS = {
   ],
   "352":[
     ["ST",36,14],["ST",64,14],
-    ["CAM",50,36],
-    ["LM",13,49],["CM",36,53],["CM",64,53],["RM",87,49],
+    ["CAM",36,35],
+    ["LM",13,48],["CDM",50,58],["CAM",64,35],["RM",87,48],
     ["CB",25,72],["CB",50,74],["CB",75,72],
     ["GK",50,92]
   ],
@@ -1107,7 +1107,7 @@ function squadFromDb(s){
   return {
     id:s.id,
     name:s.name || "Склад",
-    formation:s.formation,
+    formation:formationDisplayName(s.formation),
     formationKey:s.formation_key || null,
     lineupSnapshot:s.lineup_snapshot || null,
     createdAt:s.created_at ? new Date(s.created_at).getTime() : Date.now(),
@@ -1240,7 +1240,7 @@ async function put(store,obj){
     const payload={
       id:obj.id,
       name:obj.name,
-      formation:obj.formation,
+      formation:formationDbName(obj.formationKey||savedSquadFormationKey(obj))||obj.formation,
       image_url:imageUrl,
       created_by:authUser?.id || null
     };
@@ -1343,7 +1343,9 @@ function showToast(text,{duration=2500,playerRequestSuccess=false}={}){
   clearTimeout(showToast._t);
   showToast._t=setTimeout(()=>t.classList.remove("show","player-request-success-v1159"),duration);
 }
-function formationName(k){return ({"451":"4-5-1","352":"3-5-2","4411":"4-4-1-1"})[k] || "4-5-1"}
+function formationName(k){return ({"451":"4-5-1","352":"3-1-4-2","4411":"4-4-1-1"})[k] || "4-5-1"}
+function formationDisplayName(value){const name=String(value||"").trim();return name==="3-5-2"?formationName("352"):name}
+function formationDbName(k){return k==="352" ? "3-5-2" : formationName(k)}
 
 function openArenaV664(mode=""){
   /* v8.52 — Arena is now a normal SPA section, exactly like Players/Tactics/Chat/Gatherings. */
@@ -1531,7 +1533,7 @@ if($("statusPickerBtn") && $("statusMenu")){
 function playerGroup(pos){
   if(pos==="GK")return "GK";
   if(["LB","CB","RB"].includes(pos))return "DEF";
-  if(["LM","CM","CAM","RM"].includes(pos))return "MID";
+  if(["LM","CM","CDM","CAM","RM"].includes(pos))return "MID";
   return "ATT";
 }
 
@@ -2131,6 +2133,7 @@ $("deletePlayerBtn").addEventListener("click",async()=>{
 function compatibility(p,slotPos){
   if(p.primaryPos===slotPos)return "good";
   if((p.extraPositions||[]).includes(slotPos))return "alt";
+  if((p.primaryPos==="CM"&&slotPos==="CDM")||(p.primaryPos==="CDM"&&slotPos==="CM"))return "alt";
   return "bad";
 }
 
@@ -2559,7 +2562,7 @@ function renderSquads(){
     const row=document.createElement("div");row.className="squad-row";
     row.innerHTML=`
       <img class="squad-thumb" src="${s.image||"player-placeholder.png"}" alt="" onerror="this.src='player-placeholder.png'">
-      <div class="squad-info"><strong>${esc(s.name)}</strong><span>СХЕМА: <b>${esc(s.formation)}</b></span><span>СТВОРЕНО: ${new Date(s.createdAt).toLocaleString("uk-UA")}</span></div>
+      <div class="squad-info"><strong>${esc(s.name)}</strong><span>СХЕМА: <b>${esc(formationDisplayName(s.formation))}</b></span><span>СТВОРЕНО: ${new Date(s.createdAt).toLocaleString("uk-UA")}</span></div>
       <button class="more-btn">⋯</button>
       <div class="squad-menu hidden">
         <button class="dark-btn open">ВІДКРИТИ</button>
@@ -2632,7 +2635,7 @@ async function rebuildLegacySavedImageForTheme(s){
 
     ctx.fillStyle=light?"#8f826e":"#b9a98e";
     ctx.font="bold 14px Arial";
-    const formation=s?.formation||"—";
+    const formation=formationDisplayName(s?.formation)||"—";
     const dt=s?.createdAt ? new Date(s.createdAt).toLocaleString("uk-UA") : "";
     ctx.fillText(`СХЕМА: ${formation}${dt?"   •   "+dt:""}`,38,108);
 
@@ -2754,6 +2757,7 @@ $("imageDialog")?.addEventListener("click",e=>{
 function savedSquadFormationKey(s){
   if(s?.formationKey && FORMATIONS[s.formationKey])return s.formationKey;
   const wanted=String(s?.formation||"").trim();
+  if(wanted==="3-5-2"||wanted==="3-1-4-2")return "352";
   return Object.keys(FORMATIONS).find(k=>formationName(k)===wanted)||null;
 }
 
