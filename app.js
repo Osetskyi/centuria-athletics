@@ -295,10 +295,9 @@ const FORMATIONS = {
     ["GK",50,92]
   ],
   "4411":[
-    ["ST",50,13],
-    ["CAM",50,31],
-    ["LM",15,48],["CM",39,52],["CM",61,52],["RM",85,48],
-    ["LB",15,74],["CB",38,79],["CB",62,79],["RB",85,74],
+    ["ST",36,14],["CAM",50,33],
+    ["LM",14,48],["CDM",40,58],["CDM",60,58],["RM",86,48],
+    ["CB",25,75],["CB",50,78],["CB",75,75],["ST",64,14],
     ["GK",50,92]
   ]
 };
@@ -1343,9 +1342,9 @@ function showToast(text,{duration=2500,playerRequestSuccess=false}={}){
   clearTimeout(showToast._t);
   showToast._t=setTimeout(()=>t.classList.remove("show","player-request-success-v1159"),duration);
 }
-function formationName(k){return ({"451":"4-5-1","352":"3-1-4-2","4411":"4-4-1-1"})[k] || "4-5-1"}
-function formationDisplayName(value){const name=String(value||"").trim();return name==="3-5-2"?formationName("352"):name}
-function formationDbName(k){return k==="352" ? "3-5-2" : formationName(k)}
+function formationName(k){return ({"451":"4-5-1","352":"3-1-4-2","4411":"3-4-1-2"})[k] || "4-5-1"}
+function formationDisplayName(value){const name=String(value||"").trim();if(name==="3-5-2")return formationName("352");if(name==="4-4-1-1")return formationName("4411");return name}
+function formationDbName(k){return k==="352" ? "3-5-2" : k==="4411" ? "4-4-1-1" : formationName(k)}
 
 function openArenaV664(mode=""){
   /* v8.52 — Arena is now a normal SPA section, exactly like Players/Tactics/Chat/Gatherings. */
@@ -2758,6 +2757,7 @@ function savedSquadFormationKey(s){
   if(s?.formationKey && FORMATIONS[s.formationKey])return s.formationKey;
   const wanted=String(s?.formation||"").trim();
   if(wanted==="3-5-2"||wanted==="3-1-4-2")return "352";
+  if(wanted==="4-4-1-1"||wanted==="3-4-1-2")return "4411";
   return Object.keys(FORMATIONS).find(k=>formationName(k)===wanted)||null;
 }
 
