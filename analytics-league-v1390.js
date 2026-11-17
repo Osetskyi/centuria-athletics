@@ -1,4 +1,4 @@
-/* Centuria Analytics v13.62 — make the Cup bye slot editable */
+/* Centuria Analytics v13.91 — include cup in overall official form and statistics */
 (()=>{
   'use strict';
 
@@ -42,6 +42,10 @@
   const matchesByLeague=new Map();
   const cupMatchesById=new Map();
   const matchStatsByLeague=new Map();
+  let officialCupMatches=[];
+  let officialCupStats=new Map();
+  let officialCupError='';
+  let officialCupLoad=null;
 
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -267,30 +271,41 @@
     for(const results of formLists)if(results.length>5)results.splice(0,results.length-5);
     return forms;
   };
-  const centuriaCompletedMatches=league=>(matchesByLeague.get(league?.id)||[]).filter(match=>{
-    if(match.match_kind&&match.match_kind!=='league')return false;
+  const completedCenturiaMatch=match=>{
     const hasResult=match.home_score!==null&&match.home_score!==undefined&&match.away_score!==null&&match.away_score!==undefined;
     return (hasResult||match.match_status==='double_forfeit')&&(isCenturiaName(match.home_team_name)||isCenturiaName(match.away_team_name));
-  }).sort((a,b)=>clean(a.match_date).localeCompare(clean(b.match_date))||clean(a.match_time).localeCompare(clean(b.match_time)));
+  };
+  const centuriaCompletedMatches=league=>{
+    const leagueMatches=(matchesByLeague.get(league?.id)||[]).filter(match=>!match.match_kind||match.match_kind==='league');
+    return [...new Map([...leagueMatches,...officialCupMatches].filter(completedCenturiaMatch).map(match=>[String(match.id),match])).values()]
+      .sort((a,b)=>clean(a.match_date).localeCompare(clean(b.match_date))||clean(a.match_time).localeCompare(clean(b.match_time))||String(a.id).localeCompare(String(b.id)));
+  };
+  const centuriaMatchResult=match=>{
+    const isHome=isCenturiaName(match.home_team_name);
+    const opponent=isHome?match.away_team_name:match.home_team_name;
+    if(match.match_status==='double_forfeit')return {outcome:'loss',goalsFor:null,goalsAgainst:null,opponent,scoreLabel:'Подвійна ТП — поразка обом'};
+    const goalsFor=Number(isHome?match.home_score:match.away_score),goalsAgainst=Number(isHome?match.away_score:match.home_score);
+    let outcome=goalsFor>goalsAgainst?'win':goalsFor<goalsAgainst?'loss':'draw',scoreLabel='';
+    if(match.match_kind==='cup'&&outcome==='draw'&&match.home_penalty_score!=null&&match.away_penalty_score!=null){
+      const own=Number(isHome?match.home_penalty_score:match.away_penalty_score),other=Number(isHome?match.away_penalty_score:match.home_penalty_score);
+      if(Number.isFinite(own)&&Number.isFinite(other)&&own!==other){outcome=own>other?'win':'loss';scoreLabel=`${goalsFor}:${goalsAgainst} (пен. ${own}:${other})`;}
+    }
+    return {outcome,goalsFor,goalsAgainst,opponent,scoreLabel};
+  };
   const averageStat=(sum,count,digits=0)=>count?Number((sum/count).toFixed(digits)).toLocaleString('uk-UA',{minimumFractionDigits:digits,maximumFractionDigits:digits}):'';
   const summarizeCenturiaLeague=league=>{
     const matches=centuriaCompletedMatches(league);
     const summary={played:matches.length,wins:0,draws:0,losses:0,goalsFor:0,goalsAgainst:0,statsMatches:0,metrics:{}};
     const keys=['possession_pct','expected_goals','pass_accuracy_pct','shot_accuracy_pct'];
     for(const key of keys)summary.metrics[key]={own:0,ownCount:0,opponent:0,opponentCount:0,pairDelta:0,pairCount:0};
-    const saved=matchStatsByLeague.get(league?.id)||new Map();
+    const saved=new Map([...(matchStatsByLeague.get(league?.id)||new Map()),...officialCupStats]);
     for(const match of matches){
       const isHome=isCenturiaName(match.home_team_name);
-      if(match.match_status==='double_forfeit')summary.losses++;
-      else {
-      const goalsFor=Number(isHome?match.home_score:match.away_score);
-      const goalsAgainst=Number(isHome?match.away_score:match.home_score);
-      if(!Number.isFinite(goalsFor)||!Number.isFinite(goalsAgainst))continue;
-      summary.goalsFor+=goalsFor;summary.goalsAgainst+=goalsAgainst;
-      if(goalsFor>goalsAgainst)summary.wins++;
-      else if(goalsFor<goalsAgainst)summary.losses++;
+      const result=centuriaMatchResult(match);
+      if(result.outcome==='win')summary.wins++;
+      else if(result.outcome==='loss')summary.losses++;
       else summary.draws++;
-      }
+      if(result.goalsFor!==null&&result.goalsAgainst!==null){summary.goalsFor+=result.goalsFor;summary.goalsAgainst+=result.goalsAgainst;}
       const row=saved.get(String(match.id));
       const ownStats=row?.[isHome?'home_stats':'away_stats']||{};
       const opponentStats=row?.[isHome?'away_stats':'home_stats']||{};
@@ -329,7 +344,7 @@
   };
   const teamFormSummaryHtml=league=>{
     const summary=summarizeCenturiaLeague(league);
-    if(!summary.played)return '<div class="ca-team-form-summary-v1332"><strong>ЗА ВСІ МАТЧІ ЛІГИ</strong><p>Завершених матчів Центурії ще немає.</p></div>';
+    if(!summary.played)return `<div class="ca-team-form-summary-v1332"><strong>ЗА ВСІ ОФІЦІЙНІ МАТЧІ</strong><p>${officialCupError?'Не вдалося завантажити кубкову статистику.':'Завершених матчів Центурії ще немає.'}</p></div>`;
     const metrics=[],possession=summary.metrics.possession_pct,xg=summary.metrics.expected_goals;
     const passing=summary.metrics.pass_accuracy_pct,shooting=summary.metrics.shot_accuracy_pct;
     if(possession.ownCount)metrics.push(`володіння ${averageStat(possession.own,possession.ownCount)}%`);
@@ -339,22 +354,20 @@
     const coverage=summary.statsMatches?`Статистика внесена за ${summary.statsMatches} з ${summary.played} матчів.`:'Статистику матчів ще не внесено.';
     const statsLine=metrics.length?`Середні показники: ${metrics.join(' · ')}.`:'';
     return `<div class="ca-team-form-summary-v1332">
-      <div class="ca-team-form-summary-head-v1332"><strong>ЗА ВСІ МАТЧІ ЛІГИ</strong><span>${summary.played} ${matchCountLabel(summary.played)}</span></div>
+      <div class="ca-team-form-summary-head-v1332"><strong>ЗА ВСІ ОФІЦІЙНІ МАТЧІ</strong><span>${summary.played} ${matchCountLabel(summary.played)}</span></div>
       <p class="ca-team-form-record-v1332"><b>${summary.wins} В · ${summary.draws} Н · ${summary.losses} П</b><span>Забиті: ${summary.goalsFor} · Пропущені: ${summary.goalsAgainst}</span></p>
       ${statsLine?`<p class="ca-team-form-metrics-v1332">${esc(statsLine)}</p>`:''}
       <p class="ca-team-form-insight-v1332">${esc(characteristicForSummary(summary))}</p>
-      <small>${esc(coverage)}</small>
+      <small>Ліга + кубок. ${esc(coverage)}${officialCupError?' · Не вдалося оновити кубкові дані.':''}</small>
     </div>`;
   };
   const teamFormHtml=league=>{
     const rows=computedRows(league);
-    const forms=teamFormForLeague(league);
     const centuria=rows.find(({team})=>normalize(`${team?.normalized_name||''} ${team?.name||''}`).includes('centuria athl'))?.team;
     let centuriaHtml='<p class="ca-team-form-empty-v1330">Centuria Athletics ще не додана до ліги.</p>';
     if(centuria){
       const logo=imageUrl(centuria.logo);
-      const key=normalize(centuria.normalized_name)||normalize(centuria.name);
-      const results=forms.get(key)||forms.get(normalize(centuria.name))||[];
+      const results=centuriaCompletedMatches(league).slice(-5).map(centuriaMatchResult);
       const teamName=clean(centuria.name)||'Centuria Athletics';
       const resultHtml=results.length?results.map(result=>{
         const label=result.outcome==='win'?'Перемога':result.outcome==='draw'?'Нічия':'Поразка';
@@ -664,6 +677,32 @@
         && !hasResult && match.match_status!=='played';
     });
   };
+  const loadOfficialCupData=async()=>{
+    if(officialCupLoad)return officialCupLoad;
+    officialCupLoad=(async()=>{
+      try{
+        const db=client();if(!db||!user())throw new Error('Потрібна авторизація');
+        const rows=[];
+        for(let offset=0;;offset+=100){
+          const {data,error}=await db.from('centuria_analytics_matches')
+            .select('id,match_date,match_time,home_team_name,away_team_name,home_score,away_score,home_penalty_score,away_penalty_score,match_kind,match_status')
+            .eq('match_kind','cup').or('home_team_name.ilike.*centuria athl*,away_team_name.ilike.*centuria athl*')
+            .order('id',{ascending:true}).range(offset,offset+99);
+          if(error)throw error;
+          const page=Array.isArray(data)?data:[];rows.push(...page);if(page.length<100)break;
+        }
+        const completed=rows.filter(match=>match.match_status==='played'&&completedCenturiaMatch(match)&&![match.home_team_name,match.away_team_name].some(name=>normalize(name)==='bye'));
+        const stats=new Map(),ids=completed.map(match=>match.id);
+        for(let offset=0;offset<ids.length;offset+=100){
+          const {data,error}=await db.from(MATCH_STATS_TABLE).select('match_id,home_stats,away_stats').in('match_id',ids.slice(offset,offset+100));
+          if(error)throw error;
+          (Array.isArray(data)?data:[]).forEach(row=>stats.set(String(row.match_id),row));
+        }
+        officialCupMatches=completed;officialCupStats=stats;officialCupError='';
+      }catch(error){officialCupError=failMessage(error);}
+    })();
+    try{await officialCupLoad;}finally{officialCupLoad=null;}
+  };
   const loadLeagueData=async league=>{
     let matches=matchesByLeague.get(league?.id);
     if(!matches){
@@ -671,7 +710,7 @@
       matchesByLeague.set(league.id,matches);
     }
     if(!matchStatsByLeague.has(league.id)){
-      const ids=centuriaCompletedMatches(league).map(match=>String(match.id)).filter(Boolean);
+      const ids=matches.filter(match=>(!match.match_kind||match.match_kind==='league')&&completedCenturiaMatch(match)).map(match=>String(match.id)).filter(Boolean);
       const stats=new Map();
       try{
         const db=client();
@@ -685,6 +724,7 @@
         }
       }catch(_error){}
     }
+    await loadOfficialCupData();
     return matches;
   };
   const formattedMatchDate=value=>{
@@ -916,6 +956,7 @@
         const leagueStats=matchStatsByLeague.get(activeId)||new Map();
         leagueStats.set(String(data.match_id),data);
         matchStatsByLeague.set(activeId,leagueStats);
+        if(match.match_kind==='cup')officialCupStats.set(String(data.match_id),data);
         render();renderHomeStandings();
         if(data?.updated_at)updatedAt=data.updated_at;
         toast('Статистику матчу збережено');
@@ -1355,7 +1396,7 @@
       const homeScore=hs===''?null:Number(hs),awayScore=as===''?null:Number(as),homePenalties=hps===''?null:Number(hps),awayPenalties=aps===''?null:Number(aps);if([homeScore,awayScore,homePenalties,awayPenalties].some(score=>score!==null&&(!Number.isInteger(score)||score<0))){toast('Рахунок має бути цілим числом від 0');return;}if(Boolean(hps)!==Boolean(aps)){toast('Вкажи рахунок серії пенальті для обох команд');return;}if((homePenalties!==null||awayPenalties!==null)&&(kind!=='cup'||homeScore===null||awayScore===null||homeScore!==awayScore)){toast('Пенальті можна вказати лише після нічиєї в основний час');return;}if(homePenalties!==null&&homePenalties===awayPenalties){toast('У серії пенальті має бути визначений переможець');return;}
       const homeTeam=teams.find(team=>team.name===home),awayTeam=teams.find(team=>team.name===away),payload={match_date:form.elements.date.value,match_time:form.elements.time.value||null,competition_name:competition.name,home_team_name:home,home_team_image:homeTeam?.logo||null,away_team_name:away,away_team_image:awayTeam?.logo||null,home_score:doubleForfeit?null:homeScore,away_score:doubleForfeit?null:awayScore,home_penalty_score:homePenalties,away_penalty_score:awayPenalties,match_kind:kind,round_number:round,match_status:doubleForfeit?'double_forfeit':homeScore===null?'scheduled':'played',cup_id:kind==='cup'?competition.id:null};
       const button=form.querySelector('[data-ca-result-save]');button.disabled=true;button.textContent='ЗБЕРІГАЮ…';
-      try{const db=client();if(!db||!user())throw new Error('Увійди в акаунт, щоб зберегти матч');let request=db.from('centuria_analytics_matches');request=match?.id?request.update(payload).eq('id',match.id):request.insert(payload);const {error}=await request;if(error)throw error;overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');if(kind==='league'){matchesByLeague.delete(competition.id);const latest=leagues.find(item=>item.id===competition.id)||competition;await loadLeagueData(latest);}else{cupMatchesById.delete(String(competition.id));cupMatches=await fetchCupMatches(competition);cupMatchesById.set(String(competition.id),cupMatches);}render();renderHomeStandings();toast('Матч збережено');}catch(error){button.disabled=false;button.textContent='ЗБЕРЕГТИ МАТЧ';toast(failMessage(error));}
+      try{const db=client();if(!db||!user())throw new Error('Увійди в акаунт, щоб зберегти матч');let request=db.from('centuria_analytics_matches');request=match?.id?request.update(payload).eq('id',match.id):request.insert(payload);const {error}=await request;if(error)throw error;overlay.remove();document.body.classList.remove('ca-analytics-modal-open-v1317');if(kind==='league'){matchesByLeague.delete(competition.id);const latest=leagues.find(item=>item.id===competition.id)||competition;await loadLeagueData(latest);}else{cupMatchesById.delete(String(competition.id));cupMatches=await fetchCupMatches(competition);cupMatchesById.set(String(competition.id),cupMatches);await loadOfficialCupData();}render();renderHomeStandings();toast('Матч збережено');}catch(error){button.disabled=false;button.textContent='ЗБЕРЕГТИ МАТЧ';toast(failMessage(error));}
     });
   };
 
@@ -1529,7 +1570,7 @@
     const editLeague=event.target.closest?.('[data-ca-edit-league-match]');
     if(editLeague){const league=leagues.find(item=>item.id===activeId),match=(matchesByLeague.get(activeId)||[]).find(item=>String(item.id)===String(editLeague.dataset.caEditLeagueMatch));if(league&&match)openResultModal('league',league,match);return;}
     const deleteCup=event.target.closest?.('[data-ca-delete-cup]');
-    if(deleteCup){if(!isAdmin())return;const cup=cups.find(item=>String(item.id)===String(deleteCup.dataset.caDeleteCup));if(!cup)return;if(!window.confirm(`Видалити кубок «${cup.name}» разом із матчами?`))return;void (async()=>{try{await window.CenturiaAnalyticsCupApi.delete(cup.id);cups=cups.filter(item=>String(item.id)!==String(cup.id));cupMatchesById.delete(String(cup.id));if(String(activeCupId)===String(cup.id)){activeCupId=String(cups[0]?.id||'');const next=cups[0];cupMatches=next?await fetchCupMatches(next):[];if(next)cupMatchesById.set(String(next.id),cupMatches);}render();toast('Кубок видалено');}catch(error){toast(failMessage(error));}})();return;}
+    if(deleteCup){if(!isAdmin())return;const cup=cups.find(item=>String(item.id)===String(deleteCup.dataset.caDeleteCup));if(!cup)return;if(!window.confirm(`Видалити кубок «${cup.name}» разом із матчами?`))return;void (async()=>{try{await window.CenturiaAnalyticsCupApi.delete(cup.id);cups=cups.filter(item=>String(item.id)!==String(cup.id));cupMatchesById.delete(String(cup.id));if(String(activeCupId)===String(cup.id)){activeCupId=String(cups[0]?.id||'');const next=cups[0];cupMatches=next?await fetchCupMatches(next):[];if(next)cupMatchesById.set(String(next.id),cupMatches);}await loadOfficialCupData();render();toast('Кубок видалено');}catch(error){toast(failMessage(error));}})();return;}
     if(event.target.closest?.('[data-ca-open-table]')){openTableModal();return;}
     if(event.target.closest?.('[data-ca-open-history]')){openHistoryModal();return;}
   });
